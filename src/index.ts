@@ -170,7 +170,7 @@ class GamePanelApp {
 
   private handleServerCommand(ws: WebSocket, command: string): void {
     logger.info(`Server command received: ${command}`);
-    
+
     // Simulate command execution
     setTimeout(() => {
       const responses = {
@@ -182,7 +182,7 @@ class GamePanelApp {
         'stop': '[Server thread/INFO]: Stopping the server...'
       };
 
-      const response = responses[command as keyof typeof responses] || 
+      const response = responses[command as keyof typeof responses] ||
         `[Server thread/INFO]: Unknown command. Type "help" for help.`;
 
       ws.send(JSON.stringify({
@@ -194,7 +194,7 @@ class GamePanelApp {
 
   private handlePowerAction(ws: WebSocket, action: string): void {
     logger.info(`Power action received: ${action}`);
-    
+
     setTimeout(() => {
       const actions = {
         'start': '[Server thread/INFO]: Starting server...',
@@ -203,7 +203,7 @@ class GamePanelApp {
         'kill': '[Server thread/INFO]: Force stopping server...'
       };
 
-      const response = actions[action as keyof typeof actions] || 
+      const response = actions[action as keyof typeof actions] ||
         '[Server thread/ERROR]: Unknown power action';
 
       ws.send(JSON.stringify({
@@ -240,7 +240,7 @@ class GamePanelApp {
   public start(): void {
     // Create HTTP server
     this.server = createServer(this.app);
-    
+
     // Initialize WebSocket server
     this.wss = new WebSocketServer({ server: this.server });
     this.setupWebSocketHandlers();

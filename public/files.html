@@ -194,7 +194,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="p-4">
                             <div id="file-list" class="space-y-1 max-h-96 overflow-y-auto">
                                 <!-- Files will be loaded here -->
@@ -357,7 +357,7 @@
             if (file.type === 'directory') {
                 return '📁';
             }
-            
+
             const ext = file.extension?.toLowerCase();
             const iconMap = {
                 'properties': '⚙️',
@@ -378,7 +378,7 @@
                 'jpeg': '🖼️',
                 'gif': '🖼️'
             };
-            
+
             return iconMap[ext] || '📄';
         }
 
@@ -395,18 +395,18 @@
             try {
                 const response = await fetch(`${API_BASE}/list?path=${encodeURIComponent(path)}`);
                 const data = await response.json();
-                
+
                 if (!response.ok) {
                     throw new Error(data.error || 'Failed to load files');
                 }
-                
+
                 const files = data.files;
                 const fileList = document.getElementById('file-list');
                 const fileCount = document.getElementById('file-count');
-                
+
                 fileList.innerHTML = '';
                 fileCount.textContent = `${files.length} items`;
-                
+
                 // Add parent directory link if not root
                 if (path !== '/') {
                     const parentItem = createFileItem({
@@ -418,12 +418,12 @@
                     });
                     fileList.appendChild(parentItem);
                 }
-                
+
                 files.forEach(file => {
                     const fileItem = createFileItem(file);
                     fileList.appendChild(fileItem);
                 });
-                
+
                 updateBreadcrumb(path);
             } catch (error) {
                 console.error('Error loading files:', error);
@@ -437,35 +437,35 @@
             item.className = 'file-item flex items-center justify-between p-3 rounded-lg cursor-pointer';
             item.dataset.filename = file.name;
             item.dataset.type = file.type;
-            
+
             const leftSection = document.createElement('div');
             leftSection.className = 'flex items-center space-x-3';
-            
+
             const icon = document.createElement('span');
             icon.className = 'text-lg';
             icon.textContent = file.isParent ? '📁' : getFileIcon(file);
-            
+
             const details = document.createElement('div');
             details.innerHTML = `
                 <p class="font-medium">${file.name}</p>
                 <p class="text-xs text-gray-400">${file.modified}</p>
             `;
-            
+
             leftSection.appendChild(icon);
             leftSection.appendChild(details);
-            
+
             const rightSection = document.createElement('div');
             rightSection.className = 'text-sm text-gray-400';
             rightSection.textContent = formatFileSize(file.size);
-            
+
             item.appendChild(leftSection);
             item.appendChild(rightSection);
-            
+
             // Event listeners
             item.onclick = () => selectFile(item, file);
             item.ondblclick = () => {
                 if (file.type === 'directory' || file.isParent) {
-                    const newPath = file.isParent ? 
+                    const newPath = file.isParent ?
                         currentPath.split('/').slice(0, -1).join('/') || '/' :
                         currentPath === '/' ? `/${file.name}` : `${currentPath}/${file.name}`;
                     navigateTo(newPath);
@@ -474,7 +474,7 @@
                 }
             };
             item.oncontextmenu = (e) => showContextMenu(e, file);
-            
+
             return item;
         }
 
@@ -484,11 +484,11 @@
             document.querySelectorAll('.file-item').forEach(item => {
                 item.classList.remove('selected');
             });
-            
+
             // Add selection to current item
             element.classList.add('selected');
             selectedFile = file;
-            
+
             updateFileInfo(file);
             updateActionButtons(file);
         }
@@ -496,12 +496,12 @@
         // Update file information panel
         function updateFileInfo(file) {
             const fileInfo = document.getElementById('file-info');
-            
+
             if (file.isParent) {
                 fileInfo.innerHTML = '<p class="text-gray-400">Parent directory</p>';
                 return;
             }
-            
+
             fileInfo.innerHTML = `
                 <div class="space-y-2">
                     <div class="flex justify-between">
@@ -538,10 +538,10 @@
             const downloadBtn = document.getElementById('download-btn');
             const renameBtn = document.getElementById('rename-btn');
             const deleteBtn = document.getElementById('delete-btn');
-            
+
             const isFile = file.type === 'file' && !file.isParent;
             const canEdit = isFile && ['properties', 'yml', 'yaml', 'json', 'txt', 'log', 'js', 'html', 'css', 'md'].includes(file.extension);
-            
+
             editBtn.disabled = !canEdit;
             downloadBtn.disabled = !isFile;
             renameBtn.disabled = file.isParent;
@@ -553,7 +553,7 @@
             currentPath = path;
             selectedFile = null;
             loadFiles(path);
-            
+
             // Clear selection and reset action buttons
             document.getElementById('file-info').innerHTML = '<p class="text-gray-400">Select a file to view details</p>';
             updateActionButtons({ isParent: true });
@@ -562,35 +562,35 @@
         // Update breadcrumb
         function updateBreadcrumb(path) {
             const breadcrumbPath = document.getElementById('breadcrumb-path');
-            
+
             if (path === '/') {
                 breadcrumbPath.innerHTML = '';
                 return;
             }
-            
+
             const parts = path.split('/').filter(part => part);
             let breadcrumb = '';
             let currentPathBuilder = '';
-            
+
             parts.forEach((part, index) => {
                 currentPathBuilder += '/' + part;
                 breadcrumb += ` / <span class="breadcrumb-item cursor-pointer hover:text-blue-400" onclick="navigateTo('${currentPathBuilder}')">${part}</span>`;
             });
-            
+
             breadcrumbPath.innerHTML = breadcrumb;
         }
 
         // Show context menu
         function showContextMenu(event, file) {
             event.preventDefault();
-            
+
             const contextMenu = document.getElementById('context-menu');
             contextMenuTarget = file;
-            
+
             contextMenu.style.left = event.pageX + 'px';
             contextMenu.style.top = event.pageY + 'px';
             contextMenu.classList.remove('hidden');
-            
+
             // Hide context menu when clicking elsewhere
             document.addEventListener('click', hideContextMenu, { once: true });
         }
@@ -603,22 +603,22 @@
         // File operations
         async function editFile(file) {
             if (file.type !== 'file') return;
-            
+
             // Initialize Monaco Editor
             require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' }});
             require(['vs/editor/editor.main'], async function() {
                 const modal = document.getElementById('editor-modal');
                 const title = document.getElementById('editor-title');
-                
+
                 title.textContent = `Editing: ${file.name}`;
                 editingFile = file;
-                
+
                 // Get file content from API
                 const content = await getFileContent(file);
-                
+
                 // Detect language based on file extension
                 const language = getLanguageFromExtension(file.extension);
-                
+
                 // Create editor
                 monacoEditor = monaco.editor.create(document.getElementById('monaco-editor'), {
                     value: content,
@@ -626,7 +626,7 @@
                     theme: 'vs-dark',
                     automaticLayout: true
                 });
-                
+
                 modal.classList.remove('hidden');
             });
         }
@@ -636,11 +636,11 @@
             try {
                 const response = await fetch(`${API_BASE}/read?path=${encodeURIComponent(currentPath === '/' ? `/${file.name}` : `${currentPath}/${file.name}`)}`);
                 const data = await response.json();
-                
+
                 if (!response.ok) {
                     throw new Error(data.error || 'Failed to read file');
                 }
-                
+
                 return data.content;
             } catch (error) {
                 console.error('Error reading file:', error);
@@ -662,18 +662,18 @@
                 'txt': 'plaintext',
                 'log': 'plaintext'
             };
-            
+
             return languageMap[extension] || 'plaintext';
         }
 
         // Save file
         async function saveFile() {
             if (!monacoEditor || !editingFile) return;
-            
+
             try {
                 const content = monacoEditor.getValue();
                 const filePath = currentPath === '/' ? `/${editingFile.name}` : `${currentPath}/${editingFile.name}`;
-                
+
                 const response = await fetch(`${API_BASE}/write`, {
                     method: 'POST',
                     headers: {
@@ -684,13 +684,13 @@
                         content: content
                     })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (!response.ok) {
                     throw new Error(data.error || 'Failed to save file');
                 }
-                
+
                 alert(`File ${editingFile.name} saved successfully!`);
                 closeEditor();
                 refreshFiles();
@@ -704,22 +704,22 @@
         function closeEditor() {
             const modal = document.getElementById('editor-modal');
             modal.classList.add('hidden');
-            
+
             if (monacoEditor) {
                 monacoEditor.dispose();
                 monacoEditor = null;
             }
-            
+
             editingFile = null;
         }
 
         // Download file
         function downloadFile(file) {
             if (file.type !== 'file') return;
-            
+
             const filePath = currentPath === '/' ? `/${file.name}` : `${currentPath}/${file.name}`;
             const downloadUrl = `${API_BASE}/download?path=${encodeURIComponent(filePath)}`;
-            
+
             // Create a temporary link and click it
             const link = document.createElement('a');
             link.href = downloadUrl;
@@ -736,7 +736,7 @@
                 try {
                     const oldPath = currentPath === '/' ? `/${file.name}` : `${currentPath}/${file.name}`;
                     const newPath = currentPath === '/' ? `/${newName}` : `${currentPath}/${newName}`;
-                    
+
                     const response = await fetch(`${API_BASE}/rename`, {
                         method: 'POST',
                         headers: {
@@ -747,13 +747,13 @@
                             newPath: newPath
                         })
                     });
-                    
+
                     const data = await response.json();
-                    
+
                     if (!response.ok) {
                         throw new Error(data.error || 'Failed to rename');
                     }
-                    
+
                     alert(`${file.name} renamed to ${newName}`);
                     refreshFiles();
                 } catch (error) {
@@ -768,17 +768,17 @@
             if (confirm(`Are you sure you want to delete ${file.name}?`)) {
                 try {
                     const filePath = currentPath === '/' ? `/${file.name}` : `${currentPath}/${file.name}`;
-                    
+
                     const response = await fetch(`${API_BASE}/delete?path=${encodeURIComponent(filePath)}`, {
                         method: 'DELETE'
                     });
-                    
+
                     const data = await response.json();
-                    
+
                     if (!response.ok) {
                         throw new Error(data.error || 'Failed to delete');
                     }
-                    
+
                     alert(`${file.name} deleted successfully!`);
                     refreshFiles();
                 } catch (error) {
@@ -820,7 +820,7 @@
             if (name) {
                 try {
                     const filePath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`;
-                    
+
                     const response = await fetch(`${API_BASE}/write`, {
                         method: 'POST',
                         headers: {
@@ -831,13 +831,13 @@
                             content: ''
                         })
                     });
-                    
+
                     const data = await response.json();
-                    
+
                     if (!response.ok) {
                         throw new Error(data.error || 'Failed to create file');
                     }
-                    
+
                     alert(`File ${name} created successfully!`);
                     closeNewFileModal();
                     refreshFiles();
@@ -862,7 +862,7 @@
             if (name) {
                 try {
                     const folderPath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`;
-                    
+
                     const response = await fetch(`${API_BASE}/mkdir`, {
                         method: 'POST',
                         headers: {
@@ -872,13 +872,13 @@
                             path: folderPath
                         })
                     });
-                    
+
                     const data = await response.json();
-                    
+
                     if (!response.ok) {
                         throw new Error(data.error || 'Failed to create folder');
                     }
-                    
+
                     alert(`Folder ${name} created successfully!`);
                     closeNewFolderModal();
                     refreshFiles();
@@ -907,7 +907,7 @@
         function displaySelectedFiles() {
             const container = document.getElementById('selected-files');
             container.innerHTML = '';
-            
+
             selectedFiles.forEach((file, index) => {
                 const item = document.createElement('div');
                 item.className = 'flex items-center justify-between p-2 bg-gray-700 rounded mb-2';
@@ -930,12 +930,12 @@
 
         function uploadFiles() {
             if (selectedFiles.length === 0) return;
-            
+
             console.log(`Uploading ${selectedFiles.length} files to ${currentPath}`);
             selectedFiles.forEach(file => {
                 console.log(`Uploading: ${file.name}`);
             });
-            
+
             alert(`${selectedFiles.length} files uploaded successfully!`);
             closeUploadModal();
             refreshFiles();
@@ -949,34 +949,34 @@
         // Drag and drop functionality
         function setupDragAndDrop() {
             const uploadZone = document.getElementById('upload-zone');
-            
+
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                 uploadZone.addEventListener(eventName, preventDefaults, false);
             });
-            
+
             ['dragenter', 'dragover'].forEach(eventName => {
                 uploadZone.addEventListener(eventName, highlight, false);
             });
-            
+
             ['dragleave', 'drop'].forEach(eventName => {
                 uploadZone.addEventListener(eventName, unhighlight, false);
             });
-            
+
             uploadZone.addEventListener('drop', handleDrop, false);
-            
+
             function preventDefaults(e) {
                 e.preventDefault();
                 e.stopPropagation();
             }
-            
+
             function highlight() {
                 uploadZone.classList.add('dragover');
             }
-            
+
             function unhighlight() {
                 uploadZone.classList.remove('dragover');
             }
-            
+
             function handleDrop(e) {
                 selectedFiles = Array.from(e.dataTransfer.files);
                 displaySelectedFiles();

@@ -294,7 +294,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="terminal-wrapper p-4">
                             <div id="terminal" class="h-96"></div>
                         </div>
@@ -302,14 +302,14 @@
                         <div class="bg-slate-800/50 px-4 py-3 border-t border-gray-700">
                             <div class="flex items-center space-x-3">
                                 <span class="text-sm text-gray-400">$</span>
-                                <input 
-                                    type="text" 
-                                    id="console-input" 
-                                    class="console-input flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none" 
+                                <input
+                                    type="text"
+                                    id="console-input"
+                                    class="console-input flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none"
                                     placeholder="Enter command..."
                                     onkeypress="handleConsoleInput(event)"
                                 >
-                                <button 
+                                <button
                                     class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium"
                                     onclick="sendCommand()"
                                 >
@@ -379,7 +379,7 @@
         function connectWebSocket() {
             try {
                 ws = new WebSocket('ws://localhost:3001/ws');
-                
+
                 ws.onopen = function() {
                     console.log('WebSocket connected');
                     reconnectAttempts = 0;
@@ -388,7 +388,7 @@
 
                 ws.onmessage = function(event) {
                     const data = JSON.parse(event.data);
-                    
+
                     if (data.type === 'console') {
                         terminal.writeln(data.message);
                     } else if (data.type === 'stats') {
@@ -399,7 +399,7 @@
                 ws.onclose = function() {
                     console.log('WebSocket disconnected');
                     terminal.writeln('\x1b[31m[ERROR] Disconnected from server console\x1b[0m');
-                    
+
                     if (reconnectAttempts < maxReconnectAttempts) {
                         reconnectAttempts++;
                         setTimeout(connectWebSocket, 3000);
@@ -426,7 +426,7 @@
             terminal.writeln('[Server thread/INFO]: Generating keypair');
             terminal.writeln('[Server thread/INFO]: Starting Minecraft server on *:25565');
             terminal.writeln('[Server thread/INFO]: Done (4.123s)! For help, type "help"');
-            
+
             // Simulate periodic stats updates
             setInterval(() => {
                 const stats = {
@@ -573,13 +573,13 @@
         function sendCommand() {
             const input = document.getElementById('console-input');
             const command = input.value.trim();
-            
+
             if (command) {
                 commandHistory.unshift(command);
                 historyIndex = -1;
-                
+
                 terminal.writeln(`\x1b[36m> ${command}\x1b[0m`);
-                
+
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
                         type: 'command',
@@ -591,7 +591,7 @@
                         terminal.writeln(`[Server thread/INFO]: Unknown command. Type "/help" for help.`);
                     }, 100);
                 }
-                
+
                 input.value = '';
             }
         }
@@ -603,7 +603,7 @@
         // Power actions
         function sendPowerAction(action) {
             terminal.writeln(`\x1b[33m[SYSTEM] Sending ${action} signal...\x1b[0m`);
-            
+
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                     type: 'power',

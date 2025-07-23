@@ -220,17 +220,17 @@
             const hours = Math.floor(uptime / 3600000);
             const minutes = Math.floor((uptime % 3600000) / 60000);
             const seconds = Math.floor((uptime % 60000) / 1000);
-            
-            document.getElementById('server-uptime').textContent = 
-                hours.toString().padStart(2, '0') + ':' + 
-                minutes.toString().padStart(2, '0') + ':' + 
+
+            document.getElementById('server-uptime').textContent =
+                hours.toString().padStart(2, '0') + ':' +
+                minutes.toString().padStart(2, '0') + ':' +
                 seconds.toString().padStart(2, '0');
-            
+
             // Simulate realistic usage
             const memUsage = (Math.sin(Date.now() / 10000) * 10 + 45).toFixed(1);
             const cpuUsage = (Math.sin(Date.now() / 8000) * 15 + 25).toFixed(1);
             const connections = Math.floor(Math.sin(Date.now() / 15000) * 3 + 5);
-            
+
             document.getElementById('memory-usage').textContent = memUsage + '%';
             document.getElementById('cpu-usage').textContent = cpuUsage + '%';
             document.getElementById('connections').textContent = connections;

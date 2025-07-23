@@ -117,8 +117,7 @@ router.get('/list', async (req: Request, res: Response) => {
 
     // Ensure we're still within the base directory
     if (!absolutePath.startsWith(BASE_DIR)) {
-      res.status(403).json({ error: 'Access denied' });
-      return;
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     const items = await fs.readdir(absolutePath);
@@ -162,28 +161,24 @@ router.get('/read', async (req: Request, res: Response) => {
   try {
     const userPath = req.query.path as string;
     if (!userPath) {
-      res.status(400).json({ error: 'Path is required' });
-      return;
+      return res.status(400).json({ error: 'Path is required' });
     }
 
     const absolutePath = getAbsolutePath(userPath);
 
     // Ensure we're still within the base directory
     if (!absolutePath.startsWith(BASE_DIR)) {
-      res.status(403).json({ error: 'Access denied' });
-      return;
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     const stats = await fs.stat(absolutePath);
     if (stats.isDirectory()) {
-      res.status(400).json({ error: 'Cannot read directory as file' });
-      return;
+      return res.status(400).json({ error: 'Cannot read directory as file' });
     }
 
     // Check file size (limit to 10MB for text files)
     if (stats.size > 10 * 1024 * 1024) {
-      res.status(400).json({ error: 'File too large to read' });
-      return;
+      return res.status(400).json({ error: 'File too large to read' });
     }
 
     const content = await fs.readFile(absolutePath, 'utf8');
@@ -206,16 +201,14 @@ router.post('/write', async (req: Request, res: Response) => {
     const { path: userPath, content } = req.body;
 
     if (!userPath || content === undefined) {
-      res.status(400).json({ error: 'Path and content are required' });
-      return;
+      return res.status(400).json({ error: 'Path and content are required' });
     }
 
     const absolutePath = getAbsolutePath(userPath);
 
     // Ensure we're still within the base directory
     if (!absolutePath.startsWith(BASE_DIR)) {
-      res.status(403).json({ error: 'Access denied' });
-      return;
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     // Ensure directory exists
@@ -244,16 +237,14 @@ router.post('/mkdir', async (req: Request, res: Response) => {
     const { path: userPath } = req.body;
 
     if (!userPath) {
-      res.status(400).json({ error: 'Path is required' });
-      return;
+      return res.status(400).json({ error: 'Path is required' });
     }
 
     const absolutePath = getAbsolutePath(userPath);
 
     // Ensure we're still within the base directory
     if (!absolutePath.startsWith(BASE_DIR)) {
-      res.status(403).json({ error: 'Access denied' });
-      return;
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     await fs.mkdir(absolutePath, { recursive: true });
@@ -274,22 +265,19 @@ router.delete('/delete', async (req: Request, res: Response) => {
     const userPath = req.query.path as string;
 
     if (!userPath) {
-      res.status(400).json({ error: 'Path is required' });
-      return;
+      return res.status(400).json({ error: 'Path is required' });
     }
 
     const absolutePath = getAbsolutePath(userPath);
 
     // Ensure we're still within the base directory
     if (!absolutePath.startsWith(BASE_DIR)) {
-      res.status(403).json({ error: 'Access denied' });
-      return;
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     // Don't allow deleting the base directory
     if (absolutePath === BASE_DIR) {
-      res.status(403).json({ error: 'Cannot delete base directory' });
-      return;
+      return res.status(403).json({ error: 'Cannot delete base directory' });
     }
 
     const stats = await fs.stat(absolutePath);
@@ -316,8 +304,7 @@ router.post('/rename', async (req: Request, res: Response) => {
     const { oldPath, newPath } = req.body;
 
     if (!oldPath || !newPath) {
-      res.status(400).json({ error: 'Both oldPath and newPath are required' });
-      return;
+      return res.status(400).json({ error: 'Both oldPath and newPath are required' });
     }
 
     const absoluteOldPath = getAbsolutePath(oldPath);
@@ -325,8 +312,7 @@ router.post('/rename', async (req: Request, res: Response) => {
 
     // Ensure both paths are within the base directory
     if (!absoluteOldPath.startsWith(BASE_DIR) || !absoluteNewPath.startsWith(BASE_DIR)) {
-      res.status(403).json({ error: 'Access denied' });
-      return;
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     // Ensure new path directory exists
@@ -352,22 +338,19 @@ router.get('/download', async (req: Request, res: Response) => {
     const userPath = req.query.path as string;
 
     if (!userPath) {
-      res.status(400).json({ error: 'Path is required' });
-      return;
+      return res.status(400).json({ error: 'Path is required' });
     }
 
     const absolutePath = getAbsolutePath(userPath);
 
     // Ensure we're still within the base directory
     if (!absolutePath.startsWith(BASE_DIR)) {
-      res.status(403).json({ error: 'Access denied' });
-      return;
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     const stats = await fs.stat(absolutePath);
     if (stats.isDirectory()) {
-      res.status(400).json({ error: 'Cannot download directory' });
-      return;
+      return res.status(400).json({ error: 'Cannot download directory' });
     }
 
     const filename = path.basename(absolutePath);
