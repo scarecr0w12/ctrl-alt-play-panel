@@ -18,6 +18,32 @@ export interface AgentMessage {
   timestamp: Date;
 }
 
+export interface ServerCreateData {
+  serverId: string;
+  image: string;
+  startup: string;
+  environment: Record<string, any>;
+  limits: {
+    memory: number;
+    swap: number;
+    disk: number;
+    io: number;
+    cpu: number;
+  };
+}
+
+export interface ServerUpdateData {
+  limits?: {
+    memory: number;
+    swap: number;
+    disk: number;
+    io: number;
+    cpu: number;
+  };
+  environment?: Record<string, any>;
+  startup?: string;
+}
+
 export class AgentService extends EventEmitter {
   private static instance: AgentService;
   private connections: Map<string, AgentConnection> = new Map();
@@ -238,6 +264,128 @@ export class AgentService extends EventEmitter {
         path,
         content
       }
+    });
+  }
+
+  /**
+   * Create a new server on an agent
+   */
+  public async createServer(nodeFqdn: string, data: ServerCreateData): Promise<boolean> {
+    // For now, find by FQDN - in production this would be a proper lookup
+    const nodeId = Array.from(this.connections.keys()).find(id =>
+      this.connections.get(id)?.status === AgentStatus.ONLINE
+    );
+
+    if (!nodeId) {
+      throw new Error(`No online agent found for node ${nodeFqdn}`);
+    }
+
+    return this.sendToAgent(nodeId, {
+      type: 'server_create',
+      data
+    });
+  }
+
+  /**
+   * Update a server on an agent
+   */
+  public async updateServer(nodeFqdn: string, serverId: string, data: ServerUpdateData): Promise<boolean> {
+    const nodeId = Array.from(this.connections.keys()).find(id =>
+      this.connections.get(id)?.status === AgentStatus.ONLINE
+    );
+
+    if (!nodeId) {
+      throw new Error(`No online agent found for node ${nodeFqdn}`);
+    }
+
+    return this.sendToAgent(nodeId, {
+      type: 'server_update',
+      data: {
+        serverId,
+        ...data
+      }
+    });
+  }
+
+  /**
+   * Delete a server on an agent
+   */
+  public async deleteServer(nodeFqdn: string, serverId: string): Promise<boolean> {
+    const nodeId = Array.from(this.connections.keys()).find(id =>
+      this.connections.get(id)?.status === AgentStatus.ONLINE
+    );
+
+    if (!nodeId) {
+      throw new Error(`No online agent found for node ${nodeFqdn}`);
+    }
+
+    return this.sendToAgent(nodeId, {
+      type: 'server_delete',
+      data: { serverId }
+    });
+  }
+
+  /**
+   * Suspend a server on an agent
+   */
+  public async suspendServer(nodeFqdn: string, serverId: string): Promise<boolean> {
+    const nodeId = Array.from(this.connections.keys()).find(id =>
+      this.connections.get(id)?.status === AgentStatus.ONLINE
+    );
+
+    if (!nodeId) {
+      throw new Error(`No online agent found for node ${nodeFqdn}`);
+    }
+
+    return this.sendToAgent(nodeId, {
+      type: 'server_suspend',
+      data: { serverId }
+    });
+  }
+
+  /**
+   * Unsuspend a server on an agent
+   */
+  public async unsuspendServer(nodeFqdn: string, serverId: string): Promise<boolean> {
+    const nodeId = Array.from(this.connections.keys()).find(id =>
+      this.connections.get(id)?.status === AgentStatus.ONLINE
+    );
+
+    if (!nodeId) {
+      throw new Error(`No online agent found for node ${nodeFqdn}`);
+    }
+
+    return this.sendToAgent(nodeId, {
+      type: 'server_unsuspend',
+      data: { serverId }
+    });
+  }
+
+  /**
+   * Reinstall a server on an agent
+   */
+  public async reinstallServer(nodeFqdn: string, serverId: string): Promise<boolean> {
+    const nodeId = Array.from(this.connections.keys()).find(id =>
+      this.connections.get(id)?.status === AgentStatus.ONLINE
+    );
+
+    if (!nodeId) {
+      throw new Error(`No online agent found for node ${nodeFqdn}`);
+    }
+
+    return this.sendToAgent(nodeId, {
+      type: 'server_reinstall',
+      data: { serverId }
+    });
+  }
+
+  /**
+   * Send power action to a server
+   */
+  public async sendPowerAction(nodeId: string, serverId: string, action: string): Promise<boolean> {
+    return this.sendToAgent(nodeId, {
+      type: 'server_power',
+      data: { serverId, action }
     });
   }
 
