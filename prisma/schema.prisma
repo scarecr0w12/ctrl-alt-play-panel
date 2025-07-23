@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,270 +8,235 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  uuid        String   @unique @default(cuid())
-  email       String   @unique
-  username    String   @unique
-  firstName   String
-  lastName    String
-  password    String
-  role        UserRole @default(USER)
-  isActive    Boolean  @default(true)
-  lastLogin   DateTime?
-  language    String   @default("en")
-  externalId  String?  @unique
-  rootAdmin   Boolean  @default(false)
-  useTotp     Boolean  @default(false)
-  totpSecret  String?
-  gravatar    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  servers      Server[]
-  apiKeys      ApiKey[]
-  backups      Backup[]
-  auditLogs    AuditLog[]
-  subusers     Subuser[]
-  schedules    Schedule[]
-  sshKeys      UserSshKey[]
+  id             String          @id @default(cuid())
+  uuid           String          @unique @default(cuid())
+  email          String          @unique
+  username       String          @unique
+  firstName      String
+  lastName       String
+  password       String
+  role           UserRole        @default(USER)
+  isActive       Boolean         @default(true)
+  lastLogin      DateTime?
+  language       String          @default("en")
+  externalId     String?         @unique
+  rootAdmin      Boolean         @default(false)
+  useTotp        Boolean         @default(false)
+  totpSecret     String?
+  gravatar       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  apiKeys        ApiKey[]
+  auditLogs      AuditLog[]
+  backups        Backup[]
   recoveryTokens RecoveryToken[]
+  schedules      Schedule[]
+  servers        Server[]
+  subusers       Subuser[]
+  sshKeys        UserSshKey[]
 
   @@map("users")
 }
 
 model Node {
-  id                 String  @id @default(cuid())
-  uuid               String  @unique @default(cuid())
+  id                 String          @id @default(cuid())
+  uuid               String          @unique @default(cuid())
   name               String
   description        String?
-  fqdn               String  @unique
-  scheme             String  @default("https")
-  port               Int     @default(8080)
+  fqdn               String          @unique
+  scheme             String          @default("https")
+  port               Int             @default(8080)
   publicPort         Int
-  memory             Int     // MB
-  memoryOverallocate Int?    // Percentage
-  disk               Int     // MB
-  diskOverallocate   Int?    // Percentage
-  uploadSize         Int     @default(100) // MB
+  memory             Int
+  memoryOverallocate Int?
+  disk               Int
+  diskOverallocate   Int?
+  uploadSize         Int             @default(100)
   locationId         String
-  isPublic           Boolean @default(true)
-  isBehindProxy      Boolean @default(false)
-  isMaintenanceMode  Boolean @default(false)
-  daemonToken        String  @unique
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-
-  // Relations
-  servers        Server[]
-  allocations    Allocation[]
-  location       Location @relation(fields: [locationId], references: [id])
-  databaseHosts  DatabaseHost[]
-  metrics        ServerMetrics[]
-  alerts         Alert[]
-  voiceServers   VoiceServer[]
+  isPublic           Boolean         @default(true)
+  isBehindProxy      Boolean         @default(false)
+  isMaintenanceMode  Boolean         @default(false)
+  daemonToken        String          @unique
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  alerts             Alert[]
+  allocations        Allocation[]
+  databaseHosts      DatabaseHost[]
+  location           Location        @relation(fields: [locationId], references: [id])
+  metrics            ServerMetrics[]
+  servers            Server[]
+  voiceServers       VoiceServer[]
 
   @@map("nodes")
 }
 
 model Location {
-  id          String @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  // Relations
-  nodes Node[]
+  nodes       Node[]
 
   @@map("locations")
 }
 
 model Server {
-  id           String       @id @default(cuid())
-  uuid         String       @unique @default(cuid())
-  uuidShort    String       @unique @default(cuid()) // First 8 chars of uuid
-  name         String
-  description  String?
-  status       ServerStatus @default(INSTALLING)
-  skipScripts  Boolean      @default(false)
-  suspended    Boolean      @default(false)
-  memory       Int          // MB
-  disk         Int          // MB
-  cpu          Int          // Percentage
-  swap         Int          // MB
-  io           Int          // Block IO weight
-  threads      String?      // CPU threads restriction
-  oomKiller    Boolean      @default(true)
-  image        String
-  startup      String
-  environment  Json         @default("{}")
-  installedAt  DateTime?
-  externalId   String?      @unique
-
-  // Limits
-  databaseLimit   Int @default(0)
-  allocationLimit Int @default(0)
-  backupLimit     Int @default(0)
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Foreign Keys
-  userId       String
-  nodeId       String
-  eggId        String
-
-  // Relations
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  node         Node           @relation(fields: [nodeId], references: [id])
-  egg          Egg            @relation(fields: [eggId], references: [id])
-  allocations  Allocation[]
-  databases    Database[]
-  backups      Backup[]
-  auditLogs    AuditLog[]
-  subusers     Subuser[]
-  schedules    Schedule[]
-  variables    ServerVariable[]
-  transfers    ServerTransfer[]
-  metrics      ServerMetrics[]
-  alerts       Alert[]
+  id                    String                 @id @default(cuid())
+  uuid                  String                 @unique @default(cuid())
+  uuidShort             String                 @unique @default(cuid())
+  name                  String
+  description           String?
+  status                ServerStatus           @default(INSTALLING)
+  skipScripts           Boolean                @default(false)
+  suspended             Boolean                @default(false)
+  memory                Int
+  disk                  Int
+  cpu                   Int
+  swap                  Int
+  io                    Int
+  threads               String?
+  oomKiller             Boolean                @default(true)
+  image                 String
+  startup               String
+  environment           Json                   @default("{}")
+  installedAt           DateTime?
+  externalId            String?                @unique
+  databaseLimit         Int                    @default(0)
+  allocationLimit       Int                    @default(0)
+  backupLimit           Int                    @default(0)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  userId                String
+  nodeId                String
+  eggId                 String
+  alerts                Alert[]
+  allocations           Allocation[]
+  auditLogs             AuditLog[]
+  backups               Backup[]
+  databases             Database[]
+  modInstallations      ModInstallation[]
+  schedules             Schedule[]
+  metrics               ServerMetrics[]
+  transfers             ServerTransfer[]
+  variables             ServerVariable[]
+  egg                   Egg                    @relation(fields: [eggId], references: [id])
+  node                  Node                   @relation(fields: [nodeId], references: [id])
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subusers              Subuser[]
+  voiceServers          VoiceServer[]
   workshopInstallations WorkshopInstallation[]
-  modInstallations ModInstallation[]
-  voiceServers VoiceServer[]
 
   @@map("servers")
 }
 
 model Allocation {
-  id        String  @id @default(cuid())
+  id        String   @id @default(cuid())
   ip        String
   port      Int
   alias     String?
   notes     String?
-  isPrimary Boolean @default(false)
+  isPrimary Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  // Foreign Keys
-  nodeId   String
-  serverId String?
-
-  // Relations
-  node   Node    @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-  server Server? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  nodeId    String
+  serverId  String?
+  node      Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  server    Server?  @relation(fields: [serverId], references: [id])
 
   @@unique([ip, port, nodeId])
   @@map("allocations")
 }
 
 model Nest {
-  id          String @id @default(cuid())
-  name        String @unique
+  id          String   @id @default(cuid())
+  name        String   @unique
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  // Relations
-  eggs Egg[]
+  eggs        Egg[]
 
   @@map("nests")
 }
 
 model Egg {
-  id            String  @id @default(cuid())
-  uuid          String  @unique @default(cuid())
-  name          String
-  description   String?
-  author        String
-  dockerImages  Json    @default("{}") // Object with image names and tags
-  startup       String
-  configFiles   Json    @default("{}")
-  configStartup Json    @default("{}")
-  configLogs    Json    @default("{}")
-  configStop    String?
-  scriptInstall String?
-  scriptEntry   String  @default("bash")
-  scriptContainer String @default("alpine:3.4")
-  copyScriptFrom String?
-  features      Json?   @default("[]") // Array of feature strings
-  fileDenylist  Json?   @default("[]") // Array of denied file patterns
-  forceOutgoingIp Boolean @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Foreign Keys
-  nestId String
-
-  // Relations
-  nest      Nest           @relation(fields: [nestId], references: [id], onDelete: Cascade)
-  variables EggVariable[]
-  servers   Server[]
+  id              String        @id @default(cuid())
+  uuid            String        @unique @default(cuid())
+  name            String
+  description     String?
+  author          String
+  dockerImages    Json          @default("{}")
+  startup         String
+  configFiles     Json          @default("{}")
+  configStartup   Json          @default("{}")
+  configLogs      Json          @default("{}")
+  configStop      String?
+  scriptInstall   String?
+  scriptEntry     String        @default("bash")
+  scriptContainer String        @default("alpine:3.4")
+  copyScriptFrom  String?
+  features        Json?         @default("[]")
+  fileDenylist    Json?         @default("[]")
+  forceOutgoingIp Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  nestId          String
+  variables       EggVariable[]
+  nest            Nest          @relation(fields: [nestId], references: [id], onDelete: Cascade)
+  servers         Server[]
 
   @@map("eggs")
 }
 
 model EggVariable {
-  id           String  @id @default(cuid())
-  name         String
-  description  String
-  envVariable  String
-  defaultValue String
-  userViewable Boolean @default(true)
-  userEditable Boolean @default(true)
-  rules        String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  // Foreign Keys
-  eggId String
-
-  // Relations
-  egg            Egg             @relation(fields: [eggId], references: [id], onDelete: Cascade)
+  id              String           @id @default(cuid())
+  name            String
+  description     String
+  envVariable     String
+  defaultValue    String
+  userViewable    Boolean          @default(true)
+  userEditable    Boolean          @default(true)
+  rules           String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  eggId           String
+  egg             Egg              @relation(fields: [eggId], references: [id], onDelete: Cascade)
   serverVariables ServerVariable[]
 
   @@map("egg_variables")
 }
 
 model Database {
-  id             String @id @default(cuid())
+  id             String       @id @default(cuid())
   name           String
   username       String
   password       String
-  remote         String @default("%")
-  maxConnections Int    @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  // Foreign Keys
+  remote         String       @default("%")
+  maxConnections Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   serverId       String
   databaseHostId String
-
-  // Relations
-  server       Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  databaseHost DatabaseHost @relation(fields: [databaseHostId], references: [id])
+  databaseHost   DatabaseHost @relation(fields: [databaseHostId], references: [id])
+  server         Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
 
   @@unique([serverId, name])
   @@map("databases")
 }
 
 model DatabaseHost {
-  id             String @id @default(cuid())
+  id             String     @id @default(cuid())
   name           String
   host           String
-  port           Int    @default(3306)
+  port           Int        @default(3306)
   username       String
   password       String
-  maxConnections Int    @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  // Foreign Keys
-  nodeId String?
-
-  // Relations
-  node      Node?      @relation(fields: [nodeId], references: [id], onDelete: SetNull)
-  databases Database[]
+  maxConnections Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  nodeId         String?
+  node           Node?      @relation(fields: [nodeId], references: [id])
+  databases      Database[]
 
   @@map("database_hosts")
 }
@@ -283,99 +245,341 @@ model Backup {
   id           String    @id @default(cuid())
   uuid         String    @unique @default(cuid())
   name         String
-  ignoredFiles Json      @default("[]") // Array of file patterns to ignore
+  ignoredFiles Json      @default("[]")
   size         BigInt    @default(0)
   checksum     String?
-  uploadId     String?   // For S3/remote backups
+  uploadId     String?
   isSuccessful Boolean   @default(false)
   isLocked     Boolean   @default(false)
   completedAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-
-  // Foreign Keys
-  serverId String
-  userId   String
-
-  // Relations
-  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id])
+  serverId     String
+  userId       String
+  server       Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id])
 
   @@map("backups")
 }
 
 model ApiKey {
-  id          String   @id @default(cuid())
-  identifier  String   @unique
-  token       String
-  allowedIps  Json     @default("[]") // Array of IP addresses
-  lastUsedAt  DateTime?
-  expiresAt   DateTime?
-  memo        String?
-  // Permissions
-  userRead    Boolean  @default(false)
-  userCreate  Boolean  @default(false)
-  userUpdate  Boolean  @default(false)
-  userDelete  Boolean  @default(false)
-  nodeRead    Boolean  @default(false)
-  nodeCreate  Boolean  @default(false)
-  nodeUpdate  Boolean  @default(false)
-  nodeDelete  Boolean  @default(false)
-  serverRead  Boolean  @default(false)
-  serverCreate Boolean @default(false)
-  serverUpdate Boolean @default(false)
-  serverDelete Boolean @default(false)
-  locationRead Boolean @default(false)
-  locationCreate Boolean @default(false)
-  locationUpdate Boolean @default(false)
-  locationDelete Boolean @default(false)
-  nestRead     Boolean @default(false)
-  nestCreate   Boolean @default(false)
-  nestUpdate   Boolean @default(false)
-  nestDelete   Boolean @default(false)
-  eggRead      Boolean @default(false)
-  eggCreate    Boolean @default(false)
-  eggUpdate    Boolean @default(false)
-  eggDelete    Boolean @default(false)
-  databaseRead Boolean @default(false)
-  databaseCreate Boolean @default(false)
-  databaseUpdate Boolean @default(false)
-  databaseDelete Boolean @default(false)
-  scheduleRead Boolean @default(false)
-  scheduleCreate Boolean @default(false)
-  scheduleUpdate Boolean @default(false)
-  scheduleDelete Boolean @default(false)
-  userManagement Boolean @default(false)
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Foreign Keys
-  userId String
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String    @id @default(cuid())
+  identifier     String    @unique
+  token          String
+  allowedIps     Json      @default("[]")
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?
+  memo           String?
+  userRead       Boolean   @default(false)
+  userCreate     Boolean   @default(false)
+  userUpdate     Boolean   @default(false)
+  userDelete     Boolean   @default(false)
+  nodeRead       Boolean   @default(false)
+  nodeCreate     Boolean   @default(false)
+  nodeUpdate     Boolean   @default(false)
+  nodeDelete     Boolean   @default(false)
+  serverRead     Boolean   @default(false)
+  serverCreate   Boolean   @default(false)
+  serverUpdate   Boolean   @default(false)
+  serverDelete   Boolean   @default(false)
+  locationRead   Boolean   @default(false)
+  locationCreate Boolean   @default(false)
+  locationUpdate Boolean   @default(false)
+  locationDelete Boolean   @default(false)
+  nestRead       Boolean   @default(false)
+  nestCreate     Boolean   @default(false)
+  nestUpdate     Boolean   @default(false)
+  nestDelete     Boolean   @default(false)
+  eggRead        Boolean   @default(false)
+  eggCreate      Boolean   @default(false)
+  eggUpdate      Boolean   @default(false)
+  eggDelete      Boolean   @default(false)
+  databaseRead   Boolean   @default(false)
+  databaseCreate Boolean   @default(false)
+  databaseUpdate Boolean   @default(false)
+  databaseDelete Boolean   @default(false)
+  scheduleRead   Boolean   @default(false)
+  scheduleCreate Boolean   @default(false)
+  scheduleUpdate Boolean   @default(false)
+  scheduleDelete Boolean   @default(false)
+  userManagement Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("api_keys")
 }
 
 model AuditLog {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   action    String
-  metadata  Json      @default("{}")
+  metadata  Json     @default("{}")
   ipAddress String
   userAgent String?
-  createdAt DateTime  @default(now())
-
-  // Foreign Keys
-  userId   String?
-  serverId String?
-
-  // Relations
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
-  server Server? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  userId    String?
+  serverId  String?
+  server    Server?  @relation(fields: [serverId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
+}
+
+model Subuser {
+  id          String   @id @default(cuid())
+  permissions Json     @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  serverId    String
+  server      Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, serverId])
+  @@map("subusers")
+}
+
+model Schedule {
+  id             String    @id @default(cuid())
+  name           String
+  cronMinute     String
+  cronHour       String
+  cronDayOfMonth String
+  cronMonth      String
+  cronDayOfWeek  String
+  isActive       Boolean   @default(true)
+  isProcessing   Boolean   @default(false)
+  onlyWhenOnline Boolean   @default(false)
+  lastRunAt      DateTime?
+  nextRunAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  serverId       String
+  userId         String
+  server         Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id])
+  tasks          Task[]
+
+  @@map("schedules")
+}
+
+model Task {
+  id                String     @id @default(cuid())
+  sequenceId        Int
+  action            TaskAction
+  payload           String
+  timeOffset        Int        @default(0)
+  continueOnFailure Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  scheduleId        String
+  schedule          Schedule   @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@map("tasks")
+}
+
+model ServerVariable {
+  id            String      @id @default(cuid())
+  variableValue String
+  serverId      String
+  eggVariableId String
+  eggVariable   EggVariable @relation(fields: [eggVariableId], references: [id], onDelete: Cascade)
+  server        Server      @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, eggVariableId])
+  @@map("server_variables")
+}
+
+model ServerTransfer {
+  id                       String   @id @default(cuid())
+  oldNode                  Int
+  newNode                  Int
+  oldAllocation            Int
+  newAllocation            Int
+  oldAdditionalAllocations Json     @default("[]")
+  newAdditionalAllocations Json     @default("[]")
+  successful               Boolean?
+  archived                 Boolean  @default(false)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  serverId                 String
+  server                   Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@map("server_transfers")
+}
+
+model UserSshKey {
+  id          String   @id @default(cuid())
+  name        String
+  fingerprint String   @unique
+  publicKey   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_ssh_keys")
+}
+
+model RecoveryToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("recovery_tokens")
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  batch       String?
+  event       String
+  ipAddress   String
+  description String?
+  properties  Json     @default("{}")
+  timestamp   DateTime @default(now())
+  actorId     String?
+  subjectId   String?
+
+  @@map("activity_logs")
+}
+
+model Setting {
+  id    String @id
+  value String
+
+  @@map("settings")
+}
+
+model ServerMetrics {
+  id         String   @id @default(cuid())
+  serverId   String
+  nodeId     String
+  cpu        Float
+  memory     Float
+  disk       Float
+  networkIn  Float
+  networkOut Float
+  players    Int
+  timestamp  DateTime @default(now())
+  node       Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  server     Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, timestamp])
+  @@index([nodeId, timestamp])
+  @@map("server_metrics")
+}
+
+model Alert {
+  id             String        @id @default(cuid())
+  serverId       String?
+  nodeId         String?
+  type           String
+  message        String
+  severity       AlertSeverity @default(LOW)
+  acknowledged   Boolean       @default(false)
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  node           Node?         @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  server         Server?       @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([serverId])
+  @@index([nodeId])
+  @@index([severity, acknowledged])
+  @@map("alerts")
+}
+
+model SteamWorkshopItem {
+  id            String                 @id @default(cuid())
+  workshopId    String                 @unique
+  name          String
+  description   String?
+  type          String
+  gameId        String
+  fileSize      Int?
+  downloadUrl   String?
+  imageUrl      String?
+  isActive      Boolean                @default(true)
+  lastUpdated   DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  installations WorkshopInstallation[]
+
+  @@map("steam_workshop_items")
+}
+
+model WorkshopInstallation {
+  id          String             @id @default(cuid())
+  serverId    String
+  itemId      String
+  status      InstallationStatus @default(PENDING)
+  installedAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  item        SteamWorkshopItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  server      Server             @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, itemId])
+  @@map("workshop_installations")
+}
+
+model ModPack {
+  id            String            @id @default(cuid())
+  name          String
+  description   String?
+  version       String            @default("1.0.0")
+  gameType      String
+  fileUrl       String
+  fileSize      Int
+  configFiles   Json?
+  commandLine   String?
+  isActive      Boolean           @default(true)
+  downloads     Int               @default(0)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  installations ModInstallation[]
+
+  @@map("mod_packs")
+}
+
+model ModInstallation {
+  id          String             @id @default(cuid())
+  serverId    String
+  modPackId   String
+  status      InstallationStatus @default(PENDING)
+  installedAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  modPack     ModPack            @relation(fields: [modPackId], references: [id], onDelete: Cascade)
+  server      Server             @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, modPackId])
+  @@map("mod_installations")
+}
+
+model VoiceServer {
+  id         String          @id @default(cuid())
+  uuid       String          @unique @default(cuid())
+  name       String
+  type       VoiceServerType
+  nodeId     String
+  serverId   String?
+  port       Int
+  slots      Int
+  password   String?
+  adminToken String?
+  status     ServerStatus    @default(OFFLINE)
+  autoStart  Boolean         @default(false)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  node       Node            @relation(fields: [nodeId], references: [id])
+  server     Server?         @relation(fields: [serverId], references: [id])
+
+  @@map("voice_servers")
 }
 
 enum UserRole {
@@ -426,306 +630,4 @@ enum VoiceServerType {
   TEAMSPEAK
   DISCORD
   MUMBLE
-}
-
-// Additional models for comprehensive functionality
-
-model Subuser {
-  id          String   @id @default(cuid())
-  permissions Json     @default("[]") // Array of permission strings
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Foreign Keys
-  userId   String
-  serverId String
-
-  // Relations
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, serverId])
-  @@map("subusers")
-}
-
-model Schedule {
-  id               String        @id @default(cuid())
-  name             String
-  cronMinute       String
-  cronHour         String
-  cronDayOfMonth   String
-  cronMonth        String
-  cronDayOfWeek    String
-  isActive         Boolean       @default(true)
-  isProcessing     Boolean       @default(false)
-  onlyWhenOnline   Boolean       @default(false)
-  lastRunAt        DateTime?
-  nextRunAt        DateTime?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-
-  // Foreign Keys
-  serverId String
-  userId   String
-
-  // Relations
-  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id])
-  tasks  Task[]
-
-  @@map("schedules")
-}
-
-model Task {
-  id               String     @id @default(cuid())
-  sequenceId       Int
-  action           TaskAction
-  payload          String
-  timeOffset       Int        @default(0) // Seconds to wait after previous task
-  continueOnFailure Boolean   @default(false)
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-
-  // Foreign Keys
-  scheduleId String
-
-  // Relations
-  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-
-  @@map("tasks")
-}
-
-model ServerVariable {
-  id           String @id @default(cuid())
-  variableValue String
-
-  // Foreign Keys
-  serverId      String
-  eggVariableId String
-
-  // Relations
-  server      Server      @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  eggVariable EggVariable @relation(fields: [eggVariableId], references: [id], onDelete: Cascade)
-
-  @@unique([serverId, eggVariableId])
-  @@map("server_variables")
-}
-
-model ServerTransfer {
-  id          String    @id @default(cuid())
-  oldNode     Int
-  newNode     Int
-  oldAllocation Int
-  newAllocation Int
-  oldAdditionalAllocations Json @default("[]")
-  newAdditionalAllocations Json @default("[]")
-  successful  Boolean?
-  archived    Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Foreign Keys
-  serverId String
-
-  // Relations
-  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
-
-  @@map("server_transfers")
-}
-
-model UserSshKey {
-  id          String @id @default(cuid())
-  name        String
-  fingerprint String @unique
-  publicKey   String @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Foreign Keys
-  userId String
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_ssh_keys")
-}
-
-model RecoveryToken {
-  id        String   @id @default(cuid())
-  token     String   @unique
-  createdAt DateTime @default(now())
-
-  // Foreign Keys
-  userId String
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("recovery_tokens")
-}
-
-model ActivityLog {
-  id          String   @id @default(cuid())
-  batch       String?
-  event       String
-  ipAddress   String
-  description String?
-  properties  Json     @default("{}")
-  timestamp   DateTime @default(now())
-
-  // Foreign Keys
-  actorId   String?
-  subjectId String?
-
-  @@map("activity_logs")
-}
-
-model Setting {
-  id    String @id
-  value String @db.Text
-
-  @@map("settings")
-}
-
-model ServerMetrics {
-  id         String   @id @default(cuid())
-  serverId   String
-  nodeId     String
-  cpu        Float    // Percentage
-  memory     Float    // Percentage
-  disk       Float    // Percentage
-  networkIn  Float    // MB/s
-  networkOut Float    // MB/s
-  players    Int      // Current player count
-  timestamp  DateTime @default(now())
-
-  // Relations
-  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-
-  @@index([serverId, timestamp])
-  @@index([nodeId, timestamp])
-  @@map("server_metrics")
-}
-
-model Alert {
-  id           String      @id @default(cuid())
-  serverId     String?
-  nodeId       String?
-  type         String      // HIGH_CPU, HIGH_MEMORY, etc.
-  message      String
-  severity     AlertSeverity @default(LOW)
-  acknowledged Boolean     @default(false)
-  acknowledgedAt DateTime?
-  acknowledgedBy String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-
-  // Relations
-  server Server? @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  node   Node?   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-
-  @@index([serverId])
-  @@index([nodeId])
-  @@index([severity, acknowledged])
-  @@map("alerts")
-}
-
-model SteamWorkshopItem {
-  id          String   @id @default(cuid())
-  workshopId  String   @unique // Steam Workshop ID
-  name        String
-  description String?
-  type        String   // mod, map, collection
-  gameId      String   // Steam app ID
-  fileSize    Int?     // Bytes
-  downloadUrl String?
-  imageUrl    String?
-  isActive    Boolean  @default(true)
-  lastUpdated DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  installations WorkshopInstallation[]
-
-  @@map("steam_workshop_items")
-}
-
-model WorkshopInstallation {
-  id         String   @id @default(cuid())
-  serverId   String
-  itemId     String
-  status     InstallationStatus @default(PENDING)
-  installedAt DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  // Relations
-  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  item   SteamWorkshopItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-
-  @@unique([serverId, itemId])
-  @@map("workshop_installations")
-}
-
-model ModPack {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  version     String   @default("1.0.0")
-  gameType    String   // minecraft, rust, etc.
-  fileUrl     String   // Download URL
-  fileSize    Int      // Bytes
-  configFiles Json?    // Configuration file templates
-  commandLine String?  // Command line modifications
-  isActive    Boolean  @default(true)
-  downloads   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  installations ModInstallation[]
-
-  @@map("mod_packs")
-}
-
-model ModInstallation {
-  id          String   @id @default(cuid())
-  serverId    String
-  modPackId   String
-  status      InstallationStatus @default(PENDING)
-  installedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  server  Server  @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  modPack ModPack @relation(fields: [modPackId], references: [id], onDelete: Cascade)
-
-  @@unique([serverId, modPackId])
-  @@map("mod_installations")
-}
-
-model VoiceServer {
-  id          String         @id @default(cuid())
-  uuid        String         @unique @default(cuid())
-  name        String
-  type        VoiceServerType // TEAMSPEAK, DISCORD, MUMBLE
-  nodeId      String
-  serverId    String?        // Optional link to game server
-  port        Int
-  slots       Int
-  password    String?
-  adminToken  String?
-  status      ServerStatus   @default(OFFLINE)
-  autoStart   Boolean        @default(false)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-
-  // Relations
-  node   Node    @relation(fields: [nodeId], references: [id])
-  server Server? @relation(fields: [serverId], references: [id])
-
-  @@map("voice_servers")
 }

@@ -11,6 +11,8 @@ import { WebSocket, WebSocketServer } from 'ws';
 import monitoringRoutes from './routes/monitoring';
 import workshopRoutes from './routes/workshop';
 import filesRoutes from './routes/files';
+import authRoutes from './routes/auth';
+import serversRoutes from './routes/servers';
 
 // Import middleware
 import { errorHandler } from './middlewares/errorHandler';
@@ -71,6 +73,8 @@ class GamePanelApp {
     });
 
     // API routes
+    this.app.use('/api/auth', authRoutes);
+    this.app.use('/api/servers', serversRoutes);
     this.app.use('/api/monitoring', monitoringRoutes);
     this.app.use('/api/workshop', workshopRoutes);
     this.app.use('/api/files', filesRoutes);
@@ -98,17 +102,23 @@ class GamePanelApp {
       res.sendFile('console.html', { root: 'public' });
     });
 
-    // Catch-all route for SPA
+    // Root route - serve landing page
+    this.app.get('/', (req, res) => {
+      res.sendFile('index.html', { root: 'public' });
+    });
+
+    // Catch-all route for undefined endpoints
     this.app.get('*', (req, res) => {
       res.status(404).json({
-        error: 'Frontend not yet implemented',
-        message: 'Please use the API endpoints directly for now',
-        availableEndpoints: [
-          '/health',
-          '/api/info',
-          '/api/monitoring/*',
-          '/api/workshop/*',
-          '/console - Real-time server console interface'
+        error: 'Page not found',
+        message: 'The requested page does not exist',
+        availablePages: [
+          '/',
+          '/login.html',
+          '/register.html',
+          '/dashboard.html',
+          '/files.html',
+          '/console.html'
         ]
       });
     });
