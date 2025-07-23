@@ -1,0 +1,154 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import { createServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
+import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
+
+// Import routes
+import authRoutes from './routes/auth';
+import serverRoutes from './routes/servers';
+import userRoutes from './routes/users';
+import nodeRoutes from './routes/nodes';
+import fileRoutes from './routes/files';
+
+// Import middleware
+import { errorHandler } from './middlewares/errorHandler';
+import { logger } from './utils/logger';
+import { authenticateToken } from './middlewares/auth';
+
+// Import services
+import { DatabaseService } from './services/database';
+import { SocketService } from './services/socket';
+import { AgentService } from './services/agent';
+
+// Load environment variables
+dotenv.config();
+
+class GamePanelApp {
+  private app: express.Application;
+  private server: any;
+  private io: SocketIOServer;
+  private port: number;
+
+  constructor() {
+    this.app = express();
+    this.port = parseInt(process.env.PORT || '3000');
+    this.server = createServer(this.app);
+    this.io = new SocketIOServer(this.server, {
+      cors: {
+        origin: process.env.PANEL_URL || 'http://localhost:3000',
+        methods: ['GET', 'POST']
+      }
+    });
+
+    this.initializeMiddlewares();
+    this.initializeRoutes();
+    this.initializeErrorHandling();
+    this.initializeServices();
+  }
+
+  private initializeMiddlewares(): void {
+    // Rate limiting
+    const limiter = rateLimit({
+      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000,
+      max: parseInt(process.env.RATE_LIMIT_MAX || '100'),
+      message: 'Too many requests from this IP, please try again later.'
+    });
+
+    // Apply middlewares
+    this.app.use(helmet());
+    this.app.use(cors());
+    this.app.use(compression());
+    this.app.use(express.json({ limit: '50mb' }));
+    this.app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+    this.app.use(limiter);
+
+    // Logging middleware
+    this.app.use((req, res, next) => {
+      logger.info(`${req.method} ${req.path} - ${req.ip}`);
+      next();
+    });
+  }
+
+  private initializeRoutes(): void {
+    // Health check endpoint
+    this.app.get('/health', (req, res) => {
+      res.status(200).json({
+        status: 'OK',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+      });
+    });
+
+    // API routes
+    this.app.use('/api/auth', authRoutes);
+    this.app.use('/api/servers', authenticateToken, serverRoutes);
+    this.app.use('/api/users', authenticateToken, userRoutes);
+    this.app.use('/api/nodes', authenticateToken, nodeRoutes);
+    this.app.use('/api/files', authenticateToken, fileRoutes);
+
+    // Serve static files (frontend)
+    this.app.use(express.static('public'));
+
+    // Catch-all route for SPA
+    this.app.get('*', (req, res) => {
+      res.sendFile('index.html', { root: 'public' });
+    });
+  }
+
+  private initializeErrorHandling(): void {
+    this.app.use(errorHandler);
+  }
+
+  private async initializeServices(): Promise<void> {
+    try {
+      // Initialize database
+      await DatabaseService.initialize();
+      logger.info('Database service initialized');
+
+      // Initialize socket service
+      SocketService.initialize(this.io);
+      logger.info('Socket service initialized');
+
+      // Initialize agent service
+      await AgentService.initialize();
+      logger.info('Agent service initialized');
+
+    } catch (error) {
+      logger.error('Failed to initialize services:', error);
+      process.exit(1);
+    }
+  }
+
+  public start(): void {
+    this.server.listen(this.port, () => {
+      logger.info(`Game Panel server is running on port ${this.port}`);
+      logger.info(`Environment: ${process.env.NODE_ENV}`);
+      logger.info(`Panel URL: ${process.env.PANEL_URL || `http://localhost:${this.port}`}`);
+    });
+
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      logger.info('SIGTERM received, shutting down gracefully');
+      this.server.close(() => {
+        logger.info('Process terminated');
+        process.exit(0);
+      });
+    });
+
+    process.on('SIGINT', () => {
+      logger.info('SIGINT received, shutting down gracefully');
+      this.server.close(() => {
+        logger.info('Process terminated');
+        process.exit(0);
+      });
+    });
+  }
+}
+
+// Start the application
+const app = new GamePanelApp();
+app.start();

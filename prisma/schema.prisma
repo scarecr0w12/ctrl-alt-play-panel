@@ -1,0 +1,283 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  firstName String
+  lastName  String
+  password  String
+  role      UserRole @default(USER)
+  isActive  Boolean  @default(true)
+  lastLogin DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  servers   Server[]
+  apiKeys   ApiKey[]
+  backups   Backup[]
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+model Node {
+  id                 String  @id @default(cuid())
+  name               String
+  fqdn               String  @unique
+  scheme             String  @default("https")
+  port               Int     @default(8080)
+  publicPort         Int
+  memory             Int     // MB
+  disk               Int     // MB
+  locationId         String
+  isPublic           Boolean @default(true)
+  isBehindProxy      Boolean @default(false)
+  isMaintenanceMode  Boolean @default(false)
+  daemonToken        String  @unique
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  servers     Server[]
+  allocations Allocation[]
+  location    Location @relation(fields: [locationId], references: [id])
+
+  @@map("nodes")
+}
+
+model Location {
+  id          String @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  nodes Node[]
+
+  @@map("locations")
+}
+
+model Server {
+  id          String       @id @default(cuid())
+  uuid        String       @unique @default(cuid())
+  name        String
+  description String?
+  status      ServerStatus @default(INSTALLING)
+  memory      Int          // MB
+  disk        Int          // MB
+  cpu         Int          // Percentage
+  swap        Int          // MB
+  io          Int          // Block IO weight
+  image       String
+  startup     String
+  environment Json         @default("{}")
+  oomKiller   Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Foreign Keys
+  userId String
+  nodeId String
+  eggId  String
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  node         Node         @relation(fields: [nodeId], references: [id])
+  egg          Egg          @relation(fields: [eggId], references: [id])
+  allocations  Allocation[]
+  databases    Database[]
+  backups      Backup[]
+  auditLogs    AuditLog[]
+
+  @@map("servers")
+}
+
+model Allocation {
+  id        String  @id @default(cuid())
+  ip        String
+  port      Int
+  alias     String?
+  isPrimary Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Foreign Keys
+  nodeId   String
+  serverId String?
+
+  // Relations
+  node   Node    @relation(fields: [nodeId], references: [id])
+  server Server? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+
+  @@unique([ip, port])
+  @@map("allocations")
+}
+
+model Nest {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  eggs Egg[]
+
+  @@map("nests")
+}
+
+model Egg {
+  id            String @id @default(cuid())
+  name          String
+  description   String?
+  dockerImage   String
+  startup       String
+  configFiles   String @default("{}")
+  configStartup String @default("{}")
+  configLogs    String @default("{}")
+  configStop    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Foreign Keys
+  nestId String
+
+  // Relations
+  nest      Nest           @relation(fields: [nestId], references: [id])
+  variables EggVariable[]
+  servers   Server[]
+
+  @@map("eggs")
+}
+
+model EggVariable {
+  id           String  @id @default(cuid())
+  name         String
+  description  String
+  envVariable  String
+  defaultValue String
+  userViewable Boolean @default(true)
+  userEditable Boolean @default(true)
+  rules        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Foreign Keys
+  eggId String
+
+  // Relations
+  egg Egg @relation(fields: [eggId], references: [id], onDelete: Cascade)
+
+  @@map("egg_variables")
+}
+
+model Database {
+  id             String @id @default(cuid())
+  name           String
+  username       String
+  password       String
+  remote         String @default("%")
+  host           String
+  port           Int    @default(3306)
+  maxConnections Int    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Foreign Keys
+  serverId String
+
+  // Relations
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, name])
+  @@map("databases")
+}
+
+model Backup {
+  id           String    @id @default(cuid())
+  name         String
+  size         BigInt    @default(0)
+  checksum     String?
+  isSuccessful Boolean   @default(false)
+  isLocked     Boolean   @default(false)
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Foreign Keys
+  serverId String
+  userId   String
+
+  // Relations
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("backups")
+}
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  identifier  String   @unique
+  token       String
+  allowedIps  String[] @default([])
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Foreign Keys
+  userId String
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model AuditLog {
+  id        String    @id @default(cuid())
+  action    String
+  metadata  Json      @default("{}")
+  ipAddress String
+  userAgent String?
+  createdAt DateTime  @default(now())
+
+  // Foreign Keys
+  userId   String?
+  serverId String?
+
+  // Relations
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  server Server? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+enum UserRole {
+  ADMIN
+  MODERATOR
+  USER
+}
+
+enum ServerStatus {
+  INSTALLING
+  INSTALL_FAILED
+  SUSPENDED
+  OFFLINE
+  STARTING
+  RUNNING
+  STOPPING
+  CRASHED
+}
