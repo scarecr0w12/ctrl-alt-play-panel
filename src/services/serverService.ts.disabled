@@ -1,6 +1,6 @@
 import { PrismaClient, Server, ServerStatus, Prisma } from '@prisma/client';
 import { logger } from '../utils/logger';
-import { AgentService } from './agent';
+import { AgentService } from './agentService';
 import { createError } from '../middlewares/errorHandler';
 
 export interface CreateServerData {

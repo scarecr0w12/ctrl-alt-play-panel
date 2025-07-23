@@ -3,12 +3,13 @@ import { asyncHandler, createError } from '../middlewares/errorHandler';
 import { AuthRequest } from '../middlewares/auth';
 import { logger } from '../utils/logger';
 import { ServerService, CreateServerData, UpdateServerData } from '../services/serverService';
-import { AgentService } from '../services/agent';
+import { AgentService } from '../services/agentService';
 import { PrismaClient } from '@prisma/client';
+import { UserRole } from '../types';
 
 const router = Router();
 const prisma = new PrismaClient();
-const agentService = AgentService.getInstance();
+const agentService = new AgentService();
 const serverService = new ServerService(prisma, agentService);
 
 // Get all servers with filtering and pagination
@@ -27,7 +28,7 @@ router.get('/', asyncHandler(async (req: AuthRequest, res: Response) => {
   if (req.query.external_id) filters.externalId = req.query.external_id as string;
 
   // Non-admin users can only see their own servers
-  if (user.role !== 'ADMIN') {
+  if (user.role !== UserRole.ADMIN) {
     filters.userId = user.id;
   }
 
@@ -118,7 +119,7 @@ router.get('/:identifier', asyncHandler(async (req: AuthRequest, res: Response) 
   const server = await serverService.getServer(identifier);
 
   // Check if user has access to this server
-  if (user.role !== 'ADMIN' && server.userId !== user.id) {
+  if (user.role !== UserRole.ADMIN && server.userId !== user.id) {
     // Check if user is a subuser
     const subuser = await prisma.subuser.findFirst({
       where: {
@@ -146,7 +147,7 @@ router.patch('/:identifier', asyncHandler(async (req: AuthRequest, res: Response
 
   // Check permissions
   const server = await serverService.getServer(identifier);
-  if (user.role !== 'ADMIN' && server.userId !== user.id) {
+  if (user.role !== UserRole.ADMIN && server.userId !== user.id) {
     throw createError('Forbidden', 403);
   }
 
@@ -192,7 +193,7 @@ router.delete('/:identifier', asyncHandler(async (req: AuthRequest, res: Respons
 
   // Check permissions
   const server = await serverService.getServer(identifier);
-  if (user.role !== 'ADMIN' && server.userId !== user.id) {
+  if (user.role !== UserRole.ADMIN && server.userId !== user.id) {
     throw createError('Forbidden', 403);
   }
 
@@ -214,7 +215,7 @@ router.post('/:identifier/power', asyncHandler(async (req: AuthRequest, res: Res
   const server = await serverService.getServer(identifier);
 
   // Check permissions
-  if (user.role !== 'ADMIN' && server.userId !== user.id) {
+  if (user.role !== UserRole.ADMIN && server.userId !== user.id) {
     const subuser = await prisma.subuser.findFirst({
       where: {
         userId: user.id,
@@ -259,7 +260,7 @@ router.post('/:identifier/suspend', asyncHandler(async (req: AuthRequest, res: R
   const user = req.user!;
 
   // Only admins can suspend servers
-  if (user.role !== 'ADMIN') {
+  if (user.role !== UserRole.ADMIN) {
     throw createError('Forbidden', 403);
   }
 
@@ -278,7 +279,7 @@ router.post('/:identifier/unsuspend', asyncHandler(async (req: AuthRequest, res:
   const user = req.user!;
 
   // Only admins can unsuspend servers
-  if (user.role !== 'ADMIN') {
+  if (user.role !== UserRole.ADMIN) {
     throw createError('Forbidden', 403);
   }
 
@@ -299,7 +300,7 @@ router.post('/:identifier/reinstall', asyncHandler(async (req: AuthRequest, res:
   const server = await serverService.getServer(identifier);
 
   // Check permissions
-  if (user.role !== 'ADMIN' && server.userId !== user.id) {
+  if (user.role !== UserRole.ADMIN && server.userId !== user.id) {
     throw createError('Forbidden', 403);
   }
 

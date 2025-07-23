@@ -70,6 +70,9 @@ model Node {
   allocations    Allocation[]
   location       Location @relation(fields: [locationId], references: [id])
   databaseHosts  DatabaseHost[]
+  metrics        ServerMetrics[]
+  alerts         Alert[]
+  voiceServers   VoiceServer[]
 
   @@map("nodes")
 }
@@ -134,6 +137,11 @@ model Server {
   schedules    Schedule[]
   variables    ServerVariable[]
   transfers    ServerTransfer[]
+  metrics      ServerMetrics[]
+  alerts       Alert[]
+  workshopInstallations WorkshopInstallation[]
+  modInstallations ModInstallation[]
+  voiceServers VoiceServer[]
 
   @@map("servers")
 }
@@ -399,6 +407,27 @@ enum ScheduleState {
   PROCESSING
 }
 
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum InstallationStatus {
+  PENDING
+  DOWNLOADING
+  INSTALLING
+  COMPLETED
+  FAILED
+}
+
+enum VoiceServerType {
+  TEAMSPEAK
+  DISCORD
+  MUMBLE
+}
+
 // Additional models for comprehensive functionality
 
 model Subuser {
@@ -556,4 +585,147 @@ model Setting {
   value String @db.Text
 
   @@map("settings")
+}
+
+model ServerMetrics {
+  id         String   @id @default(cuid())
+  serverId   String
+  nodeId     String
+  cpu        Float    // Percentage
+  memory     Float    // Percentage
+  disk       Float    // Percentage
+  networkIn  Float    // MB/s
+  networkOut Float    // MB/s
+  players    Int      // Current player count
+  timestamp  DateTime @default(now())
+
+  // Relations
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, timestamp])
+  @@index([nodeId, timestamp])
+  @@map("server_metrics")
+}
+
+model Alert {
+  id           String      @id @default(cuid())
+  serverId     String?
+  nodeId       String?
+  type         String      // HIGH_CPU, HIGH_MEMORY, etc.
+  message      String
+  severity     AlertSeverity @default(LOW)
+  acknowledged Boolean     @default(false)
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relations
+  server Server? @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  node   Node?   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@index([serverId])
+  @@index([nodeId])
+  @@index([severity, acknowledged])
+  @@map("alerts")
+}
+
+model SteamWorkshopItem {
+  id          String   @id @default(cuid())
+  workshopId  String   @unique // Steam Workshop ID
+  name        String
+  description String?
+  type        String   // mod, map, collection
+  gameId      String   // Steam app ID
+  fileSize    Int?     // Bytes
+  downloadUrl String?
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  lastUpdated DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  installations WorkshopInstallation[]
+
+  @@map("steam_workshop_items")
+}
+
+model WorkshopInstallation {
+  id         String   @id @default(cuid())
+  serverId   String
+  itemId     String
+  status     InstallationStatus @default(PENDING)
+  installedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  item   SteamWorkshopItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, itemId])
+  @@map("workshop_installations")
+}
+
+model ModPack {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  version     String   @default("1.0.0")
+  gameType    String   // minecraft, rust, etc.
+  fileUrl     String   // Download URL
+  fileSize    Int      // Bytes
+  configFiles Json?    // Configuration file templates
+  commandLine String?  // Command line modifications
+  isActive    Boolean  @default(true)
+  downloads   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  installations ModInstallation[]
+
+  @@map("mod_packs")
+}
+
+model ModInstallation {
+  id          String   @id @default(cuid())
+  serverId    String
+  modPackId   String
+  status      InstallationStatus @default(PENDING)
+  installedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  server  Server  @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  modPack ModPack @relation(fields: [modPackId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, modPackId])
+  @@map("mod_installations")
+}
+
+model VoiceServer {
+  id          String         @id @default(cuid())
+  uuid        String         @unique @default(cuid())
+  name        String
+  type        VoiceServerType // TEAMSPEAK, DISCORD, MUMBLE
+  nodeId      String
+  serverId    String?        // Optional link to game server
+  port        Int
+  slots       Int
+  password    String?
+  adminToken  String?
+  status      ServerStatus   @default(OFFLINE)
+  autoStart   Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Relations
+  node   Node    @relation(fields: [nodeId], references: [id])
+  server Server? @relation(fields: [serverId], references: [id])
+
+  @@map("voice_servers")
 }
