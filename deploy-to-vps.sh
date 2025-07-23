@@ -85,7 +85,7 @@ install_dependencies() {
 
         # Create deployment directory
         mkdir -p /opt/ctrl-alt-play
-        
+
         echo "Dependencies installed successfully"
 EOF
     print_success "Dependencies installed on VPS"
@@ -94,7 +94,7 @@ EOF
 # Deploy application
 deploy_app() {
     print_step "Deploying application to VPS..."
-    
+
     # Create deployment archive
     print_step "Creating deployment archive..."
     tar --exclude='node_modules' \
@@ -103,40 +103,40 @@ deploy_app() {
         --exclude='logs' \
         --exclude='.env' \
         -czf ctrl-alt-play-deploy.tar.gz .
-    
+
     # Upload to VPS
     print_step "Uploading to VPS..."
     scp -P $VPS_PORT ctrl-alt-play-deploy.tar.gz $VPS_USER@$VPS_HOST:$DEPLOY_PATH/
-    
+
     # Extract and setup on VPS
     ssh -p $VPS_PORT $VPS_USER@$VPS_HOST << EOF
         cd $DEPLOY_PATH
-        
+
         # Backup existing deployment if it exists
         if [ -d "current" ]; then
             mv current backup-\$(date +%Y%m%d-%H%M%S) 2>/dev/null || true
         fi
-        
+
         # Extract new deployment
         mkdir -p current
         cd current
         tar -xzf ../ctrl-alt-play-deploy.tar.gz
-        
+
         # Set up environment file
         if [ ! -f .env ]; then
             cp .env.example .env
             echo "Created .env file - please configure it manually"
         fi
-        
+
         # Create necessary directories
         mkdir -p logs uploads
-        
+
         # Set permissions
         chown -R 1001:1001 logs uploads
-        
+
         echo "Application deployed successfully"
 EOF
-    
+
     # Clean up local archive
     rm ctrl-alt-play-deploy.tar.gz
     print_success "Application deployed to VPS"
@@ -147,12 +147,12 @@ start_services() {
     print_step "Starting services on VPS..."
     ssh -p $VPS_PORT $VPS_USER@$VPS_HOST << EOF
         cd $DEPLOY_PATH/current
-        
+
         # Build and start with Docker Compose
         docker-compose down 2>/dev/null || true
         docker-compose build
         docker-compose up -d
-        
+
         echo "Services started successfully"
 EOF
     print_success "Services started on VPS"
@@ -174,7 +174,7 @@ EOF
 main() {
     echo -e "${BLUE}=== Ctrl-Alt-Play Panel VPS Deployment ===${NC}"
     echo ""
-    
+
     # Check if this is initial setup or update
     if [ "$1" = "setup" ]; then
         check_config
@@ -183,7 +183,7 @@ main() {
         deploy_app
         start_services
         show_status
-        
+
         print_success "Deployment completed!"
         echo ""
         echo "Next steps:"
@@ -193,7 +193,7 @@ main() {
         echo "4. Set up SSL certificates (recommended)"
         echo ""
         echo "Access your panel at: http://$VPS_HOST:3000"
-        
+
     elif [ "$1" = "update" ]; then
         check_config
         test_ssh
@@ -201,25 +201,25 @@ main() {
         start_services
         show_status
         print_success "Update completed!"
-        
+
     elif [ "$1" = "logs" ]; then
         check_config
         ssh -p $VPS_PORT $VPS_USER@$VPS_HOST "cd $DEPLOY_PATH/current && docker-compose logs -f"
-        
+
     elif [ "$1" = "restart" ]; then
         check_config
         ssh -p $VPS_PORT $VPS_USER@$VPS_HOST "cd $DEPLOY_PATH/current && docker-compose restart"
         print_success "Services restarted"
-        
+
     elif [ "$1" = "stop" ]; then
         check_config
         ssh -p $VPS_PORT $VPS_USER@$VPS_HOST "cd $DEPLOY_PATH/current && docker-compose down"
         print_success "Services stopped"
-        
+
     elif [ "$1" = "status" ]; then
         check_config
         show_status
-        
+
     else
         echo "Usage: $0 {setup|update|logs|restart|stop|status}"
         echo ""
