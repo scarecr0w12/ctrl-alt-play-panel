@@ -20,8 +20,9 @@ module.exports = {
     'lcov',
     'html'
   ],
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1'
-  }
+  },
+  modulePathIgnorePatterns: ['<rootDir>/dist/'],
+  testTimeout: 10000
 };

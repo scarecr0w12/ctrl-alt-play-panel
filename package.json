@@ -9,6 +9,9 @@
     "start": "node dist/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "test:integration": "jest --testPathPattern=integration",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "docker:build": "docker build -t game-panel .",
@@ -33,6 +36,7 @@
   "dependencies": {
     "@prisma/client": "^5.7.1",
     "axios": "^1.11.0",
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
@@ -51,6 +55,7 @@
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.7.5",
     "@types/cors": "^2.8.17",
@@ -60,6 +65,7 @@
     "@types/multer": "^1.4.11",
     "@types/node": "^20.10.4",
     "@types/node-cron": "^3.0.11",
+    "@types/supertest": "^6.0.3",
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^6.13.1",
     "@typescript-eslint/parser": "^6.13.1",
