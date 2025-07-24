@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-gradient-to-br from-panel-darker via-panel-dark to-panel-surface text-white;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-glass border border-white/10 shadow-2xl;
+  }
+  
+  .glass-button {
+    @apply glass-card hover:bg-white/10 transition-all duration-200 hover:scale-105;
+  }
+  
+  .nav-item {
+    @apply flex items-center px-4 py-3 rounded-lg transition-all duration-200 hover:bg-white/10 hover:translate-x-1;
+  }
+  
+  .nav-item.active {
+    @apply bg-panel-primary/20 border-l-4 border-panel-primary text-panel-primary;
+  }
+  
+  .input-field {
+    @apply glass-card px-4 py-3 rounded-lg text-white placeholder-white/60 
+           focus:outline-none focus:ring-2 focus:ring-panel-primary/50 focus:border-panel-primary/50
+           transition-all duration-200;
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-panel-primary to-panel-secondary 
+           hover:from-panel-primary/80 hover:to-panel-secondary/80
+           text-white font-semibold py-3 px-6 rounded-lg
+           transition-all duration-200 hover:scale-105 hover:shadow-lg;
+  }
+  
+  .btn-secondary {
+    @apply glass-button text-white font-semibold py-3 px-6 rounded-lg;
+  }
+  
+  .status-indicator {
+    @apply w-3 h-3 rounded-full animate-pulse-slow;
+  }
+  
+  .status-online {
+    @apply bg-green-400 shadow-lg shadow-green-400/50;
+  }
+  
+  .status-offline {
+    @apply bg-red-400 shadow-lg shadow-red-400/50;
+  }
+  
+  .status-starting {
+    @apply bg-yellow-400 shadow-lg shadow-yellow-400/50;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-panel-primary to-panel-secondary bg-clip-text text-transparent;
+  }
+  
+  .border-gradient {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.7);
+}
+
+/* Terminal styles */
+.xterm {
+  font-feature-settings: "liga" 0;
+  position: relative;
+  user-select: none;
+  -ms-user-select: none;
+  -webkit-user-select: none;
+}
+
+.xterm.focus,
+.xterm:focus {
+  outline: none;
+}
+
+.xterm .xterm-helpers {
+  position: absolute;
+  top: 0;
+  z-index: 5;
+}
+
+.xterm .xterm-helper-textarea {
+  position: absolute;
+  opacity: 0;
+  left: -9999em;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: -5;
+  white-space: nowrap;
+  overflow: hidden;
+  resize: none;
+}
