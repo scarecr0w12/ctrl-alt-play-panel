@@ -215,6 +215,49 @@ export class AgentService extends EventEmitter {
     }
   }
 
+  /**
+   * Send command to agent and return promise-based response
+   */
+  public async sendCommand(nodeId: string, command: any): Promise<{ success: boolean; error?: string; data?: any }> {
+    const connection = this.connections.get(nodeId);
+
+    if (!connection || !connection.websocket || connection.status !== AgentStatus.ONLINE) {
+      return {
+        success: false,
+        error: `Agent ${nodeId} is not online`
+      };
+    }
+
+    try {
+      // Generate unique message ID for request tracking
+      const messageId = `cmd_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const message = {
+        id: messageId,
+        type: 'command',
+        timestamp: new Date().toISOString(),
+        agentId: nodeId,
+        ...command
+      };
+
+      // Send the command
+      connection.websocket.send(JSON.stringify(message));
+      
+      // For now, return success immediately
+      // TODO: Implement proper request/response tracking with timeouts
+      return {
+        success: true,
+        data: { messageId, command: command.action }
+      };
+    } catch (error) {
+      logger.error(`Failed to send command to agent ${nodeId}:`, error);
+      return {
+        success: false,
+        error: `Failed to send command: ${error}`
+      };
+    }
+  }
+
   public async executeServerCommand(nodeId: string, serverId: string, command: string): Promise<boolean> {
     return this.sendToAgent(nodeId, {
       type: 'server_command',

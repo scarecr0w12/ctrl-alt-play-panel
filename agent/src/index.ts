@@ -5,10 +5,14 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 interface Message {
+  id?: string;
   type: string;
   data?: any;
   messageId?: string;
-  timestamp: Date;
+  timestamp: Date | string;
+  action?: string;
+  serverId?: string;
+  payload?: any;
 }
 
 interface SystemInfoData {
@@ -158,6 +162,13 @@ class TestAgent {
   private handleMessage(message: Message) {
     console.log(`📥 Received message: ${message.type}`);
     
+    // Handle new Panel→Agent command format
+    if (message.type === 'command' && message.action) {
+      this.handlePanelCommand(message);
+      return;
+    }
+    
+    // Legacy message handling for backwards compatibility
     switch (message.type) {
       case 'system_info_request':
         this.sendSystemInfo();
@@ -198,6 +209,73 @@ class TestAgent {
       default:
         console.log(`⚠️  Unknown message type: ${message.type}`);
     }
+  }
+
+  private handlePanelCommand(message: Message) {
+    console.log(`🎮 Panel command: ${message.action} for server: ${message.serverId}`);
+    
+    // Send immediate acknowledgment
+    this.sendResponse(message.id!, {
+      success: true,
+      message: `${message.action} command received`,
+      data: {
+        serverId: message.serverId,
+        status: this.getActionStatus(message.action!)
+      }
+    });
+
+    // Handle the actual command
+    switch (message.action) {
+      case 'start_server':
+        this.handleServerStart({ serverId: message.serverId });
+        break;
+
+      case 'stop_server':
+        this.handleServerStop({ 
+          serverId: message.serverId, 
+          ...message.payload 
+        });
+        break;
+
+      case 'restart_server':
+        this.handleServerRestart({ serverId: message.serverId });
+        break;
+
+      case 'get_status':
+        this.handleGetServerStatus(message.serverId!);
+        break;
+
+      default:
+        this.sendResponse(message.id!, {
+          success: false,
+          error: {
+            code: 'UNKNOWN_ACTION',
+            message: `Unknown action: ${message.action}`
+          }
+        });
+    }
+  }
+
+  private getActionStatus(action: string): string {
+    switch (action) {
+      case 'start_server':
+        return 'starting';
+      case 'stop_server':
+        return 'stopping';
+      case 'restart_server':
+        return 'restarting';
+      default:
+        return 'processing';
+    }
+  }
+
+  private sendResponse(messageId: string, response: any) {
+    this.sendMessage({
+      id: messageId,
+      type: 'response',
+      timestamp: new Date(),
+      ...response
+    });
   }
 
   private handleServerCreate(data: any) {
@@ -350,6 +428,40 @@ class TestAgent {
           success: true,
           message: 'File written successfully',
           timestamp: new Date()
+        },
+        timestamp: new Date()
+      });
+    }, 500);
+  }
+
+  private handleGetServerStatus(serverId: string) {
+    console.log(`📊 Getting status for server: ${serverId}`);
+    
+    // Simulate server status retrieval
+    setTimeout(() => {
+      this.sendMessage({
+        type: 'server_status',
+        data: {
+          serverId: serverId,
+          status: 'running',
+          containerId: `container_${serverId}`,
+          uptime: Math.floor(Math.random() * 3600),
+          resources: {
+            cpu: Math.random() * 80 + 10,
+            memory: {
+              used: `${Math.floor(Math.random() * 1024 + 512)}m`,
+              available: '2048m'
+            },
+            network: {
+              tx: Math.floor(Math.random() * 1000000),
+              rx: Math.floor(Math.random() * 2000000)
+            }
+          },
+          players: {
+            online: Math.floor(Math.random() * 10),
+            max: 20,
+            list: ['TestPlayer1', 'TestPlayer2']
+          }
         },
         timestamp: new Date()
       });
