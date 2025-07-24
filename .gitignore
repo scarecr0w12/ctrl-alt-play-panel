@@ -54,3 +54,7 @@ test-results/
 
 # Prisma
 .env
+
+# Next.js
+frontend/.next/
+frontend/out/
