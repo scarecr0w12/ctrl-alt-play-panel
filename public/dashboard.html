@@ -6,6 +6,7 @@
     <title>Dashboard - Ctrl-Alt-Play Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
         .dashboard-container {
             background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%);
@@ -14,6 +15,16 @@
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(15px);
             border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .live-indicator {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .metric-value {
+            font-family: 'Courier New', monospace;
         }
         .sidebar {
             background: rgba(15, 23, 42, 0.95);
@@ -139,7 +150,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-400 text-sm">Total Servers</p>
-                        <p class="text-2xl font-bold">3</p>
+                        <p id="total-servers" class="text-2xl font-bold metric-value">-</p>
                     </div>
                     <div class="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -148,8 +159,8 @@
                     </div>
                 </div>
                 <div class="mt-4">
-                    <span class="text-green-400 text-sm">2 running</span>
-                    <span class="text-gray-400 text-sm"> • 1 stopped</span>
+                    <span id="servers-running" class="text-green-400 text-sm">- running</span>
+                    <span id="servers-stopped" class="text-gray-400 text-sm"> • - stopped</span>
                 </div>
             </div>
 
@@ -157,8 +168,11 @@
             <div class="stat-card glass-card rounded-xl p-6">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-400 text-sm">CPU Usage</p>
-                        <p class="text-2xl font-bold">45%</p>
+                        <p class="text-gray-400 text-sm flex items-center">
+                            CPU Usage
+                            <span class="live-indicator ml-2 w-2 h-2 bg-green-400 rounded-full"></span>
+                        </p>
+                        <p id="cpu-usage" class="text-2xl font-bold metric-value">-%</p>
                     </div>
                     <div class="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -167,7 +181,7 @@
                     </div>
                 </div>
                 <div class="mt-4">
-                    <span class="text-green-400 text-sm">+5% from last hour</span>
+                    <span id="cpu-trend" class="text-green-400 text-sm">Loading...</span>
                 </div>
             </div>
 
@@ -175,8 +189,11 @@
             <div class="stat-card glass-card rounded-xl p-6">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-400 text-sm">Memory Usage</p>
-                        <p class="text-2xl font-bold">8.2GB</p>
+                        <p class="text-gray-400 text-sm flex items-center">
+                            Memory Usage
+                            <span class="live-indicator ml-2 w-2 h-2 bg-green-400 rounded-full"></span>
+                        </p>
+                        <p id="memory-usage" class="text-2xl font-bold metric-value">-GB</p>
                     </div>
                     <div class="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center">
                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -185,8 +202,31 @@
                     </div>
                 </div>
                 <div class="mt-4">
-                    <span class="text-gray-400 text-sm">of 16GB total</span>
+                    <span id="memory-total" class="text-gray-400 text-sm">of -GB total</span>
                 </div>
+            </div>
+
+            <!-- Active Players -->
+            <div class="stat-card glass-card rounded-xl p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm flex items-center">
+                            Active Players
+                            <span class="live-indicator ml-2 w-2 h-2 bg-green-400 rounded-full"></span>
+                        </p>
+                        <p id="active-players" class="text-2xl font-bold metric-value">-</p>
+                    </div>
+                    <div class="w-12 h-12 bg-orange-600 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <span id="player-trend" class="text-green-400 text-sm">Loading...</span>
+                </div>
+            </div>
+        </div>
             </div>
 
             <!-- Active Players -->
@@ -260,6 +300,15 @@
     </div>
 
     <script>
+        // Real-time monitoring variables
+        let socket = null;
+        let metricsHistory = {
+            cpu: [],
+            memory: [],
+            players: [],
+            timestamps: []
+        };
+
         // Authentication check
         function checkAuth() {
             const token = localStorage.getItem('authToken');
@@ -267,7 +316,7 @@
             
             if (!token || !user) {
                 window.location.href = '/login.html';
-                return;
+                return null;
             }
             
             // Parse user data and update UI
@@ -275,10 +324,154 @@
             document.getElementById('user-name').textContent = userData.firstName + ' ' + userData.lastName;
             document.getElementById('user-role').textContent = userData.role;
             document.getElementById('user-avatar').textContent = userData.firstName.charAt(0).toUpperCase();
+            
+            return token;
+        }
+
+        // Initialize WebSocket connection for real-time monitoring
+        function initWebSocket() {
+            const token = localStorage.getItem('authToken');
+            if (!token) return;
+
+            socket = io({
+                auth: {
+                    token: token
+                }
+            });
+
+            socket.on('connect', () => {
+                console.log('Connected to monitoring service');
+                // Join monitoring room
+                socket.emit('join:monitoring');
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Disconnected from monitoring service');
+            });
+
+            // Listen for real-time metrics updates
+            socket.on('metrics:update', (data) => {
+                updateDashboardMetrics(data);
+            });
+
+            // Listen for server status updates
+            socket.on('server:status', (data) => {
+                updateServerStatus(data);
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('WebSocket connection error:', error);
+            });
+        }
+
+        // Update dashboard metrics in real-time
+        function updateDashboardMetrics(data) {
+            // Update CPU usage
+            if (data.cpu !== undefined) {
+                document.getElementById('cpu-usage').textContent = `${Math.round(data.cpu)}%`;
+                const cpuColor = data.cpu > 80 ? 'text-red-400' : data.cpu > 60 ? 'text-yellow-400' : 'text-green-400';
+                document.getElementById('cpu-trend').className = cpuColor + ' text-sm';
+                document.getElementById('cpu-trend').textContent = `${data.cpu > 50 ? 'High' : 'Normal'} load`;
+            }
+
+            // Update memory usage
+            if (data.memory !== undefined) {
+                const memoryGB = (data.memory / 1024).toFixed(1);
+                document.getElementById('memory-usage').textContent = `${memoryGB}GB`;
+                if (data.memoryTotal) {
+                    const totalGB = (data.memoryTotal / 1024).toFixed(1);
+                    document.getElementById('memory-total').textContent = `of ${totalGB}GB total`;
+                }
+            }
+
+            // Update active players
+            if (data.players !== undefined) {
+                document.getElementById('active-players').textContent = data.players;
+                const playerTrend = data.playerChange || 0;
+                const trendText = playerTrend > 0 ? `+${playerTrend} players` : playerTrend < 0 ? `${playerTrend} players` : 'No change';
+                document.getElementById('player-trend').textContent = trendText;
+            }
+
+            // Update metrics history for charts
+            if (data.timestamp) {
+                metricsHistory.timestamps.push(new Date(data.timestamp).toLocaleTimeString());
+                metricsHistory.cpu.push(data.cpu || 0);
+                metricsHistory.memory.push(data.memory || 0);
+                metricsHistory.players.push(data.players || 0);
+
+                // Keep only last 20 data points
+                if (metricsHistory.timestamps.length > 20) {
+                    metricsHistory.timestamps.shift();
+                    metricsHistory.cpu.shift();
+                    metricsHistory.memory.shift();
+                    metricsHistory.players.shift();
+                }
+
+                // Update charts if they exist
+                updateCharts();
+            }
+        }
+
+        // Update server status counts
+        function updateServerStatus(data) {
+            if (data.total !== undefined) {
+                document.getElementById('total-servers').textContent = data.total;
+            }
+            if (data.running !== undefined) {
+                document.getElementById('servers-running').textContent = `${data.running} running`;
+            }
+            if (data.stopped !== undefined) {
+                document.getElementById('servers-stopped').textContent = ` • ${data.stopped} stopped`;
+            }
+        }
+
+        // Fetch initial dashboard data
+        async function fetchDashboardData() {
+            try {
+                const token = localStorage.getItem('authToken');
+                
+                // Fetch overall statistics
+                const statsResponse = await fetch('/api/monitoring/stats', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    updateDashboardMetrics(stats);
+                    updateServerStatus(stats);
+                }
+                
+                // Fetch server list for counts
+                const serversResponse = await fetch('/api/servers', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (serversResponse.ok) {
+                    const servers = await serversResponse.json();
+                    const running = servers.filter(s => s.status === 'running').length;
+                    const stopped = servers.filter(s => s.status === 'stopped').length;
+                    
+                    updateServerStatus({
+                        total: servers.length,
+                        running: running,
+                        stopped: stopped
+                    });
+                }
+                
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+            }
         }
 
         // Logout function
         function logout() {
+            if (socket) {
+                socket.disconnect();
+            }
             localStorage.removeItem('authToken');
             localStorage.removeItem('user');
             window.location.href = '/login.html';
@@ -309,7 +502,7 @@
         function initCharts() {
             // Performance Chart
             const perfCtx = document.getElementById('performanceChart').getContext('2d');
-            new Chart(perfCtx, {
+            window.performanceChart = new Chart(perfCtx, {
                 type: 'line',
                 data: {
                     labels: ['12:00', '12:15', '12:30', '12:45', '13:00', '13:15'],
@@ -350,7 +543,7 @@
 
             // Player Chart
             const playerCtx = document.getElementById('playerChart').getContext('2d');
-            new Chart(playerCtx, {
+            window.playerChart = new Chart(playerCtx, {
                 type: 'bar',
                 data: {
                     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
@@ -384,11 +577,34 @@
             });
         }
 
+        // Update charts with real-time data
+        function updateCharts() {
+            if (window.performanceChart && metricsHistory.timestamps.length > 0) {
+                window.performanceChart.data.labels = metricsHistory.timestamps;
+                window.performanceChart.data.datasets[0].data = metricsHistory.cpu;
+                window.performanceChart.data.datasets[1].data = metricsHistory.memory.map(mem => (mem / 1024) * 100 / 16); // Assuming 16GB max
+                window.performanceChart.update('none'); // No animation for real-time updates
+            }
+        }
+
         // Initialize everything
-        checkAuth();
-        updateTime();
-        checkServerStatus();
-        initCharts();
+        async function init() {
+            const token = checkAuth();
+            if (!token) return;
+            
+            updateTime();
+            checkServerStatus();
+            initCharts();
+            
+            // Fetch initial data
+            await fetchDashboardData();
+            
+            // Initialize WebSocket for real-time updates
+            initWebSocket();
+        }
+
+        // Start the application
+        init();
 
         // Set intervals
         setInterval(updateTime, 1000);

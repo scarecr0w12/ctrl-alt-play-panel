@@ -198,24 +198,17 @@ router.post('/alerts/:id/acknowledge', authenticateToken, authorize([UserRole.AD
  */
 router.get('/stats', async (req, res) => {
   try {
+    // const stats = await monitoringService.getAggregatedStats();
     const stats = {
-      servers: {
-        total: 5,
-        running: 3,
-        stopped: 1,
-        starting: 1
-      },
-      resources: {
-        cpu: Math.round(Math.random() * 80 + 10),
-        memory: Math.round(Math.random() * 70 + 20),
-        disk: Math.round(Math.random() * 60 + 30)
-      },
-      network: {
-        inbound: Math.round(Math.random() * 1000),
-        outbound: Math.round(Math.random() * 500)
-      }
+      total: 0,
+      running: 0,
+      stopped: 0,
+      cpu: 0,
+      memory: 0,
+      memoryTotal: 16384,
+      players: 0,
+      timestamp: new Date().toISOString()
     };
-
     return res.json({ success: true, data: stats });
   } catch (error) {
     console.error('Failed to get system stats:', error);

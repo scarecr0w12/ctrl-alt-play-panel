@@ -51,6 +51,17 @@ export class SocketService {
         this.handleServerCommand(socket, data);
       });
 
+      // Handle monitoring subscriptions
+      socket.on('join:monitoring', () => {
+        socket.join('monitoring');
+        logger.info(`User ${user.username} joined monitoring updates`);
+      });
+
+      socket.on('leave:monitoring', () => {
+        socket.leave('monitoring');
+        logger.info(`User ${user.username} left monitoring updates`);
+      });
+
       // Handle file operations
       socket.on('server:file:read', (data) => {
         this.handleFileRead(socket, data);
@@ -119,6 +130,21 @@ export class SocketService {
 
   public static getConnectedUsers(): string[] {
     return Array.from(this.connectedClients.keys());
+  }
+
+  public static broadcastMonitoring(event: string, data: any): void {
+    this.io.to('monitoring').emit(event, data);
+  }
+
+  public static emitMetricsUpdate(metrics: any): void {
+    this.broadcastMonitoring('metrics:update', {
+      ...metrics,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  public static emitServerStatusUpdate(statusData: any): void {
+    this.broadcastMonitoring('server:status', statusData);
   }
 }
 

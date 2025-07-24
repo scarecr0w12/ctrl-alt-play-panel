@@ -18,10 +18,12 @@ import nodesRoutes from './routes/nodes';
 import ctrlsRoutes from './routes/ctrls';
 import altsRoutes from './routes/alts';
 
-// Import middleware
+// Import middleware and services
 import { errorHandler } from './middlewares/errorHandler';
 import { logger } from './utils/logger';
-import { AgentService } from './services/agent';
+import { SocketService } from './services/socket';
+import { AgentService } from './services/agentService';
+import { MonitoringService } from './services/monitoringService';
 
 // Load environment variables
 dotenv.config();
@@ -265,7 +267,7 @@ class GamePanelApp {
     this.setupWebSocketHandlers();
 
     // Start Agent Service for external agent connections
-    await AgentService.initialize();
+    // await AgentService.initialize();
 
     this.server.listen(this.port, () => {
       logger.info(`🚀 Ctrl-Alt-Play Panel started successfully!`);
@@ -276,7 +278,36 @@ class GamePanelApp {
       logger.info(`📊 Monitoring API: http://localhost:${this.port}/api/monitoring`);
       logger.info(`🎮 Workshop API: http://localhost:${this.port}/api/workshop`);
       logger.info(`🎛️  Console Interface: http://localhost:${this.port}/console.html`);
+      
+      // Start monitoring scheduler
+      this.startMonitoringScheduler();
     });
+  }
+
+  private startMonitoringScheduler(): void {
+    const monitoringService = new MonitoringService();
+    
+    logger.info('📊 Starting monitoring scheduler...');
+    
+    // Collect metrics every 30 seconds
+    setInterval(async () => {
+      try {
+        await monitoringService.collectAllServerMetrics();
+        logger.debug('📈 Metrics collection completed');
+      } catch (error) {
+        logger.error('Failed to collect metrics:', error);
+      }
+    }, 30000); // 30 seconds
+    
+    // Emit initial stats after 5 seconds
+    setTimeout(async () => {
+      try {
+        await monitoringService.emitAggregatedStats();
+        logger.info('📊 Initial monitoring data broadcast complete');
+      } catch (error) {
+        logger.error('Failed to emit initial stats:', error);
+      }
+    }, 5000);
   }
 
   public stop(): void {

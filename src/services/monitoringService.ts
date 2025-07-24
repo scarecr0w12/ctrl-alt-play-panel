@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { AgentService } from './agentService';
+import { SocketService } from './socket';
 
 const prisma = new PrismaClient();
 
@@ -47,6 +48,16 @@ export class MonitoringService {
       // Store metrics in database
       await this.storeMetrics(serverId, server.nodeId, metrics);
 
+      // Emit real-time metrics update
+      SocketService.emitMetricsUpdate({
+        cpu: metrics.cpu,
+        memory: metrics.memory,
+        disk: metrics.disk,
+        players: metrics.players,
+        serverId: serverId,
+        nodeId: server.nodeId
+      });
+
       return metrics;
     } catch (error) {
       console.error(`Failed to collect metrics for server ${serverId}:`, error);
@@ -70,6 +81,69 @@ export class MonitoringService {
     );
 
     await Promise.allSettled(promises);
+
+    // Emit aggregated stats update
+    await this.emitAggregatedStats();
+  }
+
+  /**
+   * Get aggregated stats for dashboard
+   */
+  async getAggregatedStats(): Promise<any> {
+    const servers = await prisma.server.findMany();
+    const runningServers = servers.filter(s => s.status === 'RUNNING').length;
+    const stoppedServers = servers.filter(s => ['OFFLINE', 'STOPPED', 'CRASHED'].includes(s.status)).length;
+
+    // Get latest metrics for aggregate calculations
+    const latestMetrics = await prisma.serverMetrics.findMany({
+      where: {
+        timestamp: {
+          gte: new Date(Date.now() - 5 * 60 * 1000) // Last 5 minutes
+        }
+      },
+      orderBy: { timestamp: 'desc' },
+      take: servers.length
+    });
+
+    const avgCpu = latestMetrics.length > 0 
+      ? latestMetrics.reduce((sum, m) => sum + m.cpu, 0) / latestMetrics.length 
+      : 0;
+    
+    const totalMemory = latestMetrics.length > 0 
+      ? latestMetrics.reduce((sum, m) => sum + m.memory, 0) 
+      : 0;
+    
+    const totalPlayers = latestMetrics.length > 0 
+      ? latestMetrics.reduce((sum, m) => sum + m.players, 0) 
+      : 0;
+
+    return {
+      total: servers.length,
+      running: runningServers,
+      stopped: stoppedServers,
+      cpu: Math.round(avgCpu),
+      memory: Math.round(totalMemory),
+      memoryTotal: 16384, // 16GB in MB - this should come from node specs
+      players: totalPlayers,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  /**
+   * Emit aggregated stats via WebSocket
+   */
+  async emitAggregatedStats(): Promise<void> {
+    try {
+      const stats = await this.getAggregatedStats();
+      SocketService.emitMetricsUpdate(stats);
+      SocketService.emitServerStatusUpdate({
+        total: stats.total,
+        running: stats.running,
+        stopped: stats.stopped
+      });
+    } catch (error) {
+      console.error('Failed to emit aggregated stats:', error);
+    }
   }
 
   /**
