@@ -21,18 +21,16 @@ router.get('/', authenticateToken, async (req, res) => {
     const servers = await prisma.server.findMany({
       where: whereClause,
       include: {
+        user: {
+          select: { id: true, username: true }
+        },
         node: {
-          select: {
-            id: true,
-            name: true,
-            fqdn: true
-          }
+          select: { id: true, name: true }
         }
-      },
-      orderBy: { createdAt: 'desc' }
+      }
     });
 
-    const formattedServers = servers.map(server => ({
+    const serversWithStats = servers.map((server: any) => ({
       id: server.id,
       uuid: server.uuid,
       name: server.name,
@@ -47,7 +45,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
     return res.json({
       success: true,
-      data: formattedServers
+      data: serversWithStats
     });
   } catch (error) {
     console.error('Failed to get servers:', error);

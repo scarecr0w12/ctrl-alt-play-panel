@@ -65,7 +65,7 @@ export class MonitoringService {
       include: { node: true }
     });
 
-    const promises = activeServers.map(server =>
+    const promises = activeServers.map((server: any) =>
       this.collectServerMetrics(server.id)
     );
 
@@ -117,7 +117,7 @@ export class MonitoringService {
       orderBy: { timestamp: 'asc' }
     });
 
-    return metrics.map(metric => ({
+    return metrics.map((metric: any) => ({
       serverId: metric.serverId,
       nodeId: metric.nodeId,
       cpu: metric.cpu,

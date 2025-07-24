@@ -21,6 +21,7 @@ import altsRoutes from './routes/alts';
 // Import middleware
 import { errorHandler } from './middlewares/errorHandler';
 import { logger } from './utils/logger';
+import { AgentService } from './services/agent';
 
 // Load environment variables
 dotenv.config();
@@ -255,7 +256,7 @@ class GamePanelApp {
     }, 2000);
   }
 
-  public start(): void {
+  public async start(): Promise<void> {
     // Create HTTP server
     this.server = createServer(this.app);
 
@@ -263,10 +264,14 @@ class GamePanelApp {
     this.wss = new WebSocketServer({ server: this.server });
     this.setupWebSocketHandlers();
 
+    // Start Agent Service for external agent connections
+    await AgentService.initialize();
+
     this.server.listen(this.port, () => {
       logger.info(`🚀 Ctrl-Alt-Play Panel started successfully!`);
       logger.info(`📡 Server running on port ${this.port}`);
       logger.info(`🔌 WebSocket server ready for connections`);
+      logger.info(`🔧 Agent WebSocket server ready on port ${process.env.AGENT_PORT || '8080'}`);
       logger.info(`🏥 Health check: http://localhost:${this.port}/health`);
       logger.info(`📊 Monitoring API: http://localhost:${this.port}/api/monitoring`);
       logger.info(`🎮 Workshop API: http://localhost:${this.port}/api/workshop`);
@@ -300,6 +305,9 @@ process.on('SIGTERM', () => {
 });
 
 // Start the server
-app.start();
+app.start().catch((error) => {
+  logger.error('Failed to start server:', error);
+  process.exit(1);
+});
 
 export default app;

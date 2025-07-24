@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  # Ctrl-Alt-Play Panel Application (Web Interface)
+  ctrl-alt-play:
+    build: .
+    container_name: ctrl-alt-play
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "8080:8080"  # Agent WebSocket port
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://ctrlaltplay:ctrlaltplay@postgres:5432/ctrlaltplay
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-this
+      - AGENT_SECRET=your-agent-secret-key-change-this
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - ctrl-alt-play-network
+
+  # Test Agent (for integration testing)
+  test-agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    container_name: ctrl-alt-play-test-agent
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PANEL_URL=ws://ctrl-alt-play:8080
+      - NODE_ID=test-node-docker
+      - AGENT_SECRET=your-agent-secret-key-change-this
+      - HEALTH_PORT=8081
+    ports:
+      - "8081:8081"  # Health check port
+    depends_on:
+      - ctrl-alt-play
+    networks:
+      - ctrl-alt-play-network
+
+  # PostgreSQL Database (Panel Only)
+  postgres:
+    image: postgres:15-alpine
+    container_name: ctrl-alt-play-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=ctrlaltplay
+      - POSTGRES_USER=ctrlaltplay
+      - POSTGRES_PASSWORD=ctrlaltplay
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - ctrl-alt-play-network
+
+  # Redis Cache (Panel Only)
+  redis:
+    image: redis:7-alpine
+    container_name: ctrl-alt-play-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - ctrl-alt-play-network
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: ctrl-alt-play-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - ctrl-alt-play
+    networks:
+      - ctrl-alt-play-network
+    profiles:
+      - nginx  # Only start with --profile nginx
+
+# NOTE: Game servers are NOT managed by this docker-compose
+# They are managed by external agents running on game server hosts
+# Agents connect to this panel via WebSocket on port 8080
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  ctrl-alt-play-network:
+    driver: bridge

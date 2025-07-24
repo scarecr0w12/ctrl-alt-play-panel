@@ -253,7 +253,7 @@ export class SteamWorkshopService {
         orderBy: { createdAt: 'desc' }
       });
 
-      return installations.map(installation => ({
+      return installations.map((installation: any) => ({
         id: installation.id,
         status: installation.status,
         installedAt: installation.installedAt,

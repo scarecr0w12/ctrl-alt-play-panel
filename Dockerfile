@@ -1,11 +1,48 @@
-# Use Node.js 18 Alpine as base image
-FROM node:18-alpine
+# Multi-stage build for Ctrl-Alt-Play Panel
+FROM node:18-alpine AS builder
+
+# Install system dependencies for building
+RUN apk add --no-cache \
+    openssl \
+    python3 \
+    make \
+    g++ \
+    && ln -sf python3 /usr/bin/python
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Copy package files and configs
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install dependencies (including dev for building)
+RUN npm ci
+
+# Copy Prisma schema
+COPY prisma ./prisma
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Copy source code
+COPY src ./src
+
+# Build the application
+RUN npm run build
+
+# Remove dev dependencies
+RUN npm prune --production
+
+# Production stage
+FROM node:18-alpine AS runtime
+
+# Set working directory
+WORKDIR /app
+
+# Install only runtime dependencies
 RUN apk add --no-cache \
+    openssl \
     python3 \
     make \
     g++ \
@@ -13,16 +50,19 @@ RUN apk add --no-cache \
 
 # Copy package files
 COPY package*.json ./
-COPY tsconfig.json ./
 
-# Install dependencies
+# Install only production dependencies
 RUN npm ci --only=production
 
-# Copy source code
-COPY src ./src
+# Copy Prisma schema and generate client for runtime
+COPY prisma ./prisma
+RUN npx prisma generate
 
-# Build the application
-RUN npm run build
+# Copy built application from builder stage
+COPY --from=builder /app/dist ./dist
+
+# Copy public files (HTML, CSS, JS)
+COPY public ./public
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs

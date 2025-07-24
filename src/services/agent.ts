@@ -64,7 +64,7 @@ export class AgentService extends EventEmitter {
     return this.instance;
   }
 
-  private async start(): Promise<void> {
+  public async start(): Promise<void> {
     // Start WebSocket server for agent connections
     this.startWebSocketServer();
 
