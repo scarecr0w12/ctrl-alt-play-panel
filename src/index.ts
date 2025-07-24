@@ -17,6 +17,7 @@ import usersRoutes from './routes/users';
 import nodesRoutes from './routes/nodes';
 import ctrlsRoutes from './routes/ctrls';
 import altsRoutes from './routes/alts';
+import collectionsRoutes from './routes/collections';
 
 // Import middleware
 import { errorHandler } from './middlewares/errorHandler';
@@ -84,6 +85,7 @@ class GamePanelApp {
     this.app.use('/api/nodes', nodesRoutes);
     this.app.use('/api/ctrls', ctrlsRoutes);
     this.app.use('/api/alts', altsRoutes);
+    this.app.use('/api/collections', collectionsRoutes);
     this.app.use('/api/monitoring', monitoringRoutes);
     this.app.use('/api/workshop', workshopRoutes);
     this.app.use('/api/files', filesRoutes);

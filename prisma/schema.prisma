@@ -34,6 +34,7 @@ model User {
   servers        Server[]
   subusers       Subuser[]
   sshKeys        UserSshKey[]
+  collections    Collection[]
 
   @@map("users")
 }
@@ -630,4 +631,39 @@ enum VoiceServerType {
   TEAMSPEAK
   DISCORD
   MUMBLE
+}
+
+model Collection {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  type        CollectionType   @default(MIXED)
+  isPublic    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items       CollectionItem[]
+
+  @@map("collections")
+}
+
+model CollectionItem {
+  id           String     @id @default(cuid())
+  collectionId String
+  itemType     String     // 'server', 'workshop_item', 'mod_pack'
+  itemId       String     // ID of the referenced item
+  order        Int        @default(0)
+  createdAt    DateTime   @default(now())
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, itemType, itemId])
+  @@map("collection_items")
+}
+
+enum CollectionType {
+  SERVERS
+  WORKSHOP_ITEMS
+  MOD_PACKS
+  MIXED
 }
