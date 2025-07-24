@@ -79,8 +79,8 @@ The Ctrl-Alt-Play Panel has been successfully migrated to the dedicated developm
 ### **Sample Data Includes**
 - 2 Users (admin + regular user)
 - 1 Node (Default Node)
-- 1 Nest (Game Servers)
-- 1 Egg (Minecraft Java)
+- 1 Ctrl (Game Servers)
+- 1 Alt (Minecraft Java)
 - 2 Servers (with allocations)
 - 48 Metric entries (24 hours of sample data per server)
 

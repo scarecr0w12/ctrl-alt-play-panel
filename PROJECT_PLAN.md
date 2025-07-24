@@ -81,7 +81,7 @@ npm test -- --testPathPattern=agent
 **Goal:** Implement sophisticated game server lifecycle management.
 
 **Actions:**
-- [ ] Create server templates/eggs for popular games (Minecraft, Rust, CS2)
+- [ ] Create server templates/alts for popular games (Minecraft, Rust, CS2)
 - [ ] Implement server resource monitoring and alerting
 - [ ] Add automated backup scheduling and restoration
 - [ ] Build server cloning and migration features

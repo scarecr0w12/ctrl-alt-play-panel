@@ -1,11 +1,13 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
 import { asyncHandler, createError } from '../middlewares/errorHandler';
 import { logger } from '../utils/logger';
 import { User, UserRole } from '../types';
 
 const router = Router();
+const prisma = new PrismaClient();
 
 // Register endpoint
 router.post('/register', asyncHandler(async (req: Request, res: Response) => {
@@ -16,21 +18,35 @@ router.post('/register', asyncHandler(async (req: Request, res: Response) => {
     throw createError('All fields are required', 400);
   }
 
-  // TODO: Check if user already exists in database
-  // For now, create a mock user
+  // Check if user already exists
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: email },
+        { username: username }
+      ]
+    }
+  });
+
+  if (existingUser) {
+    throw createError('User with this email or username already exists', 409);
+  }
+
+  // Hash password
   const hashedPassword = await bcrypt.hash(password, parseInt(process.env.BCRYPT_ROUNDS || '12'));
 
-  const user: User = {
-    id: Math.random().toString(36).substring(7),
-    email,
-    username,
-    firstName,
-    lastName,
-    role: UserRole.USER,
-    isActive: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
+  // Create user in database
+  const user = await prisma.user.create({
+    data: {
+      email,
+      username,
+      firstName,
+      lastName,
+      password: hashedPassword,
+      role: 'USER',
+      isActive: true
+    }
+  });
 
   // Generate JWT token
   const payload = { user: { id: user.id, email: user.email, username: user.username, role: user.role } };
@@ -64,23 +80,17 @@ router.post('/login', asyncHandler(async (req: Request, res: Response) => {
     throw createError('Email and password are required', 400);
   }
 
-  // TODO: Get user from database
-  // For now, create a mock user for demo
-  const user: User = {
-    id: '1',
-    email: 'admin@example.com',
-    username: 'admin',
-    firstName: 'Admin',
-    lastName: 'User',
-    role: UserRole.ADMIN,
-    isActive: true,
-    lastLogin: new Date(),
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
+  // Get user from database
+  const user = await prisma.user.findUnique({
+    where: { email }
+  });
 
-  // TODO: Verify password against database
-  const isValidPassword = await bcrypt.compare(password, await bcrypt.hash('admin123', 12));
+  if (!user) {
+    throw createError('Invalid credentials', 401);
+  }
+
+  // Verify password
+  const isValidPassword = await bcrypt.compare(password, user.password);
 
   if (!isValidPassword) {
     throw createError('Invalid credentials', 401);
@@ -90,12 +100,16 @@ router.post('/login', asyncHandler(async (req: Request, res: Response) => {
     throw createError('Account is deactivated', 403);
   }
 
+  // Update last login
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLogin: new Date() }
+  });
+
   // Generate JWT token
   const payload = { user: { id: user.id, email: user.email, username: user.username, role: user.role } };
   const secret = process.env.JWT_SECRET as string;
   const token = jwt.sign(payload, secret, { expiresIn: '7d' });
-
-  // TODO: Update last login in database
 
   logger.info(`User logged in: ${user.username}`);
 
@@ -109,7 +123,7 @@ router.post('/login', asyncHandler(async (req: Request, res: Response) => {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
-        lastLogin: user.lastLogin
+        lastLogin: new Date()
       },
       token
     },
@@ -167,8 +181,25 @@ router.get('/me', asyncHandler(async (req: Request, res: Response) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
 
-    // TODO: Get full user details from database
-    const user = decoded.user;
+    // Get full user details from database
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.user.id },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        lastLogin: true,
+        createdAt: true
+      }
+    });
+
+    if (!user) {
+      throw createError('User not found', 404);
+    }
 
     res.json({
       success: true,

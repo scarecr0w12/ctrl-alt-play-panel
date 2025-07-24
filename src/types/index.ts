@@ -44,7 +44,7 @@ export interface Server {
   description?: string;
   userId: string;
   nodeId: string;
-  eggId: string;
+  altId: string;
   status: ServerStatus;
   memory: number;
   disk: number;
@@ -98,7 +98,16 @@ export interface Allocation {
   isPrimary: boolean;
 }
 
-export interface Egg {
+export interface Ctrl {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  alts: Alt[];
+}
+
+export interface Alt {
   id: string;
   name: string;
   description?: string;
@@ -108,11 +117,11 @@ export interface Egg {
   configStartup: string;
   configLogs: string;
   configStop?: string;
-  nestId: string;
-  variables: EggVariable[];
+  ctrlId: string;
+  variables: AltVariable[];
 }
 
-export interface EggVariable {
+export interface AltVariable {
   id: string;
   name: string;
   description: string;

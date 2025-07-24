@@ -9,19 +9,21 @@ INSERT INTO locations (id, name, description, created_at, updated_at)
 VALUES ('default-location', 'Default Location', 'Default server location', NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
--- Create initial nest and egg for Minecraft
-INSERT INTO nests (id, name, description, created_at, updated_at)
-VALUES ('minecraft-nest', 'Minecraft', 'Minecraft game servers', NOW(), NOW())
+-- Create initial ctrl and alt for Minecraft
+INSERT INTO ctrls (id, name, description, created_at, updated_at)
+VALUES ('minecraft-ctrl', 'Minecraft', 'Minecraft game servers', NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO eggs (id, name, description, docker_image, startup, nest_id, created_at, updated_at)
+INSERT INTO alts (id, uuid, name, description, author, "dockerImages", startup, "ctrlId", created_at, updated_at)
 VALUES (
     'minecraft-java',
+    'minecraft-java-uuid',
     'Minecraft Java Edition',
     'Minecraft Java Edition server',
-    'openjdk:17-alpine',
+    'Mojang Studios',
+    '{"java17": "openjdk:17-alpine"}',
     'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar nogui',
-    'minecraft-nest',
+    'minecraft-ctrl',
     NOW(),
     NOW()
 ) ON CONFLICT (id) DO NOTHING;

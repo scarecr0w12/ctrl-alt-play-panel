@@ -109,7 +109,7 @@ model Server {
   updatedAt             DateTime               @updatedAt
   userId                String
   nodeId                String
-  eggId                 String
+  altId                 String
   alerts                Alert[]
   allocations           Allocation[]
   auditLogs             AuditLog[]
@@ -120,7 +120,7 @@ model Server {
   metrics               ServerMetrics[]
   transfers             ServerTransfer[]
   variables             ServerVariable[]
-  egg                   Egg                    @relation(fields: [eggId], references: [id])
+  alt                   Alt                    @relation(fields: [altId], references: [id])
   node                  Node                   @relation(fields: [nodeId], references: [id])
   user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   subusers              Subuser[]
@@ -148,18 +148,18 @@ model Allocation {
   @@map("allocations")
 }
 
-model Nest {
+model Ctrl {
   id          String   @id @default(cuid())
   name        String   @unique
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  eggs        Egg[]
+  alts        Alt[]
 
-  @@map("nests")
+  @@map("ctrls")
 }
 
-model Egg {
+model Alt {
   id              String        @id @default(cuid())
   uuid            String        @unique @default(cuid())
   name            String
@@ -180,15 +180,15 @@ model Egg {
   forceOutgoingIp Boolean       @default(false)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  nestId          String
-  variables       EggVariable[]
-  nest            Nest          @relation(fields: [nestId], references: [id], onDelete: Cascade)
+  ctrlId          String
+  variables       AltVariable[]
+  ctrl            Ctrl          @relation(fields: [ctrlId], references: [id], onDelete: Cascade)
   servers         Server[]
 
-  @@map("eggs")
+  @@map("alts")
 }
 
-model EggVariable {
+model AltVariable {
   id              String           @id @default(cuid())
   name            String
   description     String
@@ -199,11 +199,11 @@ model EggVariable {
   rules           String
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-  eggId           String
-  egg             Egg              @relation(fields: [eggId], references: [id], onDelete: Cascade)
+  altId           String
+  alt             Alt              @relation(fields: [altId], references: [id], onDelete: Cascade)
   serverVariables ServerVariable[]
 
-  @@map("egg_variables")
+  @@map("alt_variables")
 }
 
 model Database {
@@ -383,11 +383,11 @@ model ServerVariable {
   id            String      @id @default(cuid())
   variableValue String
   serverId      String
-  eggVariableId String
-  eggVariable   EggVariable @relation(fields: [eggVariableId], references: [id], onDelete: Cascade)
+  altVariableId String
+  altVariable   AltVariable @relation(fields: [altVariableId], references: [id], onDelete: Cascade)
   server        Server      @relation(fields: [serverId], references: [id], onDelete: Cascade)
 
-  @@unique([serverId, eggVariableId])
+  @@unique([serverId, altVariableId])
   @@map("server_variables")
 }
 

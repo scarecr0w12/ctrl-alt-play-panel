@@ -11,6 +11,15 @@
 
 Ctrl-Alt-Play Panel is a production-ready game server management system inspired by Pelican Panel, featuring a modern glass morphism UI, real-time monitoring, and comprehensive file management capabilities. Built with security and performance in mind.
 
+## 🎮 Terminology
+
+In Ctrl-Alt-Play, we use a theme-consistent naming convention:
+
+- **🎛️ Ctrl** - Server categories/groups (e.g., "Minecraft Servers", "FPS Games", "Survival Games")
+- **⌨️ Alt** - Individual server configurations/templates (e.g., "Minecraft Java 1.21", "Rust Vanilla", "CS2 Competitive")
+
+This replaces traditional "Nest/Egg" terminology with something that aligns with our "Ctrl-Alt-Play" branding while maintaining the same hierarchical structure: Ctrls contain multiple Alts, and users deploy servers based on specific Alt configurations.
+
 ## ✨ Key Features
 
 ### 🎯 **Core Functionality**

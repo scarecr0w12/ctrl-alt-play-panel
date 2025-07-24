@@ -30,7 +30,11 @@ export const requireRole = (roles: UserRole[]) => {
       return next(createError('Authentication required', 401));
     }
 
-    if (!roles.includes(req.user.role)) {
+    // Normalize role comparison (handle both uppercase and lowercase)
+    const userRole = req.user.role.toLowerCase() as UserRole;
+    const allowedRoles = roles.map(role => role.toLowerCase());
+
+    if (!allowedRoles.includes(userRole)) {
       return next(createError('Insufficient permissions', 403));
     }
 
