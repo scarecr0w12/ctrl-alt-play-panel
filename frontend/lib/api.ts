@@ -1,224 +1,59 @@
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 
-// Configure base URL for API calls
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://dev-panel.thecgn.net/api'
+  : 'http://localhost:3000/api';
+
+// Create axios instance with default config
 const api = axios.create({
-  baseURL: process.env.BACKEND_URL || 'http://localhost:3000',
-  timeout: 10000,
+  baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor to add auth token
-api.interceptors.request.use(
-  (config) => {
-    // Token will be added by AuthContext
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor for error handling
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Redirect to login on 401
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
-
-// API response interface
-interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  errors?: string[];
+// Types for external agent integration
+export interface AgentStatus {
+  online: boolean;
+  version?: string;
+  uptime?: number;
+  serverCount?: number;
+  lastSeen?: Date;
 }
 
-// User interfaces
-interface User {
-  id: string;
-  uuid: string;
-  email: string;
-  username: string;
-  firstName: string;
-  lastName: string;
-  role: 'USER' | 'ADMIN' | 'MODERATOR';
-  isActive: boolean;
-  lastLogin?: string;
-  language: string;
-  gravatar: boolean;
-  useTotp: boolean;
-  createdAt: string;
-  updatedAt: string;
-  _count?: {
-    servers: number;
-    apiKeys: number;
-    auditLogs?: number;
-  };
-}
-
-interface UserProfile {
-  id: string;
-  uuid: string;
-  email: string;
-  username: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  isActive: boolean;
-  lastLogin?: string;
-  language: string;
-  gravatar: boolean;
-  useTotp: boolean;
-  createdAt: string;
-  updatedAt: string;
-  _count: {
-    servers: number;
-    apiKeys: number;
-  };
-}
-
-interface ActivityLog {
-  id: string;
-  action: string;
-  metadata: any;
-  ipAddress: string;
-  userAgent?: string;
-  createdAt: string;
-}
-
-// Server interfaces
-interface Server {
-  id: string;
-  uuid: string;
-  name: string;
-  description?: string;
-  status: 'installing' | 'install_failed' | 'suspended' | 'offline' | 'starting' | 'running' | 'stopping' | 'crashed';
-  memory: number;
-  disk: number;
-  cpu: number;
-  user: {
-    username: string;
-  };
-  node: {
-    name: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ServerMetrics {
-  id: string;
-  serverId: string;
-  cpuUsage: number;
-  memoryUsage: number;
-  diskUsage: number;
-  networkRx: number;
-  networkTx: number;
-  playerCount: number;
+export interface AgentHealthStatus {
+  nodeUuid: string;
+  status: AgentStatus;
   timestamp: string;
-}
-
-interface MonitoringStats {
-  total: number;
-  running: number;
-  stopped: number;
-  cpu: number;
-  memory: number;
-  memoryTotal: number;
-  players: number;
-  timestamp: string;
-}
-
-interface Ctrl {
-  id: string;
-  name: string;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
-  alts?: Alt[];
-  _count?: {
-    alts: number;
-  };
-}
-
-interface Alt {
-  id: string;
-  uuid: string;
-  name: string;
-  description?: string;
-  author: string;
-  dockerImages: any;
-  startup: string;
-  configFiles: any;
-  configStartup: any;
-  configLogs: any;
-  configStop?: string;
-  scriptInstall?: string;
-  scriptEntry: string;
-  scriptContainer: string;
-  copyScriptFrom?: string;
-  features?: any;
-  fileDenylist?: any;
-  forceOutgoingIp: boolean;
-  createdAt: string;
-  updatedAt: string;
-  ctrlId: string;
-  ctrl?: Ctrl;
-  variables?: AltVariable[];
-  _count?: {
-    servers: number;
-  };
-}
-
-interface AltVariable {
-  id: string;
-  name: string;
-  description: string;
-  envVariable: string;
-  defaultValue: string;
-  userViewable: boolean;
-  userEditable: boolean;
-  rules: string;
-  createdAt: string;
-  updatedAt: string;
-  altId: string;
 }
 
 // Auth API
 export const authApi = {
   login: (email: string, password: string) =>
-    api.post<ApiResponse>('/api/auth/login', { email, password }),
-  
-  register: (userData: {
-    email: string;
-    username: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-  }) => api.post<ApiResponse>('/api/auth/register', userData),
+    api.post('/auth/login', { email, password }),
+  register: (username: string, email: string, password: string) =>
+    api.post('/auth/register', { username, email, password }),
+  logout: () => api.post('/auth/logout'),
+  me: () => api.get('/auth/me'),
+  refreshToken: () => api.post('/auth/refresh'),
+};
+
+// Users API
+export const usersApi = {
+  getAll: () => api.get('/users'),
+  getById: (id: string) => api.get(`/users/${id}`),
+  create: (userData: any) => api.post('/users', userData),
+  update: (id: string, userData: any) => api.put(`/users/${id}`, userData),
+  delete: (id: string) => api.delete(`/users/${id}`),
+  updatePassword: (id: string, passwordData: any) => api.put(`/users/${id}/password`, passwordData),
 };
 
 // Servers API
 export const serversApi = {
-  getAll: () => api.get<ApiResponse<Server[]>>('/api/servers'),
-  
-  getById: (id: string) => api.get<ApiResponse<Server>>(`/api/servers/${id}`),
-  
-  getStatus: (id: string) => api.get<ApiResponse>(`/api/servers/${id}/status`),
-  
-  getMetrics: (id: string, params?: { 
-    from?: string; 
-    to?: string; 
-    interval?: string; 
-  }) => api.get<ApiResponse<ServerMetrics[]>>(`/api/servers/${id}/metrics`, { params }),
-  
+  getAll: () => api.get('/servers'),
+  getById: (id: string) => api.get(`/servers/${id}`),
+  getStatus: (id: string) => api.get(`/servers/${id}/status`),
   create: (serverData: {
     name: string;
     description?: string;
@@ -227,302 +62,53 @@ export const serversApi = {
     memory: number;
     disk: number;
     cpu: number;
-  }) => api.post<ApiResponse<Server>>('/api/servers', serverData),
-  
-  update: (id: string, updates: Partial<Server>) => 
-    api.patch<ApiResponse<Server>>(`/api/servers/${id}`, updates),
-  
-  delete: (id: string) => api.delete<ApiResponse>(`/api/servers/${id}`),
-  
-  start: (id: string) => api.post<ApiResponse>(`/api/servers/${id}/start`),
-  
-  stop: (id: string) => api.post<ApiResponse>(`/api/servers/${id}/stop`),
-  
-  restart: (id: string) => api.post<ApiResponse>(`/api/servers/${id}/restart`),
-  
-  kill: (id: string) => api.post<ApiResponse>(`/api/servers/${id}/kill`),
+    swap?: number;
+    io?: number;
+    environment?: Record<string, string>;
+    skipScripts?: boolean;
+  }) => api.post('/servers', serverData),
+  start: (id: string) => api.post(`/servers/${id}/start`),
+  stop: (id: string, signal?: string, timeout?: number) => 
+    api.post(`/servers/${id}/stop`, { signal, timeout }),
+  restart: (id: string) => api.post(`/servers/${id}/restart`),
+  kill: (id: string) => api.post(`/servers/${id}/kill`),
+  getNodes: () => api.get('/servers/nodes'),
+  getTemplates: (ctrlId?: string) => 
+    api.get(`/servers/templates${ctrlId ? `?ctrlId=${ctrlId}` : ''}`),
+  getCategories: () => api.get('/servers/categories'),
 };
 
 // Monitoring API
 export const monitoringApi = {
-  getServerMetrics: (serverId: string) =>
-    api.get<ApiResponse<ServerMetrics>>(`/api/monitoring/servers/${serverId}/current`),
-  
-  getHistoricalMetrics: (serverId: string, params?: {
-    from?: string;
-    to?: string;
-    interval?: string;
-  }) => api.get<ApiResponse<ServerMetrics[]>>(`/api/monitoring/servers/${serverId}/metrics`, { params }),
-  
-  getStats: () => api.get<ApiResponse<MonitoringStats>>('/api/monitoring/stats'),
-  
-  collectMetrics: () => api.post<ApiResponse>('/api/monitoring/collect'),
+  getHealth: () => api.get('/monitoring/health'),
+  getMetrics: () => api.get('/monitoring/metrics'),
+  getSystemStats: () => api.get('/monitoring/system'),
 };
 
-// User Profile API
-export const userProfileApi = {
-  // Get current user profile
-  getProfile: () => api.get<ApiResponse<UserProfile>>('/api/user/profile'),
-  
-  // Update current user profile
-  updateProfile: (data: {
-    firstName: string;
-    lastName: string;
-    language?: string;
-    gravatar?: boolean;
-  }) => api.put<ApiResponse<UserProfile>>('/api/user/profile', data),
-  
-  // Change password
-  changePassword: (data: {
-    currentPassword: string;
-    newPassword: string;
-    confirmPassword: string;
-  }) => api.put<ApiResponse>('/api/user/change-password', data),
-  
-  // Change email
-  changeEmail: (data: {
-    newEmail: string;
-    password: string;
-  }) => api.put<ApiResponse<UserProfile>>('/api/user/change-email', data),
-  
-  // Get user activity log
-  getActivity: (params?: {
-    page?: number;
-    limit?: number;
-  }) => api.get<ApiResponse<{
-    activities: ActivityLog[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
-  }>>('/api/user/activity', { params }),
-};
-
-// User Management API (Admin)
-export const userManagementApi = {
-  // Get all users
-  getUsers: (params?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    role?: string;
-    isActive?: string;
-  }) => api.get<ApiResponse<{
-    users: User[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
-  }>>('/api/users', { params }),
-  
-  // Get specific user
-  getUser: (id: string) => api.get<ApiResponse<User>>(`/api/users/${id}`),
-  
-  // Update user
-  updateUser: (id: string, data: {
-    firstName?: string;
-    lastName?: string;
-    role?: string;
-    isActive?: boolean;
-    language?: string;
-  }) => api.put<ApiResponse<User>>(`/api/users/${id}`, data),
-  
-  // Delete user
-  deleteUser: (id: string) => api.delete<ApiResponse>(`/api/users/${id}`),
-  
-  // Reset user password
-  resetPassword: (id: string, data: {
-    newPassword: string;
-  }) => api.post<ApiResponse>(`/api/users/${id}/reset-password`, data),
-};
-
-// Files API
-export const filesApi = {
-  list: (path: string = '/') => 
-    api.get<ApiResponse>('/api/files/list', { params: { path } }),
-  
-  read: (path: string) => 
-    api.get<ApiResponse<{ content: string }>>('/api/files/read', { params: { path } }),
-  
-  write: (path: string, content: string) => 
-    api.post<ApiResponse>('/api/files/write', { path, content }),
-  
-  delete: (path: string) => 
-    api.delete<ApiResponse>('/api/files/delete', { params: { path } }),
-  
-  createDirectory: (path: string) => 
-    api.post<ApiResponse>('/api/files/directory', { path }),
-  
-  upload: (formData: FormData) => 
-    api.post<ApiResponse>('/api/files/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
-};
-
-// Workshop API
-export const workshopApi = {
-  search: (query: string, page?: number) => 
-    api.get<ApiResponse>('/api/workshop/search', { 
-      params: { query, page } 
-    }),
-  
-  getItem: (id: string) => 
-    api.get<ApiResponse>(`/api/workshop/items/${id}`),
-  
-  install: (serverId: string, itemId: string) => 
-    api.post<ApiResponse>(`/api/workshop/servers/${serverId}/install`, { itemId }),
-};
-
-// Ctrl management (Categories)
-export const ctrlsApi = {
-  getAll: () => api.get<ApiResponse<Ctrl[]>>('/api/ctrls'),
-  getById: (id: string) => api.get<ApiResponse<Ctrl>>(`/api/ctrls/${id}`),
-  create: (data: Partial<Ctrl>) => api.post<ApiResponse<Ctrl>>('/api/ctrls', data),
-  update: (id: string, data: Partial<Ctrl>) => api.put<ApiResponse<Ctrl>>(`/api/ctrls/${id}`, data),
-  delete: (id: string) => api.delete<ApiResponse>(`/api/ctrls/${id}`),
-};
-
-// Alt management (Server configurations)
-export const altsApi = {
-  getAll: (ctrlId?: string) => 
-    api.get<ApiResponse<Alt[]>>('/api/alts', { 
-      params: ctrlId ? { ctrlId } : {} 
-    }),
-  getById: (id: string) => api.get<ApiResponse<Alt>>(`/api/alts/${id}`),
-  create: (data: Partial<Alt>) => api.post<ApiResponse<Alt>>('/api/alts', data),
-  update: (id: string, data: Partial<Alt>) => api.put<ApiResponse<Alt>>(`/api/alts/${id}`, data),
-  delete: (id: string) => api.delete<ApiResponse>(`/api/alts/${id}`),
-  import: (ctrlId: string, altData: any) => 
-    api.post<ApiResponse<Alt>>(`/api/alts/import`, { ctrlId, altData }),
-  export: (id: string) => api.get<ApiResponse<any>>(`/api/alts/${id}/export`),
-};
-
-// External Agent interfaces
-interface AgentStatus {
-  nodeUuid: string;
-  isOnline: boolean;
-  lastSeen: string;
-  baseUrl: string;
-  apiKey?: string;
-  metadata?: any;
-}
-
-interface AgentHealthStatus {
-  nodeUuid: string;
-  status: {
-    online: boolean;
-    lastSeen: string;
-    responseTime?: number;
-    error?: string;
-  };
-}
-
-interface AgentCommand {
-  action: string;
-  serverId?: string;
-  parameters?: any;
-}
-
-interface AgentCommandResult {
-  success: boolean;
-  data?: any;
-  error?: string;
-  timestamp: string;
-}
-
-// External Agent API
+// Agents API
 export const agentsApi = {
-  // Get all registered agents
-  getAll: () => api.get<ApiResponse<AgentStatus[]>>('/api/agents'),
-  
-  // Get agent status for specific node
-  getStatus: (nodeUuid: string) => 
-    api.get<ApiResponse<{ nodeUuid: string; status: any }>>(`/api/agents/${nodeUuid}/status`),
-  
-  // Manually register an agent
-  register: (nodeUuid: string, baseUrl: string, apiKey?: string) => 
-    api.post<ApiResponse<{ nodeUuid: string; baseUrl: string }>>('/api/agents/register', {
-      nodeUuid,
-      baseUrl,
-      apiKey,
-    }),
-  
-  // Unregister an agent
-  unregister: (nodeUuid: string) => 
-    api.delete<ApiResponse<{ nodeUuid: string }>>(`/api/agents/${nodeUuid}`),
-  
-  // Force agent discovery
-  discover: () => 
-    api.post<ApiResponse<{ message: string }>>('/api/agents/discover'),
-  
-  // Send command to agent
-  sendCommand: (nodeUuid: string, command: AgentCommand) => 
-    api.post<ApiResponse<AgentCommandResult>>(`/api/agents/${nodeUuid}/command`, command),
-  
-  // Health check for all agents
-  healthCheckAll: () => 
-    api.get<ApiResponse<AgentHealthStatus[]>>('/api/agents/health/all'),
-  
-  // Server control commands via agents
-  servers: {
-    start: (nodeUuid: string, serverId: string) => 
-      api.post<ApiResponse<AgentCommandResult>>(`/api/agents/${nodeUuid}/command`, {
-        action: 'server.start',
-        serverId,
-      }),
-    
-    stop: (nodeUuid: string, serverId: string) => 
-      api.post<ApiResponse<AgentCommandResult>>(`/api/agents/${nodeUuid}/command`, {
-        action: 'server.stop',
-        serverId,
-      }),
-    
-    restart: (nodeUuid: string, serverId: string) => 
-      api.post<ApiResponse<AgentCommandResult>>(`/api/agents/${nodeUuid}/command`, {
-        action: 'server.restart',
-        serverId,
-      }),
-    
-    kill: (nodeUuid: string, serverId: string) => 
-      api.post<ApiResponse<AgentCommandResult>>(`/api/agents/${nodeUuid}/command`, {
-        action: 'server.kill',
-        serverId,
-      }),
-    
-    sendConsoleCommand: (nodeUuid: string, serverId: string, command: string) => 
-      api.post<ApiResponse<AgentCommandResult>>(`/api/agents/${nodeUuid}/command`, {
-        action: 'server.console',
-        serverId,
-        parameters: { command },
-      }),
-  },
+  getAll: () => api.get('/agents'),
+  getById: (id: string) => api.get(`/agents/${id}`),
+  register: (agentData: { nodeUuid: string; baseUrl: string; apiKey: string }) => 
+    api.post('/agents/register', agentData),
+  unregister: (id: string) => api.delete(`/agents/${id}`),
+  getStatus: (id: string) => api.get(`/agents/${id}/status`),
+  sendCommand: (id: string, command: any) => api.post(`/agents/${id}/command`, command),
+  healthCheck: () => api.get('/agents/health'),
+  healthCheckAll: () => api.get('/agents/health-all'),
+  discover: () => api.post('/agents/discover'),
 };
 
-// Health check
-export const healthApi = {
-  check: () => api.get<{ status: string; timestamp: string; uptime: number }>('/health'),
-};
-
-// Export interfaces for use in components
-export type { 
-  User, 
-  UserProfile, 
-  ActivityLog, 
-  Server, 
-  ServerMetrics, 
-  MonitoringStats, 
-  Ctrl, 
-  Alt, 
-  AltVariable,
-  AgentStatus,
-  AgentHealthStatus,
-  AgentCommand,
-  AgentCommandResult,
-  ApiResponse 
+// Steam Workshop API
+export const steamApi = {
+  search: (query: string, type?: string) => 
+    api.get(`/steam/search?q=${encodeURIComponent(query)}${type ? `&type=${type}` : ''}`),
+  getItem: (id: string) => api.get(`/steam/item/${id}`),
+  install: (serverId: string, itemId: string) => 
+    api.post(`/steam/install`, { serverId, itemId }),
+  getInstalled: (serverId: string) => api.get(`/steam/installed/${serverId}`),
+  uninstall: (serverId: string, itemId: string) => 
+    api.delete(`/steam/installed/${serverId}/${itemId}`),
 };
 
 export default api;

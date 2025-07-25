@@ -166,6 +166,17 @@ export class ExternalAgentService {
   }
 
   /**
+   * Create a server via external agent
+   */
+  public async createServer(nodeUuid: string, serverId: string, serverConfig: any): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'create_server',
+      serverId,
+      payload: serverConfig
+    });
+  }
+
+  /**
    * Start a server via external agent
    */
   public async startServer(nodeUuid: string, serverId: string): Promise<AgentResponse> {
