@@ -2,11 +2,14 @@
 
 A modern, secure game server management panel built with **Panel+Agent distributed architecture**. Features real-time server control, comprehensive monitoring, and enterprise-grade security.
 
+![Version](https://img.shields.io/github/v/tag/scarecr0w12/ctrl-alt-play-panel?label=version&color=blue)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/node-18+-green.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)
 ![React](https://img.shields.io/badge/React-18+-blue.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-Panel%2BAgent-orange.svg)
+![Build Status](https://img.shields.io/badge/build-passing-green.svg)
+![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)
 
 ## 🏗️ Architecture Overview
 

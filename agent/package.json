@@ -1,6 +1,6 @@
 {
   "name": "ctrl-alt-play-agent",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Ctrl-Alt-Play Panel Test Agent",
   "main": "dist/index.js",
   "scripts": {

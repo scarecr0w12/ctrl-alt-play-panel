@@ -1,6 +1,6 @@
 {
   "name": "ctrl-alt-play",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A comprehensive web-based game server management system - Ctrl-Alt-Play Panel Server",
   "main": "dist/src/index.js",
   "scripts": {
