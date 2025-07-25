@@ -24,7 +24,6 @@ Thank you for your interest in contributing to Ctrl-Alt-Play Panel! This guide w
    ```bash
    npm install
    cd frontend && npm install && cd ..
-   cd agent && npm install && cd ..
    ```
 
 3. **Environment Setup**
@@ -275,10 +274,8 @@ Contributors will be recognized in:
 
 ## 📞 Getting Help
 
-- **Discord**: [Community Server](https://discord.gg/ctrl-alt-play)
 - **GitHub Issues**: For bugs and feature requests
 - **GitHub Discussions**: For questions and general discussion
-- **Email**: maintainers@ctrl-alt-play.dev
 
 ## 📄 License
 
