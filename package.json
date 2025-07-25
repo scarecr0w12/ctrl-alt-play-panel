@@ -14,6 +14,7 @@
     "test:integration": "jest --testPathPattern=integration",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
+    "type-check": "tsc --noEmit",
     "docker:build": "docker build -t game-panel .",
     "docker:run": "docker run -p 3000:3000 game-panel",
     "migrate": "prisma migrate dev",
