@@ -108,28 +108,51 @@ class GamePanelApp {
     // Serve static files (frontend)
     this.app.use(express.static('public'));
 
-    // Console interface route
+    // Redirect console route to React frontend
     this.app.get('/console', (req, res) => {
-      res.sendFile('console.html', { root: 'public' });
+      res.redirect('http://localhost:3001/console');
     });
 
-    // Root route - serve landing page
+    // Root route - redirect to React frontend
     this.app.get('/', (req, res) => {
-      res.sendFile('index.html', { root: 'public' });
+      res.redirect('http://localhost:3001/');
+    });
+
+    // Redirect old HTML routes to React frontend
+    this.app.get('/dashboard.html', (req, res) => {
+      res.redirect('http://localhost:3001/dashboard');
+    });
+
+    this.app.get('/login.html', (req, res) => {
+      res.redirect('http://localhost:3001/login');
+    });
+
+    this.app.get('/register.html', (req, res) => {
+      res.redirect('http://localhost:3001/register');
+    });
+
+    this.app.get('/files.html', (req, res) => {
+      res.redirect('http://localhost:3001/files');
+    });
+
+    this.app.get('/console.html', (req, res) => {
+      res.redirect('http://localhost:3001/console');
     });
 
     // Catch-all route for undefined endpoints
     this.app.get('*', (req, res) => {
       res.status(404).json({
         error: 'Page not found',
-        message: 'The requested page does not exist',
+        message: 'The requested page does not exist. Please use the React frontend at http://localhost:3001',
+        reactFrontend: 'http://localhost:3001',
         availablePages: [
-          '/',
-          '/login.html',
-          '/register.html',
-          '/dashboard.html',
-          '/files.html',
-          '/console.html'
+          'http://localhost:3001/',
+          'http://localhost:3001/login',
+          'http://localhost:3001/register', 
+          'http://localhost:3001/dashboard',
+          'http://localhost:3001/files',
+          'http://localhost:3001/console',
+          'http://localhost:3001/servers'
         ]
       });
     });
@@ -277,8 +300,9 @@ class GamePanelApp {
       logger.info(`🏥 Health check: http://localhost:${this.port}/health`);
       logger.info(`📊 Monitoring API: http://localhost:${this.port}/api/monitoring`);
       logger.info(`🎮 Workshop API: http://localhost:${this.port}/api/workshop`);
-      logger.info(`🎛️  Console Interface: http://localhost:${this.port}/console.html`);
-      
+      logger.info(`🎛️  React Frontend: http://localhost:3001`);
+      logger.info(`🎯 Backend API: http://localhost:${this.port}/api`);
+
       // Start monitoring scheduler
       this.startMonitoringScheduler();
     });

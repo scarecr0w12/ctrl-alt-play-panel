@@ -13,7 +13,7 @@
 
 ## Current Goals
 
-- GitHub issues successfully updated to reflect Panel+Agent architecture. Issue #27 marked as completed, Issues #28 and #12 updated with architectural context and dependencies. Project now has accurate GitHub project management representation of the Panel+Agent distributed system implementation and next development priorities.
+- Cleaning up old HTML system and migrating fully to React frontend. Found: 1) Old HTML files in /public/ that need removal, 2) Backend routes serving old HTML files, 3) Empty React components (console.tsx, files.tsx) that need implementation, 4) Need to redirect all routes to React frontend
 
 ## Active Development Tasks
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { serversApi, monitoringApi, healthApi } from '@/lib/api';
@@ -8,6 +9,7 @@ import {
   UsersIcon,
   ChartBarIcon,
   ClockIcon,
+  SignalIcon,
 } from '@heroicons/react/24/outline';
 
 interface DashboardStats {
@@ -15,15 +17,24 @@ interface DashboardStats {
   runningServers: number;
   totalUsers: number;
   systemUptime: string;
+  cpu: number;
+  memory: number;
+  memoryTotal: number;
+  players: number;
 }
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { connected, metrics, serverStatus, joinMonitoring, leaveMonitoring } = useWebSocket();
   const [stats, setStats] = useState<DashboardStats>({
     totalServers: 0,
     runningServers: 0,
     totalUsers: 0,
     systemUptime: '0h 0m',
+    cpu: 0,
+    memory: 0,
+    memoryTotal: 16384,
+    players: 0,
   });
   const [servers, setServers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +42,41 @@ export default function DashboardPage() {
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    // Join monitoring updates when component mounts
+    if (connected) {
+      joinMonitoring();
+    }
+    
+    return () => {
+      // Leave monitoring when component unmounts
+      leaveMonitoring();
+    };
+  }, [connected, joinMonitoring, leaveMonitoring]);
+
+  useEffect(() => {
+    // Update stats with real-time metrics
+    if (metrics) {
+      setStats(prev => ({
+        ...prev,
+        cpu: metrics.cpu,
+        memory: metrics.memory,
+        players: metrics.players,
+      }));
+    }
+  }, [metrics]);
+
+  useEffect(() => {
+    // Update stats with real-time server status
+    if (serverStatus) {
+      setStats(prev => ({
+        ...prev,
+        totalServers: serverStatus.total,
+        runningServers: serverStatus.running,
+      }));
+    }
+  }, [serverStatus]);
 
   const loadDashboardData = async () => {
     try {
@@ -47,6 +93,25 @@ export default function DashboardPage() {
           totalServers: serverList.length,
           runningServers: serverList.filter(s => s.status === 'running').length,
         }));
+      }
+
+      // Load monitoring stats
+      try {
+        const statsResponse = await monitoringApi.getStats();
+        if (statsResponse.data.success && statsResponse.data.data) {
+          const monitoringData = statsResponse.data.data;
+          setStats(prev => ({
+            ...prev,
+            totalServers: monitoringData.total || prev.totalServers,
+            runningServers: monitoringData.running || prev.runningServers,
+            cpu: monitoringData.cpu || 0,
+            memory: monitoringData.memory || 0,
+            memoryTotal: monitoringData.memoryTotal || 16384,
+            players: monitoringData.players || 0,
+          }));
+        }
+      } catch (error) {
+        console.log('Monitoring stats not available yet:', error);
       }
       
       // Load health info
@@ -97,8 +162,10 @@ export default function DashboardPage() {
                 {new Date().toLocaleTimeString()}
               </div>
               <div className="flex items-center space-x-2 mt-1">
-                <div className="status-indicator status-online" />
-                <span className="text-sm text-gray-400">Panel Online</span>
+                <div className={`status-indicator ${connected ? 'status-online' : 'status-offline'}`} />
+                <span className="text-sm text-gray-400">
+                  {connected ? 'Real-time Connected' : 'Real-time Disconnected'}
+                </span>
               </div>
             </div>
           </div>
@@ -125,7 +192,12 @@ export default function DashboardPage() {
           </div>
 
           {/* Running Servers */}
-          <div className="glass-card rounded-xl p-6 hover:scale-105 transition-transform duration-200">
+          <div className="glass-card rounded-xl p-6 hover:scale-105 transition-transform duration-200 relative">
+            {connected && (
+              <div className="absolute top-3 right-3">
+                <div className="h-2 w-2 bg-green-400 rounded-full animate-pulse"></div>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Running Servers</p>
@@ -142,35 +214,120 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* System Uptime */}
-          <div className="glass-card rounded-xl p-6 hover:scale-105 transition-transform duration-200">
+          {/* CPU Usage */}
+          <div className="glass-card rounded-xl p-6 hover:scale-105 transition-transform duration-200 relative">
+            {connected && (
+              <div className="absolute top-3 right-3">
+                <div className="h-2 w-2 bg-yellow-400 rounded-full animate-pulse"></div>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">System Uptime</p>
-                <p className="text-2xl font-bold text-white">{stats.systemUptime}</p>
+                <p className="text-gray-400 text-sm">CPU Usage</p>
+                <p className="text-2xl font-bold text-white">{stats.cpu.toFixed(1)}%</p>
               </div>
-              <div className="w-12 h-12 bg-purple-600/20 rounded-lg flex items-center justify-center">
-                <ClockIcon className="w-6 h-6 text-purple-400" />
+              <div className="w-12 h-12 bg-yellow-600/20 rounded-lg flex items-center justify-center">
+                <ClockIcon className="w-6 h-6 text-yellow-400" />
               </div>
             </div>
             <div className="mt-4">
-              <span className="text-green-400 text-sm">Healthy</span>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-yellow-400 text-sm">Load</span>
+                <span className="text-gray-400 text-xs">{stats.cpu > 80 ? 'High' : stats.cpu > 50 ? 'Medium' : 'Low'}</span>
+              </div>
+              <div className="bg-white/10 rounded-full h-2">
+                <div 
+                  className="bg-yellow-400 rounded-full h-2 transition-all duration-500"
+                  style={{ width: `${Math.min(stats.cpu, 100)}%` }}
+                ></div>
+              </div>
             </div>
           </div>
 
-          {/* Users */}
-          <div className="glass-card rounded-xl p-6 hover:scale-105 transition-transform duration-200">
+          {/* Memory Usage */}
+          <div className="glass-card rounded-xl p-6 hover:scale-105 transition-transform duration-200 relative">
+            {connected && (
+              <div className="absolute top-3 right-3">
+                <div className="h-2 w-2 bg-purple-400 rounded-full animate-pulse"></div>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Active Users</p>
-                <p className="text-2xl font-bold text-white">{stats.totalUsers}</p>
+                <p className="text-gray-400 text-sm">Memory Usage</p>
+                <p className="text-2xl font-bold text-white">{((stats.memory / stats.memoryTotal) * 100).toFixed(1)}%</p>
               </div>
-              <div className="w-12 h-12 bg-indigo-600/20 rounded-lg flex items-center justify-center">
-                <UsersIcon className="w-6 h-6 text-indigo-400" />
+              <div className="w-12 h-12 bg-purple-600/20 rounded-lg flex items-center justify-center">
+                <UsersIcon className="w-6 h-6 text-purple-400" />
               </div>
             </div>
             <div className="mt-4">
-              <span className="text-green-400 text-sm">Online now</span>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-purple-400 text-sm">{stats.memory}MB / {stats.memoryTotal}MB</span>
+              </div>
+              <div className="bg-white/10 rounded-full h-2">
+                <div 
+                  className="bg-purple-400 rounded-full h-2 transition-all duration-500"
+                  style={{ width: `${Math.min((stats.memory / stats.memoryTotal) * 100, 100)}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Real-time Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="glass-card rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Player Activity</h3>
+              {connected && (
+                <div className="flex items-center space-x-2">
+                  <div className="h-2 w-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-green-400">Live</span>
+                </div>
+              )}
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Total Players Online</span>
+                <span className="text-2xl font-bold text-white">{stats.players}</span>
+              </div>
+              <div className="bg-white/10 rounded-full h-3">
+                <div 
+                  className="bg-gradient-to-r from-blue-400 to-green-400 rounded-full h-3 transition-all duration-500"
+                  style={{ width: `${Math.min((stats.players / 100) * 100, 100)}%` }}
+                ></div>
+              </div>
+              <div className="text-xs text-gray-400">
+                Peak today: {Math.max(stats.players, 0)} players
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">System Health</h3>
+              {connected && (
+                <div className="flex items-center space-x-2">
+                  <div className="h-2 w-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-green-400">Live</span>
+                </div>
+              )}
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Uptime</span>
+                <span className="text-white font-medium">{stats.systemUptime}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Status</span>
+                <span className="text-green-400 font-medium">
+                  {stats.cpu < 80 && (stats.memory / stats.memoryTotal) * 100 < 90 ? 'Healthy' : 'Warning'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Active Servers</span>
+                <span className="text-white font-medium">{stats.runningServers}/{stats.totalServers}</span>
+              </div>
             </div>
           </div>
         </div>

@@ -32,6 +32,7 @@ const navigation: NavItem[] = [
   { name: 'Servers', href: '/servers', icon: ServerIcon },
   { name: 'Console', href: '/console', icon: CommandLineIcon },
   { name: 'Files', href: '/files', icon: FolderIcon },
+  { name: 'Configurations', href: '/ctrls', icon: CogIcon, adminOnly: true },
   { name: 'Monitoring', href: '/monitoring', icon: ChartBarIcon },
   { name: 'Users', href: '/users', icon: UserGroupIcon, adminOnly: true },
   { name: 'Settings', href: '/settings', icon: CogIcon },

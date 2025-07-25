@@ -17,6 +17,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
+  register: (username: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -73,9 +74,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setLoading(true);
-      const response = await axios.post('/api/auth/login', {
+      const response = await axios.post(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/auth/login`, {
         email,
-        password,
+        password
       });
 
       if (response.data.success) {
@@ -112,6 +113,49 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const register = async (username: string, email: string, password: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      const response = await axios.post(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/auth/register`, {
+        username,
+        email,
+        password
+      });
+
+      if (response.data.success) {
+        const { token, user: userData } = response.data.data;
+        
+        // Store token and user data in secure cookies
+        Cookies.set('authToken', token, { 
+          expires: 7, // 7 days
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict'
+        });
+        Cookies.set('user', JSON.stringify(userData), { 
+          expires: 7,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict'
+        });
+
+        // Set axios default header
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        setUser(userData);
+        toast.success(`Welcome to Ctrl+Alt+Play, ${userData.firstName}!`);
+        return true;
+      } else {
+        toast.error(response.data.message || 'Registration failed');
+        return false;
+      }
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      toast.error(error.response?.data?.message || 'Registration failed');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
     // Remove cookies
     Cookies.remove('authToken');
@@ -128,6 +172,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     user,
     loading,
     login,
+    register,
     logout,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',

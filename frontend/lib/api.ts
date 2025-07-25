@@ -72,6 +72,72 @@ interface ServerMetrics {
   timestamp: string;
 }
 
+interface MonitoringStats {
+  total: number;
+  running: number;
+  stopped: number;
+  cpu: number;
+  memory: number;
+  memoryTotal: number;
+  players: number;
+  timestamp: string;
+}
+
+interface Ctrl {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  alts?: Alt[];
+  _count?: {
+    alts: number;
+  };
+}
+
+interface Alt {
+  id: string;
+  uuid: string;
+  name: string;
+  description?: string;
+  author: string;
+  dockerImages: any;
+  startup: string;
+  configFiles: any;
+  configStartup: any;
+  configLogs: any;
+  configStop?: string;
+  scriptInstall?: string;
+  scriptEntry: string;
+  scriptContainer: string;
+  copyScriptFrom?: string;
+  features?: any;
+  fileDenylist?: any;
+  forceOutgoingIp: boolean;
+  createdAt: string;
+  updatedAt: string;
+  ctrlId: string;
+  ctrl?: Ctrl;
+  variables?: AltVariable[];
+  _count?: {
+    servers: number;
+  };
+}
+
+interface AltVariable {
+  id: string;
+  name: string;
+  description: string;
+  envVariable: string;
+  defaultValue: string;
+  userViewable: boolean;
+  userEditable: boolean;
+  rules: string;
+  createdAt: string;
+  updatedAt: string;
+  altId: string;
+}
+
 // Auth API
 export const authApi = {
   login: (email: string, password: string) =>
@@ -135,6 +201,8 @@ export const monitoringApi = {
     interval?: string;
   }) => api.get<ApiResponse<ServerMetrics[]>>(`/api/monitoring/servers/${serverId}/metrics`, { params }),
   
+  getStats: () => api.get<ApiResponse<MonitoringStats>>('/api/monitoring/stats'),
+  
   collectMetrics: () => api.post<ApiResponse>('/api/monitoring/collect'),
 };
 
@@ -173,6 +241,30 @@ export const workshopApi = {
   
   install: (serverId: string, itemId: string) => 
     api.post<ApiResponse>(`/api/workshop/servers/${serverId}/install`, { itemId }),
+};
+
+// Ctrl management (Categories)
+export const ctrlsApi = {
+  getAll: () => api.get<ApiResponse<Ctrl[]>>('/api/ctrls'),
+  getById: (id: string) => api.get<ApiResponse<Ctrl>>(`/api/ctrls/${id}`),
+  create: (data: Partial<Ctrl>) => api.post<ApiResponse<Ctrl>>('/api/ctrls', data),
+  update: (id: string, data: Partial<Ctrl>) => api.put<ApiResponse<Ctrl>>(`/api/ctrls/${id}`, data),
+  delete: (id: string) => api.delete<ApiResponse>(`/api/ctrls/${id}`),
+};
+
+// Alt management (Server configurations)
+export const altsApi = {
+  getAll: (ctrlId?: string) => 
+    api.get<ApiResponse<Alt[]>>('/api/alts', { 
+      params: ctrlId ? { ctrlId } : {} 
+    }),
+  getById: (id: string) => api.get<ApiResponse<Alt>>(`/api/alts/${id}`),
+  create: (data: Partial<Alt>) => api.post<ApiResponse<Alt>>('/api/alts', data),
+  update: (id: string, data: Partial<Alt>) => api.put<ApiResponse<Alt>>(`/api/alts/${id}`, data),
+  delete: (id: string) => api.delete<ApiResponse>(`/api/alts/${id}`),
+  import: (ctrlId: string, altData: any) => 
+    api.post<ApiResponse<Alt>>(`/api/alts/import`, { ctrlId, altData }),
+  export: (id: string) => api.get<ApiResponse<any>>(`/api/alts/${id}/export`),
 };
 
 // Health check
