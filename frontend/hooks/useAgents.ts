@@ -43,7 +43,7 @@ export const useAgents = (autoRefresh = true, refreshInterval = 30000): UseAgent
       
       if (response.data.success && response.data.data) {
         const healthMap = new Map<string, AgentHealthStatus>();
-        response.data.data.forEach(health => {
+        response.data.data.forEach((health: AgentHealthStatus) => {
           healthMap.set(health.nodeUuid, health);
         });
         setHealthStatuses(healthMap);
@@ -69,7 +69,11 @@ export const useAgents = (autoRefresh = true, refreshInterval = 30000): UseAgent
   const registerAgent = useCallback(async (nodeUuid: string, baseUrl: string, apiKey?: string): Promise<boolean> => {
     try {
       setError(null);
-      const response = await agentsApi.register(nodeUuid, baseUrl, apiKey);
+      const response = await agentsApi.register({ 
+        nodeUuid, 
+        baseUrl, 
+        apiKey: apiKey || '' 
+      });
       
       if (response.data.success) {
         await refreshAgents();

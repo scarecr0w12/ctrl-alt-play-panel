@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
-import { altsApi, ctrlsApi, serversApi } from '@/lib/api';
+import { serversApi } from '@/lib/api';
 import {
   ArrowLeftIcon,
   ServerIcon,
@@ -112,7 +112,7 @@ export default function CreateServerPage() {
   const loadCtrls = async () => {
     try {
       setLoading(true);
-      const response = await ctrlsApi.getAll();
+      const response = await serversApi.getCategories();
       if (response.data.success) {
         setCtrls(response.data.data || []);
       }
@@ -125,7 +125,7 @@ export default function CreateServerPage() {
 
   const loadAlts = async (ctrlId: string) => {
     try {
-      const response = await altsApi.getAll(ctrlId);
+      const response = await serversApi.getTemplates(ctrlId);
       if (response.data.success) {
         setAlts(response.data.data || []);
       }
