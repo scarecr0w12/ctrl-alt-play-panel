@@ -4,6 +4,7 @@ import { usePermissions } from '@/contexts/PermissionContext';
 import Layout from '@/components/Layout';
 import ProtectedRoute, { PermissionGuard } from '@/components/PermissionGuard';
 import { serversApi } from '@/lib/api';
+import { useAgents } from '@/hooks/useAgents';
 import {
   ServerIcon,
   PlayIcon,
@@ -12,6 +13,9 @@ import {
   TrashIcon,
   PlusIcon,
   EllipsisVerticalIcon,
+  ExclamationTriangleIcon,
+  CheckCircleIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
 import { Menu } from '@headlessui/react';
 
@@ -29,6 +33,7 @@ interface Server {
   };
   node: {
     name: string;
+    uuid?: string;  // Add optional uuid for external agent integration
   };
   createdAt: string;
   updatedAt: string;
@@ -40,6 +45,9 @@ function ServersPage() {
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  
+  // Get agent status for server actions
+  const { agents, healthStatuses } = useAgents();
 
   useEffect(() => {
     loadServers();
@@ -82,11 +90,66 @@ function ServersPage() {
       if (response.data.success) {
         // Refresh servers list
         await loadServers();
+      } else {
+        // Show error message
+        const errorMsg = response.data.message || (response.data.errors && response.data.errors[0]) || 'Unknown error';
+        console.error(`Server ${action} failed:`, errorMsg);
+        alert(`Failed to ${action} server: ${errorMsg}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to ${action} server:`, error);
+      let errorMessage = `Failed to ${action} server`;
+      
+      if (error.response?.data?.error) {
+        errorMessage += `: ${error.response.data.error}`;
+      } else if (error.response?.data?.message) {
+        errorMessage += `: ${error.response.data.message}`;
+      } else if (error.message) {
+        errorMessage += `: ${error.message}`;
+      }
+      
+      alert(errorMessage);
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  // Helper function to check if server's node agent is available
+  const isAgentAvailable = (server: Server) => {
+    const nodeUuid = server.node?.uuid || server.node?.name; // Fallback for different naming
+    if (!nodeUuid) return false;
+    
+    const health = healthStatuses.get(nodeUuid);
+    return health?.status.online === true;
+  };
+
+  // Helper function to get agent status for a server
+  const getAgentStatus = (server: Server) => {
+    const nodeUuid = server.node?.uuid || server.node?.name;
+    if (!nodeUuid) {
+      return {
+        available: false,
+        status: 'Unknown node',
+        color: 'text-gray-400',
+        icon: XCircleIcon,
+      };
+    }
+    
+    const health = healthStatuses.get(nodeUuid);
+    if (health?.status.online) {
+      return {
+        available: true,
+        status: 'Agent Online',
+        color: 'text-green-400',
+        icon: CheckCircleIcon,
+      };
+    } else {
+      return {
+        available: false,
+        status: 'Agent Offline',
+        color: 'text-red-400',
+        icon: XCircleIcon,
+      };
     }
   };
 
@@ -175,6 +238,9 @@ function ServersPage() {
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Node
                     </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Agent
+                    </th>
                     <th className="px-6 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Actions
                     </th>
@@ -214,8 +280,30 @@ function ServersPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                           {server.node.name}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {(() => {
+                            const agentStatus = getAgentStatus(server);
+                            const StatusIcon = agentStatus.icon;
+                            return (
+                              <div className="flex items-center space-x-2">
+                                <StatusIcon className={`w-4 h-4 ${agentStatus.color}`} />
+                                <span className={`text-xs ${agentStatus.color}`}>
+                                  {agentStatus.status}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
+                            {/* Agent Status Warning */}
+                            {!isAgentAvailable(server) && (
+                              <div className="flex items-center space-x-1">
+                                <ExclamationTriangleIcon className="w-4 h-4 text-yellow-400" />
+                                <span className="text-xs text-yellow-400">Agent Offline</span>
+                              </div>
+                            )}
+                            
                             {/* Quick Actions */}
                             <PermissionGuard permission="servers.start">
                               {canStart(server.status) && (
@@ -223,7 +311,7 @@ function ServersPage() {
                                   onClick={() => handleServerAction(server.id, 'start')}
                                   disabled={actionLoading === server.id}
                                   className="p-2 text-green-400 hover:text-green-300 hover:bg-green-400/10 rounded-lg transition-colors disabled:opacity-50"
-                                  title="Start Server"
+                                  title={isAgentAvailable(server) ? "Start Server" : "Start Server (Agent Offline - may fail)"}
                                 >
                                   <PlayIcon className="w-4 h-4" />
                                 </button>
@@ -236,7 +324,7 @@ function ServersPage() {
                                   onClick={() => handleServerAction(server.id, 'stop')}
                                   disabled={actionLoading === server.id}
                                   className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-colors disabled:opacity-50"
-                                  title="Stop Server"
+                                  title={isAgentAvailable(server) ? "Stop Server" : "Stop Server (Agent Offline - may fail)"}
                                 >
                                   <StopIcon className="w-4 h-4" />
                                 </button>
@@ -249,7 +337,7 @@ function ServersPage() {
                                   onClick={() => handleServerAction(server.id, 'restart')}
                                   disabled={actionLoading === server.id}
                                   className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 rounded-lg transition-colors disabled:opacity-50"
-                                  title="Restart Server"
+                                  title={isAgentAvailable(server) ? "Restart Server" : "Restart Server (Agent Offline - may fail)"}
                                 >
                                   <ArrowPathIcon className="w-4 h-4" />
                                 </button>
