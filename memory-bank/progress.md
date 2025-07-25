@@ -2,24 +2,20 @@
 
 ## Done
 
-- Completed external agent integration architecture
-- Removed embedded agent services in favor of external agents
-- Updated server control endpoints to use ExternalAgentService
-- Added agent discovery service for automatic agent detection
-- Created comprehensive external agent documentation
-- Cleaned up temporary files and build artifacts
-- Fixed file permissions for scripts and directories
+- Review GitHub issues against actual implementation
+- Identify major gap between completed external agent architecture and issue tracking
+- Create comprehensive frontend external agent integration issue (#30)
+- Update existing issues to reflect current completion status
+- Create agent management dashboard issue (#31)
 
 ## Doing
 
-- Updating all documentation to reflect external agent integration
-- Running tests to verify system functionality
-- Updating repository with latest changes
-- Creating shared context file for agent project coordination
+- Aligning GitHub issue tracking with implementation reality
+- Planning frontend integration with external agent architecture
 
 ## Next
 
-- Update memory bank with final project state
-- Validate all documentation is current and accurate
-- Create deployment-ready state
-- Coordinate with agent project development
+- Begin frontend external agent integration work
+- Implement agent management dashboard
+- Complete API client integration for external agents
+- Update remaining issues based on new findings
