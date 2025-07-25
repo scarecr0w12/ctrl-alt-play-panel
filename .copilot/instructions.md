@@ -1,10 +1,13 @@
 # GitHub Copilot Development Instructions
+
 # Ctrl-Alt-Play Panel - Game Server Management System
 
 ## 🎯 Project Overview
+
 This is a comprehensive web-based game server management panel inspired by Pelican Panel, built with Node.js/TypeScript, featuring a modern glass morphism UI and real-time server management capabilities.
 
 ## 🏗️ Architecture & Stack
+
 - **Backend**: Node.js 18+ with TypeScript, Express.js framework
 - **Database**: PostgreSQL with Prisma ORM
 - **Cache**: Redis for session management and caching
@@ -14,6 +17,7 @@ This is a comprehensive web-based game server management panel inspired by Pelic
 - **Deployment**: Docker with Docker Compose, Nginx reverse proxy
 
 ## 📁 Project Structure
+
 ```
 ctrl-alt-play/
 ├── src/
@@ -41,7 +45,9 @@ ctrl-alt-play/
 ## 🚀 Development Context & History
 
 ### Initial Requirements
+
 User requested: "Continue: 'Continue to iterate?'" leading to implementation of a Pelican Panel-inspired game server management system with:
+
 - File management system with drag-drop upload
 - Real-time console with WebSocket communication
 - Professional dashboard with monitoring
@@ -49,6 +55,7 @@ User requested: "Continue: 'Continue to iterate?'" leading to implementation of 
 - Modern glass morphism UI design
 
 ### Key Features Implemented
+
 1. **File Management System** (`src/routes/files.ts`):
    - Complete REST API: GET /list, GET /read, POST /write, POST /mkdir, DELETE /delete, POST /rename, GET /download
    - Security: Path traversal protection, file size limits, access control
@@ -73,6 +80,7 @@ User requested: "Continue: 'Continue to iterate?'" leading to implementation of 
    - File upload handling with multer
 
 ### Development Evolution
+
 1. **Phase 1**: Basic project setup and structure
 2. **Phase 2**: File management API implementation
 3. **Phase 3**: Frontend interfaces with Monaco editor
@@ -84,6 +92,7 @@ User requested: "Continue: 'Continue to iterate?'" leading to implementation of 
 ## 🔧 Development Commands
 
 ### Local Development
+
 ```bash
 # Install dependencies
 npm install
@@ -106,6 +115,7 @@ npm run lint:fix
 ```
 
 ### Docker Development
+
 ```bash
 # Build and run locally
 npm run docker:build
@@ -119,6 +129,7 @@ docker-compose -f docker-compose.prod.yml up -d
 ```
 
 ### VPS Deployment
+
 ```bash
 # Configure VPS details in deploy-to-vps.sh first
 ./deploy-to-vps.sh setup    # Initial deployment
@@ -130,12 +141,14 @@ docker-compose -f docker-compose.prod.yml up -d
 ## 🎨 UI/UX Design Principles
 
 ### Design Language
+
 - **Glass Morphism**: Frosted glass effects with backdrop-blur
 - **Modern Color Scheme**: Dark theme with accent colors
 - **Responsive Design**: Mobile-first approach
 - **Professional Feel**: Clean, minimal, functional
 
 ### Component Patterns
+
 ```css
 /* Glass morphism card */
 .glass-card {
@@ -154,6 +167,7 @@ docker-compose -f docker-compose.prod.yml up -d
 ## 🔐 Security Considerations
 
 ### Implemented Security Measures
+
 1. **Path Traversal Protection**: All file paths validated and sanitized
 2. **File Size Limits**: Configurable upload size restrictions
 3. **Rate Limiting**: API endpoint protection
@@ -162,6 +176,7 @@ docker-compose -f docker-compose.prod.yml up -d
 6. **Input Validation**: Express-validator for all inputs
 
 ### Production Security Checklist
+
 - [ ] Change all default passwords in .env
 - [ ] Set strong JWT_SECRET and AGENT_SECRET
 - [ ] Configure firewall (UFW)
@@ -172,12 +187,14 @@ docker-compose -f docker-compose.prod.yml up -d
 ## 🔄 WebSocket Integration
 
 ### Real-time Features
+
 - **Console Output**: Live terminal streams
 - **File Changes**: Real-time file system updates
 - **Server Monitoring**: Live resource usage
 - **Agent Communication**: External game server agents
 
 ### WebSocket Events
+
 ```javascript
 // Client-side WebSocket handling
 const ws = new WebSocket('ws://localhost:8080');
@@ -192,12 +209,14 @@ ws.on('server-stats', (data) => {
 ## 📊 Monitoring & Logging
 
 ### Implemented Monitoring
+
 - **System Resources**: CPU, Memory, Disk usage
 - **Application Metrics**: Request counts, response times
 - **Real-time Charts**: Chart.js integration
 - **Log Management**: Winston logger with rotation
 
 ### Log Locations
+
 - Application logs: `./logs/app.log`
 - Error logs: `./logs/error.log`
 - Access logs: Nginx access logs
@@ -206,12 +225,14 @@ ws.on('server-stats', (data) => {
 ## 🔧 Troubleshooting Guide
 
 ### Common Development Issues
+
 1. **Port Conflicts**: Check if ports 3000, 8080, 5432, 6379 are available
 2. **TypeScript Errors**: Run `npm run build` to check compilation
 3. **WebSocket Connection**: Verify WebSocket server is running on port 8080
 4. **File Permissions**: Ensure upload directories are writable
 
 ### Production Issues
+
 1. **Services Won't Start**: Check Docker logs and system resources
 2. **Database Connection**: Verify PostgreSQL connection string
 3. **Agent Communication**: Check port 8080 accessibility and AGENT_SECRET
@@ -219,6 +240,7 @@ ws.on('server-stats', (data) => {
 ## 📝 Code Style & Patterns
 
 ### TypeScript Patterns
+
 ```typescript
 // Route handler pattern
 export const listFiles = async (req: Request, res: Response): Promise<void> => {
@@ -238,6 +260,7 @@ ws.on('message', (message: string) => {
 ```
 
 ### Error Handling
+
 - Always use try-catch blocks in async functions
 - Return consistent API response format
 - Log errors with appropriate levels
@@ -246,6 +269,7 @@ ws.on('message', (message: string) => {
 ## 🎯 Future Development Directions
 
 ### Planned Features
+
 1. **User Management**: Multi-user support with roles
 2. **Plugin System**: Extensible architecture
 3. **Advanced Monitoring**: Metrics dashboard
@@ -253,6 +277,7 @@ ws.on('message', (message: string) => {
 5. **Multi-server Support**: Manage multiple game servers
 
 ### Scalability Considerations
+
 - Database optimization for larger datasets
 - Redis clustering for high availability
 - Load balancing for multiple instances
@@ -261,6 +286,7 @@ ws.on('message', (message: string) => {
 ## 🔄 Development Workflow
 
 ### Git Workflow
+
 ```bash
 # Feature development
 git checkout -b feature/new-feature
@@ -275,6 +301,7 @@ git merge feature/new-feature
 ```
 
 ### Testing Strategy
+
 - Unit tests for API endpoints
 - Integration tests for WebSocket communication
 - E2E tests for critical user flows
@@ -283,6 +310,7 @@ git merge feature/new-feature
 ## 📞 Support & Documentation
 
 ### Key Documentation Files
+
 - `README.md`: Project overview and quick start
 - `VPS_DEPLOYMENT_GUIDE.md`: Comprehensive deployment guide
 - `PROJECT_PLAN.md`: Detailed project planning
@@ -290,6 +318,7 @@ git merge feature/new-feature
 - `.env.example`: Environment configuration template
 
 ### Development Notes
+
 - Server runs on port 3002 in development
 - WebSocket server on port 8080
 - File API endpoints under `/api/files/*`
@@ -300,6 +329,7 @@ git merge feature/new-feature
 ## 🎯 Copilot Assistance Areas
 
 When working on this project, GitHub Copilot should focus on:
+
 1. **API Development**: RESTful endpoints with proper error handling
 2. **WebSocket Integration**: Real-time communication patterns
 3. **Security**: Input validation and sanitization

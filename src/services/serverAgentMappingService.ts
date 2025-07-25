@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger';
+import DatabaseService from './database';
 
 export interface ServerAgentMapping {
   serverId: string;
@@ -33,9 +34,37 @@ export class ServerAgentMappingService {
    */
   private async initializeMappings(): Promise<void> {
     try {
-      // TODO: Load server-to-agent mappings from database
-      // This should query the servers table and get their assigned nodes
-      logger.info('Server-Agent mapping service initialized');
+      // Load server-to-agent mappings from database
+      const db = DatabaseService.getInstance();
+      const servers = await db.server.findMany({
+        where: {
+          nodeId: { not: '' }
+        },
+        include: {
+          node: {
+            select: {
+              uuid: true,
+              name: true
+            }
+          }
+        }
+      });
+
+      // Initialize mappings
+      for (const server of servers) {
+        if (server.nodeId && server.node) {
+          this.mappings.set(server.uuid, {
+            serverId: server.uuid,
+            nodeUuid: server.node.uuid,
+            serverName: server.name,
+            isActive: server.status !== 'OFFLINE',
+            createdAt: server.createdAt,
+            updatedAt: server.updatedAt
+          });
+        }
+      }
+
+      logger.info(`Server-Agent mapping service initialized with ${servers.length} mappings`);
     } catch (error) {
       logger.error('Failed to initialize server-agent mappings:', error);
     }
@@ -158,9 +187,13 @@ export class ServerAgentMappingService {
    */
   public async refreshMappings(): Promise<void> {
     try {
-      // TODO: Implement database query to refresh mappings
-      // This should be called periodically or when server assignments change
-      logger.info('Refreshing server-agent mappings from database');
+      // Clear existing mappings
+      this.mappings.clear();
+      
+      // Reload from database
+      await this.initializeMappings();
+      
+      logger.info('Server-agent mappings refreshed from database');
     } catch (error) {
       logger.error('Failed to refresh server-agent mappings:', error);
     }

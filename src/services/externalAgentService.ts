@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { logger } from '../utils/logger';
+import DatabaseService from './database';
 
 export interface AgentCommand {
   action: string;
@@ -72,9 +73,38 @@ export class ExternalAgentService {
    */
   private async initializeAgents(): Promise<void> {
     try {
-      // TODO: Load agent configurations from database
-      // For now, this is a placeholder for the agent discovery/registration system
-      logger.info('External agent service initialized');
+      // Load node configurations from database
+      const db = DatabaseService.getInstance();
+      const nodes = await db.node.findMany({
+        where: {
+          isMaintenanceMode: false,
+          isPublic: true
+        },
+        select: {
+          uuid: true,
+          name: true,
+          fqdn: true,
+          scheme: true,
+          port: true,
+          daemonToken: true
+        }
+      });
+
+      // Initialize agent configurations
+      for (const node of nodes) {
+        const baseUrl = `${node.scheme}://${node.fqdn}:${node.port}`;
+        this.agents.set(node.uuid, {
+          id: node.uuid,
+          nodeId: node.uuid,
+          nodeUuid: node.uuid,
+          baseUrl,
+          apiKey: node.daemonToken,
+          isOnline: false,
+          lastSeen: undefined
+        });
+      }
+
+      logger.info(`External agent service initialized with ${nodes.length} nodes`);
     } catch (error) {
       logger.error('Failed to initialize external agents:', error);
     }
