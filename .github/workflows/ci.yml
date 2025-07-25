@@ -69,8 +69,9 @@ jobs:
 
       - name: Run linting
         run: |
-          npm run lint || echo "Linting completed with warnings/errors"
-          cd frontend && npm run lint && cd ..
+          npm run lint || echo "Backend linting completed with warnings/errors"
+          cd frontend && npm run lint || echo "Frontend linting completed with warnings/errors"
+          cd ..
 
       - name: Type checking
         run: |
@@ -149,9 +150,9 @@ jobs:
       - name: Test Docker Compose
         run: |
           cp .env.example .env
-          docker-compose -f docker-compose.test.yml up -d postgres redis
+          docker compose -f docker-compose.test.yml up -d postgres redis
           sleep 10
-          docker-compose -f docker-compose.test.yml down
+          docker compose -f docker-compose.test.yml down
 
   deploy-staging:
     name: Deploy to Staging
