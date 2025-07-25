@@ -93,9 +93,6 @@ COPY --from=backend-builder /app/dist ./dist
 COPY --from=frontend-builder /app/frontend/.next ./frontend/.next
 COPY --from=frontend-builder /app/frontend/public ./frontend/public
 
-# Copy any additional static files
-COPY uploads ./uploads
-
 # Create non-root user for security
 RUN addgroup -g 1001 -S appuser && \
     adduser -S -u 1001 -G appuser appuser
