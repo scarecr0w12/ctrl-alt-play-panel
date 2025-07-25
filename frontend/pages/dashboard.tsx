@@ -4,7 +4,7 @@ import { useWebSocket } from '@/contexts/WebSocketContext';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import MonitoringDashboard from '@/components/MonitoringDashboard';
-import { serversApi, monitoringApi, healthApi } from '@/lib/api';
+import { serversApi, monitoringApi } from '@/lib/api';
 import {
   ServerIcon,
   UsersIcon,
@@ -92,13 +92,13 @@ export default function DashboardPage() {
         setStats(prev => ({
           ...prev,
           totalServers: serverList.length,
-          runningServers: serverList.filter(s => s.status === 'running').length,
+          runningServers: serverList.filter((s: any) => s.status === 'running').length,
         }));
       }
 
       // Load monitoring stats
       try {
-        const statsResponse = await monitoringApi.getStats();
+        const statsResponse = await monitoringApi.getSystemStats();
         if (statsResponse.data.success && statsResponse.data.data) {
           const monitoringData = statsResponse.data.data;
           setStats(prev => ({
@@ -116,7 +116,7 @@ export default function DashboardPage() {
       }
       
       // Load health info
-      const healthResponse = await healthApi.check();
+      const healthResponse = await monitoringApi.getHealth();
       if (healthResponse.data.uptime) {
         const uptimeHours = Math.floor(healthResponse.data.uptime / 3600);
         const uptimeMinutes = Math.floor((healthResponse.data.uptime % 3600) / 60);

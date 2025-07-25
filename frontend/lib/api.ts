@@ -99,6 +99,41 @@ export const agentsApi = {
   discover: () => api.post('/agents/discover'),
 };
 
+// Nodes API
+export const nodesApi = {
+  getAll: () => api.get('/nodes'),
+  getById: (id: string) => api.get(`/nodes/${id}`),
+  create: (nodeData: any) => api.post('/nodes', nodeData),
+  update: (id: string, nodeData: any) => api.patch(`/nodes/${id}`, nodeData),
+  delete: (id: string) => api.delete(`/nodes/${id}`),
+  getStats: (id: string) => api.get(`/nodes/${id}/stats`),
+  getServers: (id: string) => api.get(`/nodes/${id}/servers`),
+};
+
+// Files API
+export const filesApi = {
+  getFiles: (serverId: string, path: string = '/') => 
+    api.get(`/files/${serverId}?path=${encodeURIComponent(path)}`),
+  getContent: (serverId: string, filePath: string) => 
+    api.get(`/files/${serverId}/content?path=${encodeURIComponent(filePath)}`),
+  updateContent: (serverId: string, filePath: string, content: string) => 
+    api.put(`/files/${serverId}/content?path=${encodeURIComponent(filePath)}`, { content }),
+  create: (serverId: string, path: string, type: 'file' | 'directory', content?: string) => 
+    api.post(`/files/${serverId}`, { path, type, content }),
+  delete: (serverId: string, path: string) => 
+    api.delete(`/files/${serverId}?path=${encodeURIComponent(path)}`),
+  rename: (serverId: string, oldPath: string, newPath: string) => 
+    api.put(`/files/${serverId}/rename`, { oldPath, newPath }),
+  upload: (serverId: string, path: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', path);
+    return api.post(`/files/${serverId}/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+};
+
 // Steam Workshop API
 export const steamApi = {
   search: (query: string, type?: string) => 
