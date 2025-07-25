@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import MonitoringDashboard from '@/components/MonitoringDashboard';
 import { serversApi, monitoringApi, healthApi } from '@/lib/api';
 import {
   ServerIcon,
@@ -273,6 +274,9 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Enhanced Real-time Monitoring Dashboard */}
+        <MonitoringDashboard />
 
         {/* Real-time Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

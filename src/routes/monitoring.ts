@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { MonitoringService } from '../services/monitoringService';
-import { authenticateToken } from '../middlewares/auth';
-import { authorize } from '../middlewares/authorize';
+import { 
+  authenticateToken, 
+  requirePermission, 
+  requireAnyPermission 
+} from '../middlewares/permissions';
 import { UserRole } from '../types';
 
 const router = Router();
@@ -11,7 +14,7 @@ const monitoringService = new MonitoringService();
  * Get server metrics history
  * GET /api/monitoring/servers/:id/metrics
  */
-router.get('/servers/:id/metrics', authenticateToken, async (req, res) => {
+router.get('/servers/:id/metrics', authenticateToken, requireAnyPermission(['monitoring.view', 'servers.view']), async (req, res) => {
   try {
     const { id } = req.params;
     const { timeRange = '24h' } = req.query;
@@ -107,7 +110,7 @@ router.get('/servers/:id/graph', authenticateToken, async (req, res) => {
  * Get node metrics
  * GET /api/monitoring/nodes/:id/metrics
  */
-router.get('/nodes/:id/metrics', authenticateToken, authorize([UserRole.ADMIN]), async (req, res) => {
+router.get('/nodes/:id/metrics', authenticateToken, requirePermission('monitoring.view'), async (req, res) => {
   try {
     const { id } = req.params;
     const { timeRange = '24h' } = req.query;
@@ -138,7 +141,7 @@ router.get('/nodes/:id/metrics', authenticateToken, authorize([UserRole.ADMIN]),
  * Trigger metrics collection for all servers
  * POST /api/monitoring/collect
  */
-router.post('/collect', authenticateToken, authorize([UserRole.ADMIN]), async (req, res) => {
+router.post('/collect', authenticateToken, requirePermission('monitoring.view'), async (req, res) => {
   try {
     await monitoringService.collectAllServerMetrics();
 
@@ -156,7 +159,7 @@ router.post('/collect', authenticateToken, authorize([UserRole.ADMIN]), async (r
  * Get system alerts
  * GET /api/monitoring/alerts
  */
-router.get('/alerts', authenticateToken, authorize([UserRole.ADMIN]), async (req, res) => {
+router.get('/alerts', authenticateToken, requirePermission('monitoring.view'), async (req, res) => {
   try {
     const { acknowledged = 'false', severity } = req.query;
 
@@ -177,7 +180,7 @@ router.get('/alerts', authenticateToken, authorize([UserRole.ADMIN]), async (req
  * Acknowledge alert
  * POST /api/monitoring/alerts/:id/acknowledge
  */
-router.post('/alerts/:id/acknowledge', authenticateToken, authorize([UserRole.ADMIN]), async (req, res) => {
+router.post('/alerts/:id/acknowledge', authenticateToken, requirePermission('monitoring.view'), async (req, res) => {
   try {
     const { id } = req.params;
 

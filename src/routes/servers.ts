@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticateToken } from '../middlewares/auth';
+import { 
+  authenticateToken, 
+  requirePermission, 
+  requireAnyPermission,
+  requireResourceOwnership 
+} from '../middlewares/permissions';
 import { AgentService } from '../services/agent';
 
 const router = Router();
@@ -10,13 +15,18 @@ const prisma = new PrismaClient();
  * Get all servers for the authenticated user
  * GET /api/servers
  */
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, requirePermission('servers.view'), async (req, res) => {
   try {
     const user = (req as any).user;
     
-    // Get servers based on user role
-    const whereClause = user.role === 'admin' 
-      ? {} // Admin can see all servers
+    // Get servers based on user permissions
+    // If user has servers.view permission, they can see servers they own
+    // If user has servers.manage permission, they can see all servers
+    const canManageAll = await require('../services/permissionService').permissionService
+      .hasPermission(user.id, 'servers.manage');
+    
+    const whereClause = canManageAll 
+      ? {} // User with manage permission can see all servers
       : { userId: user.id }; // Regular users see only their servers
 
     const servers = await prisma.server.findMany({
@@ -58,12 +68,16 @@ router.get('/', authenticateToken, async (req, res) => {
  * Get server details
  * GET /api/servers/:id
  */
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, requireAnyPermission(['servers.view', 'servers.manage']), async (req, res) => {
   try {
     const { id } = req.params;
     const user = (req as any).user;
 
-    const whereClause = user.role === 'admin' 
+    // Check if user can manage all servers or just their own
+    const canManageAll = await require('../services/permissionService').permissionService
+      .hasPermission(user.id, 'servers.manage');
+
+    const whereClause = canManageAll 
       ? { id }
       : { id, userId: user.id };
 
@@ -99,12 +113,16 @@ router.get('/:id', authenticateToken, async (req, res) => {
  * Get server status
  * GET /api/servers/:id/status
  */
-router.get('/:id/status', authenticateToken, async (req, res) => {
+router.get('/:id/status', authenticateToken, requireAnyPermission(['servers.view', 'servers.manage']), async (req, res) => {
   try {
     const { id } = req.params;
     const user = (req as any).user;
 
-    const whereClause = user.role === 'admin' 
+    // Check if user can manage all servers or just their own
+    const canManageAll = await require('../services/permissionService').permissionService
+      .hasPermission(user.id, 'servers.manage');
+
+    const whereClause = canManageAll 
       ? { id }
       : { id, userId: user.id };
 
@@ -155,18 +173,14 @@ router.get('/:id/status', authenticateToken, async (req, res) => {
  * Start server
  * POST /api/servers/:id/start
  */
-router.post('/:id/start', authenticateToken, async (req, res) => {
+router.post('/:id/start', authenticateToken, requireAnyPermission(['servers.start', 'servers.manage']), requireResourceOwnership('server'), async (req, res) => {
   try {
     const { id } = req.params;
     const user = (req as any).user;
 
-    // Verify server access
-    const whereClause = user.role === 'admin' 
-      ? { id }
-      : { id, userId: user.id };
-
+    // Verify server access - resource ownership middleware already checked this
     const server = await prisma.server.findFirst({
-      where: whereClause,
+      where: { id },
       include: { node: true }
     });
 
@@ -211,19 +225,15 @@ router.post('/:id/start', authenticateToken, async (req, res) => {
  * Stop server
  * POST /api/servers/:id/stop
  */
-router.post('/:id/stop', authenticateToken, async (req, res) => {
+router.post('/:id/stop', authenticateToken, requireAnyPermission(['servers.stop', 'servers.manage']), requireResourceOwnership('server'), async (req, res) => {
   try {
     const { id } = req.params;
     const user = (req as any).user;
     const { signal = 'SIGTERM', timeout = 30 } = req.body;
 
-    // Verify server access
-    const whereClause = user.role === 'admin' 
-      ? { id }
-      : { id, userId: user.id };
-
+    // Verify server access - resource ownership middleware already checked this
     const server = await prisma.server.findFirst({
-      where: whereClause,
+      where: { id },
       include: { node: true }
     });
 
@@ -269,18 +279,14 @@ router.post('/:id/stop', authenticateToken, async (req, res) => {
  * Restart server
  * POST /api/servers/:id/restart
  */
-router.post('/:id/restart', authenticateToken, async (req, res) => {
+router.post('/:id/restart', authenticateToken, requireAnyPermission(['servers.restart', 'servers.manage']), requireResourceOwnership('server'), async (req, res) => {
   try {
     const { id } = req.params;
     const user = (req as any).user;
 
-    // Verify server access
-    const whereClause = user.role === 'admin' 
-      ? { id }
-      : { id, userId: user.id };
-
+    // Verify server access - resource ownership middleware already checked this
     const server = await prisma.server.findFirst({
-      where: whereClause,
+      where: { id },
       include: { node: true }
     });
 
@@ -325,16 +331,12 @@ router.post('/:id/restart', authenticateToken, async (req, res) => {
  * Kill server (force stop)
  * POST /api/servers/:id/kill
  */
-router.post('/:id/kill', authenticateToken, async (req, res) => {
+router.post('/:id/kill', authenticateToken, requirePermission('servers.manage'), async (req, res) => {
   try {
     const { id } = req.params;
     const user = (req as any).user;
 
-    // Verify server access (admin only for kill command)
-    if (user.role !== 'admin') {
-      return res.status(403).json({ error: 'Only administrators can force kill servers' });
-    }
-
+    // Find server (only users with manage permission can access this endpoint)
     const server = await prisma.server.findFirst({
       where: { id },
       include: { node: true }

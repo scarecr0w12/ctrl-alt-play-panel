@@ -1,0 +1,32 @@
+/opt/ctrl-alt-play-panel/logs/*.log {
+    daily
+    missingok
+    rotate 30
+    compress
+    delaycompress
+    notifempty
+    create 640 www-data www-data
+    postrotate
+        systemctl reload ctrl-alt-play-panel
+    endscript
+}
+
+/opt/ctrl-alt-play-panel/logs/security/*.json {
+    daily
+    missingok
+    rotate 90
+    compress
+    delaycompress
+    notifempty
+    create 640 www-data www-data
+}
+
+/opt/ctrl-alt-play-panel/logs/permissions/*.json {
+    weekly
+    missingok
+    rotate 12
+    compress
+    delaycompress
+    notifempty
+    create 640 www-data www-data
+}

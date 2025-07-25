@@ -34,8 +34,94 @@ model User {
   servers        Server[]
   subusers       Subuser[]
   sshKeys        UserSshKey[]
+  permissions    UserPermission[]
+  sessions       UserSession[]
 
   @@map("users")
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String
+  category    String
+  resource    String
+  action      String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  users       UserPermission[]
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserPermission {
+  id           String     @id @default(cuid())
+  userId       String
+  permissionId String
+  granted      Boolean    @default(true)
+  grantedBy    String?
+  grantedAt    DateTime   @default(now())
+  expiresAt    DateTime?
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId])
+  @@map("user_permissions")
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String
+  isSystem    Boolean          @default(false)
+  priority    Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserSession {
+  id          String    @id @default(cuid())
+  userId      String
+  token       String    @unique
+  ipAddress   String
+  userAgent   String?
+  isActive    Boolean   @default(true)
+  lastActivity DateTime @default(now())
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+model SecurityLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  action      String
+  resource    String?
+  ipAddress   String
+  userAgent   String?
+  success     Boolean
+  reason      String?
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  @@map("security_logs")
 }
 
 model Node {

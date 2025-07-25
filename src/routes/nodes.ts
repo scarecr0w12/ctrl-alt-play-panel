@@ -1,14 +1,18 @@
 import { Router, Response, Request } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { asyncHandler, createError } from '../middlewares/errorHandler';
-import { authenticateToken, requireAdmin } from '../middlewares/auth';
+import { 
+  authenticateToken, 
+  requirePermission, 
+  requireAnyPermission 
+} from '../middlewares/permissions';
 import { logger } from '../utils/logger';
 
 const router = Router();
 const prisma = new PrismaClient();
 
 // Get all nodes (Admin only)
-router.get('/', authenticateToken, requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+router.get('/', authenticateToken, requirePermission('nodes.view'), asyncHandler(async (req: Request, res: Response) => {
   const nodes = await prisma.node.findMany({
     include: {
       _count: {
@@ -29,7 +33,7 @@ router.get('/', authenticateToken, requireAdmin, asyncHandler(async (req: Reques
 }));
 
 // Get specific node by ID
-router.get('/:id', authenticateToken, requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+router.get('/:id', authenticateToken, requirePermission('nodes.view'), asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
 
   const node = await prisma.node.findUnique({
@@ -69,7 +73,7 @@ router.get('/:id', authenticateToken, requireAdmin, asyncHandler(async (req: Req
 }));
 
 // Create new node (Admin only)
-router.post('/', authenticateToken, requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+router.post('/', authenticateToken, requirePermission('nodes.create'), asyncHandler(async (req: Request, res: Response) => {
   const { 
     name, 
     fqdn, 
@@ -115,7 +119,7 @@ router.post('/', authenticateToken, requireAdmin, asyncHandler(async (req: Reque
 }));
 
 // Update node (Admin only)
-router.patch('/:id', authenticateToken, requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+router.patch('/:id', authenticateToken, requirePermission('nodes.edit'), asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   const updateData = req.body;
 
@@ -134,7 +138,7 @@ router.patch('/:id', authenticateToken, requireAdmin, asyncHandler(async (req: R
 }));
 
 // Delete node (Admin only)
-router.delete('/:id', authenticateToken, requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+router.delete('/:id', authenticateToken, requirePermission('nodes.delete'), asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
 
   // Check if node has any servers
@@ -170,7 +174,7 @@ router.delete('/:id', authenticateToken, requireAdmin, asyncHandler(async (req: 
 }));
 
 // Get node stats (Admin only)
-router.get('/:id/stats', authenticateToken, requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+router.get('/:id/stats', authenticateToken, requirePermission('nodes.view'), asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
 
   // Mock stats - in production this would come from the agent
@@ -201,7 +205,7 @@ router.get('/:id/stats', authenticateToken, requireAdmin, asyncHandler(async (re
 }));
 
 // Get node servers (Admin only)
-router.get('/:id/servers', authenticateToken, requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+router.get('/:id/servers', authenticateToken, requirePermission('nodes.view'), asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
 
   const servers = await prisma.server.findMany({

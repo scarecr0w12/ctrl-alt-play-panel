@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/contexts/PermissionContext';
 import Layout from '@/components/Layout';
+import ProtectedRoute, { PermissionGuard } from '@/components/PermissionGuard';
 import { serversApi } from '@/lib/api';
 import {
   ServerIcon,
@@ -32,8 +34,9 @@ interface Server {
   updatedAt: string;
 }
 
-export default function ServersPage() {
+function ServersPage() {
   const { isAdmin } = useAuth();
+  const { hasPermission } = usePermissions();
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -214,38 +217,44 @@ export default function ServersPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
                             {/* Quick Actions */}
-                            {canStart(server.status) && (
-                              <button
-                                onClick={() => handleServerAction(server.id, 'start')}
-                                disabled={actionLoading === server.id}
-                                className="p-2 text-green-400 hover:text-green-300 hover:bg-green-400/10 rounded-lg transition-colors disabled:opacity-50"
-                                title="Start Server"
-                              >
-                                <PlayIcon className="w-4 h-4" />
-                              </button>
-                            )}
+                            <PermissionGuard permission="servers.start">
+                              {canStart(server.status) && (
+                                <button
+                                  onClick={() => handleServerAction(server.id, 'start')}
+                                  disabled={actionLoading === server.id}
+                                  className="p-2 text-green-400 hover:text-green-300 hover:bg-green-400/10 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Start Server"
+                                >
+                                  <PlayIcon className="w-4 h-4" />
+                                </button>
+                              )}
+                            </PermissionGuard>
                             
-                            {canStop(server.status) && (
-                              <button
-                                onClick={() => handleServerAction(server.id, 'stop')}
-                                disabled={actionLoading === server.id}
-                                className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-colors disabled:opacity-50"
-                                title="Stop Server"
-                              >
-                                <StopIcon className="w-4 h-4" />
-                              </button>
-                            )}
+                            <PermissionGuard permission="servers.stop">
+                              {canStop(server.status) && (
+                                <button
+                                  onClick={() => handleServerAction(server.id, 'stop')}
+                                  disabled={actionLoading === server.id}
+                                  className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Stop Server"
+                                >
+                                  <StopIcon className="w-4 h-4" />
+                                </button>
+                              )}
+                            </PermissionGuard>
                             
-                            {canRestart(server.status) && (
-                              <button
-                                onClick={() => handleServerAction(server.id, 'restart')}
-                                disabled={actionLoading === server.id}
-                                className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 rounded-lg transition-colors disabled:opacity-50"
-                                title="Restart Server"
-                              >
-                                <ArrowPathIcon className="w-4 h-4" />
-                              </button>
-                            )}
+                            <PermissionGuard permission="servers.restart">
+                              {canRestart(server.status) && (
+                                <button
+                                  onClick={() => handleServerAction(server.id, 'restart')}
+                                  disabled={actionLoading === server.id}
+                                  className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Restart Server"
+                                >
+                                  <ArrowPathIcon className="w-4 h-4" />
+                                </button>
+                              )}
+                            </PermissionGuard>
 
                             {/* More Actions Menu */}
                             <Menu as="div" className="relative">
@@ -340,3 +349,14 @@ export default function ServersPage() {
     </Layout>
   );
 }
+
+// Wrap the component with permission protection
+const ProtectedServersPage = () => {
+  return (
+    <ProtectedRoute permission="servers.view">
+      <ServersPage />
+    </ProtectedRoute>
+  );
+};
+
+export default ProtectedServersPage;

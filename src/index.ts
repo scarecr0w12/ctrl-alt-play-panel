@@ -14,6 +14,7 @@ import filesRoutes from './routes/files';
 import authRoutes from './routes/auth';
 import serversRoutes from './routes/servers';
 import usersRoutes from './routes/users';
+import userProfileRoutes from './routes/userProfile';
 import nodesRoutes from './routes/nodes';
 import ctrlsRoutes from './routes/ctrls';
 import altsRoutes from './routes/alts';
@@ -83,6 +84,7 @@ class GamePanelApp {
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api/servers', serversRoutes);
     this.app.use('/api/users', usersRoutes);
+    this.app.use('/api/user', userProfileRoutes); // User profile management
     this.app.use('/api/nodes', nodesRoutes);
     this.app.use('/api/ctrls', ctrlsRoutes);
     this.app.use('/api/alts', altsRoutes);
@@ -313,25 +315,34 @@ class GamePanelApp {
     
     logger.info('📊 Starting monitoring scheduler...');
     
-    // Collect metrics every 30 seconds
+    // Collect server metrics every 30 seconds
     setInterval(async () => {
       try {
         await monitoringService.collectAllServerMetrics();
-        logger.debug('📈 Metrics collection completed');
+        logger.debug('📈 Server metrics collection completed');
       } catch (error) {
-        logger.error('Failed to collect metrics:', error);
+        logger.error('Failed to collect server metrics:', error);
       }
     }, 30000); // 30 seconds
     
-    // Emit initial stats after 5 seconds
+    // Collect and emit system metrics every 5 seconds for real-time dashboard
+    setInterval(async () => {
+      try {
+        await monitoringService.collectAndEmitSystemMetrics();
+      } catch (error) {
+        logger.error('Failed to collect system metrics:', error);
+      }
+    }, 5000); // 5 seconds for real-time updates
+    
+    // Emit initial stats after 2 seconds
     setTimeout(async () => {
       try {
-        await monitoringService.emitAggregatedStats();
+        await monitoringService.collectAndEmitSystemMetrics();
         logger.info('📊 Initial monitoring data broadcast complete');
       } catch (error) {
         logger.error('Failed to emit initial stats:', error);
       }
-    }, 5000);
+    }, 2000);
   }
 
   public stop(): void {

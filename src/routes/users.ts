@@ -1,7 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { authenticateToken, requireAdmin } from '../middlewares/auth';
+import { 
+  authenticateToken, 
+  requirePermission, 
+  requireAnyPermission,
+  requireAllPermissions 
+} from '../middlewares/permissions';
 import { asyncHandler, createError } from '../middlewares/errorHandler';
 import { logger } from '../utils/logger';
 
@@ -9,7 +14,7 @@ const router = Router();
 const prisma = new PrismaClient();
 
 // Get all users (admin only)
-router.get('/', authenticateToken, requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+router.get('/', authenticateToken, requirePermission('users.view'), asyncHandler(async (req: Request, res: Response) => {
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 10;
   const skip = (page - 1) * limit;
@@ -54,7 +59,7 @@ router.get('/', authenticateToken, requireAdmin, asyncHandler(async (req: Reques
 }));
 
 // Get specific user by ID
-router.get('/:id', authenticateToken, requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+router.get('/:id', authenticateToken, requirePermission('users.view'), asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
 
   const user = await prisma.user.findUnique({
@@ -90,7 +95,7 @@ router.get('/:id', authenticateToken, requireAdmin, asyncHandler(async (req: Req
 }));
 
 // Create new user (Admin only)
-router.post('/', authenticateToken, requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+router.post('/', authenticateToken, requirePermission('users.create'), asyncHandler(async (req: Request, res: Response) => {
   const { email, username, password, firstName, lastName, role } = req.body;
 
   if (!email || !username || !password || !firstName || !lastName) {
@@ -147,7 +152,7 @@ router.post('/', authenticateToken, requireAdmin, asyncHandler(async (req: Reque
 }));
 
 // Update user (Admin only)
-router.patch('/:id', authenticateToken, requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+router.patch('/:id', authenticateToken, requirePermission('users.edit'), asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   const { email, username, firstName, lastName, role, isActive, password } = req.body;
 
@@ -188,7 +193,7 @@ router.patch('/:id', authenticateToken, requireAdmin, asyncHandler(async (req: R
 }));
 
 // Delete user (Admin only)
-router.delete('/:id', authenticateToken, requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+router.delete('/:id', authenticateToken, requirePermission('users.delete'), asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
 
   // Check if user has any servers
@@ -224,12 +229,16 @@ router.delete('/:id', authenticateToken, requireAdmin, asyncHandler(async (req: 
 }));
 
 // Get user's servers
-router.get('/:id/servers', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
+router.get('/:id/servers', authenticateToken, requireAnyPermission(['users.view', 'servers.view']), asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   const user = (req as any).user;
 
-  // Users can only see their own servers unless they're admin
-  if (user.role !== 'ADMIN' && user.id !== id) {
+  // Check if user can manage all servers or just their own
+  const canManageAll = await require('../services/permissionService').permissionService
+    .hasPermission(user.id, 'servers.manage');
+
+  // Users can only see their own servers unless they have manage permission
+  if (!canManageAll && user.id !== id) {
     throw createError('Access denied', 403);
   }
 

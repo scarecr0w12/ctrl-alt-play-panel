@@ -40,6 +40,59 @@ interface ApiResponse<T = any> {
   errors?: string[];
 }
 
+// User interfaces
+interface User {
+  id: string;
+  uuid: string;
+  email: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  role: 'USER' | 'ADMIN' | 'MODERATOR';
+  isActive: boolean;
+  lastLogin?: string;
+  language: string;
+  gravatar: boolean;
+  useTotp: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    servers: number;
+    apiKeys: number;
+    auditLogs?: number;
+  };
+}
+
+interface UserProfile {
+  id: string;
+  uuid: string;
+  email: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  isActive: boolean;
+  lastLogin?: string;
+  language: string;
+  gravatar: boolean;
+  useTotp: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count: {
+    servers: number;
+    apiKeys: number;
+  };
+}
+
+interface ActivityLog {
+  id: string;
+  action: string;
+  metadata: any;
+  ipAddress: string;
+  userAgent?: string;
+  createdAt: string;
+}
+
 // Server interfaces
 interface Server {
   id: string;
@@ -204,6 +257,87 @@ export const monitoringApi = {
   getStats: () => api.get<ApiResponse<MonitoringStats>>('/api/monitoring/stats'),
   
   collectMetrics: () => api.post<ApiResponse>('/api/monitoring/collect'),
+};
+
+// User Profile API
+export const userProfileApi = {
+  // Get current user profile
+  getProfile: () => api.get<ApiResponse<UserProfile>>('/api/user/profile'),
+  
+  // Update current user profile
+  updateProfile: (data: {
+    firstName: string;
+    lastName: string;
+    language?: string;
+    gravatar?: boolean;
+  }) => api.put<ApiResponse<UserProfile>>('/api/user/profile', data),
+  
+  // Change password
+  changePassword: (data: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }) => api.put<ApiResponse>('/api/user/change-password', data),
+  
+  // Change email
+  changeEmail: (data: {
+    newEmail: string;
+    password: string;
+  }) => api.put<ApiResponse<UserProfile>>('/api/user/change-email', data),
+  
+  // Get user activity log
+  getActivity: (params?: {
+    page?: number;
+    limit?: number;
+  }) => api.get<ApiResponse<{
+    activities: ActivityLog[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  }>>('/api/user/activity', { params }),
+};
+
+// User Management API (Admin)
+export const userManagementApi = {
+  // Get all users
+  getUsers: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string;
+    isActive?: string;
+  }) => api.get<ApiResponse<{
+    users: User[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  }>>('/api/users', { params }),
+  
+  // Get specific user
+  getUser: (id: string) => api.get<ApiResponse<User>>(`/api/users/${id}`),
+  
+  // Update user
+  updateUser: (id: string, data: {
+    firstName?: string;
+    lastName?: string;
+    role?: string;
+    isActive?: boolean;
+    language?: string;
+  }) => api.put<ApiResponse<User>>(`/api/users/${id}`, data),
+  
+  // Delete user
+  deleteUser: (id: string) => api.delete<ApiResponse>(`/api/users/${id}`),
+  
+  // Reset user password
+  resetPassword: (id: string, data: {
+    newPassword: string;
+  }) => api.post<ApiResponse>(`/api/users/${id}/reset-password`, data),
 };
 
 // Files API

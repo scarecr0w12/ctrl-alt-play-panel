@@ -9,8 +9,10 @@ interface User {
   username: string;
   firstName: string;
   lastName: string;
-  role: 'admin' | 'user' | 'moderator';
+  role: 'ADMIN' | 'USER' | 'MODERATOR';
   isActive: boolean;
+  rootAdmin?: boolean;
+  permissions?: string[];
 }
 
 interface AuthContextType {
@@ -175,7 +177,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     register,
     logout,
     isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin',
+    isAdmin: user?.role === 'ADMIN',
   };
 
   return (

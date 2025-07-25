@@ -1,0 +1,24 @@
+[Unit]
+Description=Ctrl-Alt-Play Security Monitor
+After=network.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/ctrl-alt-play-panel
+ExecStart=/usr/bin/node config/monitoring/security-monitor.js
+Restart=always
+RestartSec=10
+
+# Environment
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/ctrl-alt-play-panel/.env
+
+# Logging
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=ctrl-alt-security
+
+[Install]
+WantedBy=multi-user.target

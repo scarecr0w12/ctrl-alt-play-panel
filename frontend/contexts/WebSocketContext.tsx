@@ -6,8 +6,17 @@ import Cookies from 'js-cookie';
 interface MonitoringMetrics {
   cpu: number;
   memory: number;
+  memoryUsed: number;
+  memoryTotal: number;
   disk: number;
+  diskUsed: number;
+  diskTotal: number;
+  network: {
+    in: number;
+    out: number;
+  };
   players: number;
+  uptime: number;
   timestamp: string;
 }
 
@@ -83,8 +92,14 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
       setMetrics({
         cpu: data.cpu || 0,
         memory: data.memory || 0,
+        memoryUsed: data.memoryUsed || 0,
+        memoryTotal: data.memoryTotal || 16384,
         disk: data.disk || 0,
+        diskUsed: data.diskUsed || 0,
+        diskTotal: data.diskTotal || 1000000,
+        network: data.network || { in: 0, out: 0 },
         players: data.players || 0,
+        uptime: data.uptime || 0,
         timestamp: data.timestamp || new Date().toISOString()
       });
     });

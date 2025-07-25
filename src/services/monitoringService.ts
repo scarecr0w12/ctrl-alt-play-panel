@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { AgentService } from './agentService';
 import { SocketService } from './socket';
+import SystemMetricsCollector from './systemMetricsCollector';
 
 const prisma = new PrismaClient();
 
@@ -23,9 +24,11 @@ export interface SystemMetrics extends ResourceMetrics {
 
 export class MonitoringService {
   private agentService: AgentService;
+  private systemCollector: SystemMetricsCollector;
 
   constructor() {
     this.agentService = new AgentService();
+    this.systemCollector = new SystemMetricsCollector();
   }
 
   /**
@@ -143,6 +146,46 @@ export class MonitoringService {
       });
     } catch (error) {
       console.error('Failed to emit aggregated stats:', error);
+    }
+  }
+
+  /**
+   * Collect and emit system metrics
+   */
+  async collectAndEmitSystemMetrics(): Promise<void> {
+    try {
+      const systemMetrics = await this.systemCollector.collectSystemMetrics();
+      
+      // Add server statistics
+      const serverStats = await this.getAggregatedStats();
+      
+      // Combine system metrics with server stats
+      const combinedMetrics = {
+        cpu: systemMetrics.cpu,
+        memory: systemMetrics.memory,
+        memoryUsed: systemMetrics.memoryUsed,
+        memoryTotal: systemMetrics.memoryTotal,
+        disk: systemMetrics.disk,
+        diskUsed: systemMetrics.diskUsed,
+        diskTotal: systemMetrics.diskTotal,
+        network: systemMetrics.network,
+        players: serverStats.players,
+        uptime: systemMetrics.uptime,
+        timestamp: systemMetrics.timestamp.toISOString()
+      };
+
+      // Emit via WebSocket
+      SocketService.emitMetricsUpdate(combinedMetrics);
+      
+      console.log('📊 System metrics emitted:', {
+        cpu: `${systemMetrics.cpu.toFixed(1)}%`,
+        memory: `${systemMetrics.memory.toFixed(1)}%`,
+        disk: `${systemMetrics.disk.toFixed(1)}%`,
+        players: serverStats.players
+      });
+      
+    } catch (error) {
+      console.error('Failed to collect and emit system metrics:', error);
     }
   }
 

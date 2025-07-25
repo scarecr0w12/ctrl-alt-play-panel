@@ -13,6 +13,7 @@ import {
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
+  UserIcon,
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -34,7 +35,8 @@ const navigation: NavItem[] = [
   { name: 'Files', href: '/files', icon: FolderIcon },
   { name: 'Configurations', href: '/ctrls', icon: CogIcon, adminOnly: true },
   { name: 'Monitoring', href: '/monitoring', icon: ChartBarIcon },
-  { name: 'Users', href: '/users', icon: UserGroupIcon, adminOnly: true },
+  { name: 'Profile', href: '/profile', icon: UserIcon },
+  { name: 'User Management', href: '/admin/users', icon: UserGroupIcon, adminOnly: true },
   { name: 'Settings', href: '/settings', icon: CogIcon },
 ];
 
