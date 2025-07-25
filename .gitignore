@@ -39,6 +39,7 @@ coverage/
 .nyc_output/
 
 # IDE and Editor files
+.kilocode/
 .vscode/
 .idea/
 *.swp
