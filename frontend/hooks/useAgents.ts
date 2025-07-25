@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { agentsApi, AgentStatus, AgentHealthStatus } from '@/lib/api';
+import { agentsApi, AgentStatus, AgentHealthStatus, ExternalAgent } from '@/lib/api';
 
 interface UseAgentsReturn {
-  agents: AgentStatus[];
+  agents: ExternalAgent[];
   healthStatuses: Map<string, AgentHealthStatus>;
   loading: boolean;
   error: string | null;
@@ -14,7 +14,7 @@ interface UseAgentsReturn {
 }
 
 export const useAgents = (autoRefresh = true, refreshInterval = 30000): UseAgentsReturn => {
-  const [agents, setAgents] = useState<AgentStatus[]>([]);
+  const [agents, setAgents] = useState<ExternalAgent[]>([]);
   const [healthStatuses, setHealthStatuses] = useState<Map<string, AgentHealthStatus>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

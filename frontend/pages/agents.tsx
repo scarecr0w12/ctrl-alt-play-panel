@@ -198,8 +198,8 @@ export default function AgentsPage() {
     }
   };
 
-  const formatLastSeen = (lastSeen: string) => {
-    const date = new Date(lastSeen);
+  const formatLastSeen = (lastSeen: string | Date) => {
+    const date = typeof lastSeen === 'string' ? new Date(lastSeen) : lastSeen;
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -379,7 +379,7 @@ export default function AgentsPage() {
                                 </span>
                               )}
                               <span className="text-xs text-gray-500">
-                                Last seen {formatLastSeen(agent.lastSeen)}
+                                Last seen {formatLastSeen(agent.lastSeen || new Date())}
                               </span>
                             </div>
                           </div>

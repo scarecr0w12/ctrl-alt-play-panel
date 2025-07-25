@@ -20,6 +20,19 @@ export interface AgentStatus {
   uptime?: number;
   serverCount?: number;
   lastSeen?: Date;
+  responseTime?: number;
+  error?: string;
+}
+
+export interface ExternalAgent {
+  id: string;
+  nodeId: string;
+  nodeUuid: string;
+  baseUrl: string;
+  apiKey: string;
+  isOnline: boolean;
+  lastSeen?: Date;
+  version?: string;
 }
 
 export interface AgentHealthStatus {
