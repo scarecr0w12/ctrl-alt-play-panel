@@ -14,7 +14,11 @@ PROJECT_STATUS.md
 ROUTE_INTEGRATION_COMPLETE.md
 setup-*.sh
 test-*.sh
-test-*.jsg.log*
+test-*.js
+test-monitoring.js
+test-permission-integration.js
+test-permissions.js
+test-user-management.jsg.log*
 yarn-error.log*
 pnpm-debug.log*
 
