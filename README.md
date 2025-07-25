@@ -14,11 +14,30 @@ A modern, secure game server management panel built with **Panel+Agent distribut
 
 ## 🏗️ Architecture Overview
 
-**Distributed Panel+Agent System** inspired by Pelican Panel/Wings:
+**Distributed Panel+Agent System** with external agent communication:
 
 - **Panel**: Web interface, user management, API backend (Node.js/TypeScript)
-- **Agent**: Lightweight daemons for Docker container management (local + remote nodes)  
-- **Communication**: WebSocket-based real-time command protocol with JWT authentication
+- **External Agents**: Separate projects running on nodes for container management
+- **Communication**: HTTP REST API + WebSocket for real-time events
+- **Discovery**: Automatic agent discovery and health monitoring
+- **Scalability**: Agents run independently and can be deployed on any node
+
+### 🔗 External Agent Integration (v1.1.0)
+
+The panel now communicates with external agent processes instead of embedded agent code:
+
+- **Auto-Discovery**: Automatically finds and registers agents on known nodes
+- **Health Monitoring**: Continuous health checks and status tracking
+- **Command Routing**: All server operations route through external agents
+- **API Management**: REST endpoints for manual agent registration and control
+- **Fault Tolerance**: Graceful handling of agent disconnections and failures
+
+**Benefits:**
+- ✅ **Separation of Concerns**: Panel and agents are independent projects
+- ✅ **Scalability**: Deploy multiple agents across different infrastructure
+- ✅ **Reliability**: Agents can restart without affecting the panel
+- ✅ **Security**: Authenticated communication using node daemon tokens
+- ✅ **Flexibility**: Support for various agent implementations
 
 ## ✨ Key Features
 

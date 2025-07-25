@@ -1,12 +1,40 @@
 # Multi-stage build for Ctrl-Alt-Play Panel
-FROM node:18-alpine AS builder
+# Uses Alpine Linux for smaller image size but maintains compatibility
 
-# Install system dependencies for building
+# Frontend build stage
+FROM node:18-alpine AS frontend-builder
+
+# Install system dependencies for building (cross-platform)
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    && ln -sf python3 /usr/bin/python
+
+WORKDIR /app/frontend
+
+# Copy frontend package files
+COPY frontend/package*.json ./
+
+# Install frontend dependencies
+RUN npm ci --only=production
+
+# Copy frontend source
+COPY frontend/ ./
+
+# Build frontend
+RUN npm run build
+
+# Backend build stage  
+FROM node:18-alpine AS backend-builder
+
+# Install system dependencies for building (cross-platform)
 RUN apk add --no-cache \
     openssl \
     python3 \
     make \
     g++ \
+    curl \
     && ln -sf python3 /usr/bin/python
 
 # Set working directory
@@ -35,18 +63,18 @@ RUN npm run build
 RUN npm prune --production
 
 # Production stage
-FROM node:18-alpine AS runtime
+FROM node:18-alpine AS production
+
+# Install runtime dependencies (Linux distribution agnostic)
+RUN apk add --no-cache \
+    openssl \
+    curl \
+    tini \
+    ca-certificates \
+    && update-ca-certificates
 
 # Set working directory
 WORKDIR /app
-
-# Install only runtime dependencies
-RUN apk add --no-cache \
-    openssl \
-    python3 \
-    make \
-    g++ \
-    && ln -sf python3 /usr/bin/python
 
 # Copy package files
 COPY package*.json ./
@@ -58,29 +86,36 @@ RUN npm ci --only=production
 COPY prisma ./prisma
 RUN npx prisma generate
 
-# Copy built application from builder stage
-COPY --from=builder /app/dist ./dist
+# Copy built application from backend builder stage
+COPY --from=backend-builder /app/dist ./dist
 
-# Copy public files (HTML, CSS, JS)
-COPY public ./public
+# Copy built frontend from frontend builder stage
+COPY --from=frontend-builder /app/frontend/.next ./frontend/.next
+COPY --from=frontend-builder /app/frontend/public ./frontend/public
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
+# Copy any additional static files
+COPY uploads ./uploads
 
-# Create necessary directories
-RUN mkdir -p /app/logs /app/uploads && \
-    chown -R nextjs:nodejs /app
+# Create non-root user for security
+RUN addgroup -g 1001 -S appuser && \
+    adduser -S -u 1001 -G appuser appuser
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/logs /app/uploads /app/data && \
+    chown -R appuser:appuser /app
 
 # Switch to non-root user
-USER nextjs
+USER appuser
 
-# Expose port
-EXPOSE 3000
+# Expose ports
+EXPOSE 3000 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+# Health check using node directly (cross-platform)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node dist/health-check.js || exit 1
+
+# Use tini as PID 1 for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--"]
 
 # Start the application
 CMD ["npm", "start"]

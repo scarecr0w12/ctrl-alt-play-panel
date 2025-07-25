@@ -78,15 +78,7 @@ router.get('/security/dashboard',
         createdAt: { gte: startTime }
       },
       orderBy: { createdAt: 'desc' },
-      take: 20,
-      include: {
-        user: {
-          select: {
-            username: true,
-            email: true
-          }
-        }
-      }
+      take: 20
     });
     
     res.json({
@@ -94,7 +86,7 @@ router.get('/security/dashboard',
       data: {
         timeRange,
         summary: {
-          totalEvents: securityEvents.reduce((sum, event) => sum + event._count.action, 0),
+          totalEvents: securityEvents.reduce((sum: number, event: any) => sum + event._count.action, 0),
           failedLogins,
           permissionDenials,
           activeUsers
@@ -125,17 +117,18 @@ router.get('/permissions/analytics',
     
     // Get most used permissions
     const topPermissions = await prisma.securityLog.groupBy({
-      by: ['details'],
+      by: ['resource'],
       where: {
         action: 'PERMISSION_GRANTED',
-        createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+        createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        resource: { not: null }
       },
       _count: {
-        details: true
+        resource: true
       },
       orderBy: {
         _count: {
-          details: 'desc'
+          resource: 'desc'
         }
       },
       take: 10

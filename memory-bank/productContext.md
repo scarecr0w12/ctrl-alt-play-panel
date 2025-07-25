@@ -26,17 +26,44 @@ Ctrl-Alt-Play Panel is a modern, secure game server management system designed t
 
 ## Project Description
 
+Modern, secure game server management system featuring Panel+Agent distributed architecture. The panel provides a comprehensive web interface for managing multiple game servers across different nodes through external agent processes. Features advanced RBAC security with 36 granular permissions, real-time monitoring, Steam Workshop integration, and enterprise-grade audit capabilities.
+
+
+
 A comprehensive web-based game server management system that provides secure, modern interface for managing multiple game servers. Features include server start/stop/restart controls, file management, Steam Workshop integration, real-time monitoring, user authentication with role-based access control, and administrative tools.
 
 
 
 ## Architecture
 
+Panel+Agent distributed architecture where the Panel (Node.js/TypeScript) serves as the web interface and API backend, while external Agents (separate projects) run on individual nodes to manage game server containers. Communication occurs via HTTP REST API with WebSocket support for real-time events. Agent discovery service automatically finds and registers agents across the infrastructure.
+
+
+
 Single-service Express.js application serving both REST API and static frontend files. Uses PostgreSQL with Prisma ORM for data persistence, Redis for caching, and WebSocket server for real-time communication. Frontend built with React/Next.js with static export for security. Docker containerization with multi-stage builds for production deployment.
 
 
 
 ## Technologies
+
+- Node.js
+- TypeScript
+- Express.js
+- React
+- Next.js
+- PostgreSQL
+- Prisma ORM
+- Redis
+- WebSocket
+- Docker
+- JWT Authentication
+- bcrypt
+- TailwindCSS
+- Chart.js
+- Monaco Editor
+- xterm.js
+
+
 
 - Node.js
 - TypeScript
@@ -55,6 +82,31 @@ Single-service Express.js application serving both REST API and static frontend 
 
 
 ## Libraries and Dependencies
+
+- express
+- @prisma/client
+- prisma
+- pg
+- redis
+- ws
+- socket.io
+- bcryptjs
+- jsonwebtoken
+- helmet
+- cors
+- winston
+- axios
+- joi
+- jest
+- supertest
+- next
+- react
+- tailwindcss
+- chart.js
+- monaco-editor
+- xterm
+
+
 
 - express
 - prisma

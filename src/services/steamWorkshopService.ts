@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { AgentService } from './agentService';
+import { ExternalAgentService } from './externalAgentService';
 import axios from 'axios';
 
 const prisma = new PrismaClient();
@@ -22,10 +22,10 @@ export interface WorkshopSearchResult {
 }
 
 export class SteamWorkshopService {
-  private agentService: AgentService;
+  private externalAgentService: ExternalAgentService;
 
   constructor() {
-    this.agentService = new AgentService();
+    this.externalAgentService = ExternalAgentService.getInstance();
   }
 
   /**
@@ -164,9 +164,9 @@ export class SteamWorkshopService {
         }
       });
 
-      // Send installation request to agent
-      const success = await this.agentService.installMod(
-        server.node.fqdn,
+      // Send installation request to external agent
+      const result = await this.externalAgentService.installMod(
+        server.node.uuid,
         serverId,
         {
           type: 'steam_workshop',
@@ -175,6 +175,8 @@ export class SteamWorkshopService {
           downloadUrl: workshopItem.downloadUrl
         }
       );
+
+      const success = result.success;
 
       if (success) {
         await prisma.workshopInstallation.update({

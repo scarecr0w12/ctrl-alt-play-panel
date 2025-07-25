@@ -18,12 +18,14 @@ import userProfileRoutes from './routes/userProfile';
 import nodesRoutes from './routes/nodes';
 import ctrlsRoutes from './routes/ctrls';
 import altsRoutes from './routes/alts';
+import agentsRoutes from './routes/agents';
 
 // Import middleware and services
 import { errorHandler } from './middlewares/errorHandler';
 import { logger } from './utils/logger';
 import { SocketService } from './services/socket';
-import { AgentService } from './services/agentService';
+import { ExternalAgentService } from './services/externalAgentService';
+import { AgentDiscoveryService } from './services/agentDiscoveryService';
 import { MonitoringService } from './services/monitoringService';
 
 // Load environment variables
@@ -88,6 +90,7 @@ class GamePanelApp {
     this.app.use('/api/nodes', nodesRoutes);
     this.app.use('/api/ctrls', ctrlsRoutes);
     this.app.use('/api/alts', altsRoutes);
+    this.app.use('/api/agents', agentsRoutes); // External agent management
     this.app.use('/api/monitoring', monitoringRoutes);
     this.app.use('/api/workshop', workshopRoutes);
     this.app.use('/api/files', filesRoutes);
@@ -291,8 +294,9 @@ class GamePanelApp {
     this.wss = new WebSocketServer({ server: this.server });
     this.setupWebSocketHandlers();
 
-    // Start Agent Service for external agent connections
-    // await AgentService.initialize();
+    // Start External Agent Discovery Service
+    const agentDiscoveryService = AgentDiscoveryService.getInstance();
+    await agentDiscoveryService.start();
 
     this.server.listen(this.port, () => {
       logger.info(`🚀 Ctrl-Alt-Play Panel started successfully!`);

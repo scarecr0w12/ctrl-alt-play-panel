@@ -132,33 +132,6 @@ export interface AltVariable {
   rules: string;
 }
 
-export interface Agent {
-  id: string;
-  nodeId: string;
-  version: string;
-  status: AgentStatus;
-  lastHeartbeat: Date;
-  systemInfo: AgentSystemInfo;
-}
-
-export enum AgentStatus {
-  ONLINE = 'online',
-  OFFLINE = 'offline',
-  ERROR = 'error'
-}
-
-export interface AgentSystemInfo {
-  platform: string;
-  arch: string;
-  cpuCount: number;
-  totalMemory: number;
-  freeMemory: number;
-  totalDisk: number;
-  freeDisk: number;
-  uptime: number;
-  dockerVersion?: string;
-}
-
 export interface LogEntry {
   id: string;
   serverId?: string;

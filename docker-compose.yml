@@ -1,58 +1,86 @@
-version: '3.8'
+# Docker Compose file for Ctrl-Alt-Play Panel
+# Version: 2.x compatible
 
 services:
   # Ctrl-Alt-Play Panel Application (Web Interface)
   ctrl-alt-play:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: production
     container_name: ctrl-alt-play
     restart: unless-stopped
     ports:
       - "3000:3000"
       - "8080:8080"  # Agent WebSocket port
     environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://ctrlaltplay:ctrlaltplay@postgres:5432/ctrlaltplay
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=your-super-secret-jwt-key-change-this
-      - AGENT_SECRET=your-agent-secret-key-change-this
+      NODE_ENV: production
+      DATABASE_URL: postgresql://ctrlaltplay:ctrlaltplay@postgres:5432/ctrlaltplay
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this}
+      AGENT_SECRET: ${AGENT_SECRET:-your-agent-secret-key-change-this}
+      PORT: 3000
+      AGENT_PORT: 8080
     volumes:
-      - ./uploads:/app/uploads
-      - ./logs:/app/logs
+      - ./uploads:/app/uploads:rw
+      - ./logs:/app/logs:rw
+      - ./data:/app/data:rw
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - ctrl-alt-play-network
+    healthcheck:
+      test: ["CMD-SHELL", "node /app/dist/health-check.js || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # PostgreSQL Database (Panel Only)
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: ctrl-alt-play-postgres
     restart: unless-stopped
     environment:
-      - POSTGRES_DB=ctrlaltplay
-      - POSTGRES_USER=ctrlaltplay
-      - POSTGRES_PASSWORD=ctrlaltplay
+      POSTGRES_DB: ctrlaltplay
+      POSTGRES_USER: ctrlaltplay
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ctrlaltplay}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data:rw
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     networks:
       - ctrl-alt-play-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ctrlaltplay -d ctrlaltplay"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Redis Cache (Panel Only)
   redis:
     image: redis:7-alpine
     container_name: ctrl-alt-play-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
-      - redis_data:/data
+      - redis_data:/data:rw
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     networks:
       - ctrl-alt-play-network
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
   # Nginx Reverse Proxy (Optional)
   nginx:
@@ -60,15 +88,22 @@ services:
     container_name: ctrl-alt-play-nginx
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
-      - ctrl-alt-play
+      ctrl-alt-play:
+        condition: service_healthy
     networks:
       - ctrl-alt-play-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 # NOTE: Game servers are NOT managed by this docker-compose
 # They are managed by external agents running on game server hosts
@@ -83,3 +118,4 @@ volumes:
 networks:
   ctrl-alt-play-network:
     driver: bridge
+    name: ctrl-alt-play-network

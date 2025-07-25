@@ -6,7 +6,8 @@ import {
   requireAnyPermission,
   requireResourceOwnership 
 } from '../middlewares/permissions';
-import { AgentService } from '../services/agent';
+import { ExternalAgentService } from '../services/externalAgentService';
+import { logger } from '../utils/logger';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -170,7 +171,7 @@ router.get('/:id/status', authenticateToken, requireAnyPermission(['servers.view
 });
 
 /**
- * Start server
+ * Start a server
  * POST /api/servers/:id/start
  */
 router.post('/:id/start', authenticateToken, requireAnyPermission(['servers.start', 'servers.manage']), requireResourceOwnership('server'), async (req, res) => {
@@ -188,14 +189,11 @@ router.post('/:id/start', authenticateToken, requireAnyPermission(['servers.star
       return res.status(404).json({ error: 'Server not found' });
     }
 
-    // Get agent service
-    const agentService = AgentService.getInstance();
+    // Get external agent service
+    const externalAgentService = ExternalAgentService.getInstance();
 
-    // Send start command to agent
-    const result = await agentService.sendCommand(server.node.uuid, {
-      action: 'start_server',
-      serverId: server.uuid
-    });
+    // Send start command to external agent
+    const result = await externalAgentService.startServer(server.node.uuid, server.uuid);
 
     if (!result.success) {
       return res.status(500).json({ 
@@ -216,7 +214,7 @@ router.post('/:id/start', authenticateToken, requireAnyPermission(['servers.star
       data: { serverId: id, status: 'STARTING' }
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error('Failed to start server:', error);
     return res.status(500).json({ error: 'Failed to start server' });
   }
 });
@@ -241,15 +239,11 @@ router.post('/:id/stop', authenticateToken, requireAnyPermission(['servers.stop'
       return res.status(404).json({ error: 'Server not found' });
     }
 
-    // Get agent service
-    const agentService = AgentService.getInstance();
+    // Get external agent service
+    const externalAgentService = ExternalAgentService.getInstance();
 
-    // Send stop command to agent
-    const result = await agentService.sendCommand(server.node.uuid, {
-      action: 'stop_server',
-      serverId: server.uuid,
-      payload: { signal, timeout }
-    });
+    // Send stop command to external agent
+    const result = await externalAgentService.stopServer(server.node.uuid, server.uuid, signal, timeout);
 
     if (!result.success) {
       return res.status(500).json({ 
@@ -294,14 +288,11 @@ router.post('/:id/restart', authenticateToken, requireAnyPermission(['servers.re
       return res.status(404).json({ error: 'Server not found' });
     }
 
-    // Get agent service
-    const agentService = AgentService.getInstance();
+    // Get external agent service
+    const externalAgentService = ExternalAgentService.getInstance();
 
-    // Send restart command to agent
-    const result = await agentService.sendCommand(server.node.uuid, {
-      action: 'restart_server',
-      serverId: server.uuid
-    });
+    // Send restart command to external agent
+    const result = await externalAgentService.restartServer(server.node.uuid, server.uuid);
 
     if (!result.success) {
       return res.status(500).json({ 
@@ -346,15 +337,11 @@ router.post('/:id/kill', authenticateToken, requirePermission('servers.manage'),
       return res.status(404).json({ error: 'Server not found' });
     }
 
-    // Get agent service
-    const agentService = AgentService.getInstance();
+    // Get external agent service
+    const externalAgentService = ExternalAgentService.getInstance();
 
-    // Send kill command to agent
-    const result = await agentService.sendCommand(server.node.uuid, {
-      action: 'stop_server',
-      serverId: server.uuid,
-      payload: { signal: 'SIGKILL', timeout: 5 }
-    });
+    // Send kill command to external agent
+    const result = await externalAgentService.killServer(server.node.uuid, server.uuid);
 
     if (!result.success) {
       return res.status(500).json({ 

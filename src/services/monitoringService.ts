@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { AgentService } from './agentService';
+import { ExternalAgentService } from './externalAgentService';
 import { SocketService } from './socket';
 import SystemMetricsCollector from './systemMetricsCollector';
 
@@ -23,12 +23,12 @@ export interface SystemMetrics extends ResourceMetrics {
 }
 
 export class MonitoringService {
-  private agentService: AgentService;
+  private externalAgentService: ExternalAgentService;
   private systemCollector: SystemMetricsCollector;
 
   constructor() {
-    this.agentService = new AgentService();
     this.systemCollector = new SystemMetricsCollector();
+    this.externalAgentService = ExternalAgentService.getInstance();
   }
 
   /**
@@ -45,8 +45,15 @@ export class MonitoringService {
         throw new Error('Server not found');
       }
 
-      // Get metrics from agent
-      const metrics = await this.agentService.getServerMetrics(server.node.fqdn, serverId);
+      // Get metrics from external agent
+      const metricsResponse = await this.externalAgentService.getServerMetrics(server.node.uuid, serverId);
+      
+      if (!metricsResponse.success) {
+        console.warn(`Failed to get metrics for server ${serverId}:`, metricsResponse.error);
+        return null;
+      }
+
+      const metrics = metricsResponse.data;
 
       // Store metrics in database
       await this.storeMetrics(serverId, server.nodeId, metrics);
