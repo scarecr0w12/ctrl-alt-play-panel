@@ -18,6 +18,8 @@
     "docker:run": "docker run -p 3000:3000 game-panel",
     "migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset"
   },
   "keywords": [
