@@ -30,13 +30,7 @@ const mockUser = {
   isActive: true,
 };
 
-const MockAuthProvider = ({ children }: { children: React.ReactNode }) => (
-  <AuthProvider>
-    {children}
-  </AuthProvider>
-);
-
-// Override the useAuth hook
+// Mock auth context and provider
 jest.mock('@/contexts/AuthContext', () => ({
   ...jest.requireActual('@/contexts/AuthContext'),
   useAuth: () => ({
@@ -47,7 +41,9 @@ jest.mock('@/contexts/AuthContext', () => ({
     login: jest.fn(),
     logout: jest.fn(),
   }),
-  AuthProvider: MockAuthProvider,
+  AuthProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="mock-auth-provider">{children}</div>
+  ),
 }));
 
 describe('CtrlsPage', () => {
@@ -109,9 +105,9 @@ describe('CtrlsPage', () => {
 
   it('renders categories and configurations', async () => {
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     // Wait for categories to load
@@ -127,9 +123,9 @@ describe('CtrlsPage', () => {
 
   it('shows create category modal when button is clicked', async () => {
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     await waitFor(() => {
@@ -160,9 +156,9 @@ describe('CtrlsPage', () => {
     } as any);
 
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     await waitFor(() => {
@@ -194,9 +190,9 @@ describe('CtrlsPage', () => {
 
   it('loads alts when category is selected', async () => {
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     await waitFor(() => {
@@ -214,9 +210,9 @@ describe('CtrlsPage', () => {
 
   it('shows import modal when import button is clicked', async () => {
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     await waitFor(() => {
@@ -249,9 +245,9 @@ describe('CtrlsPage', () => {
     const mockConfirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
 
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     await waitFor(() => {
@@ -296,9 +292,9 @@ describe('CtrlsPage', () => {
     } as any);
 
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     await waitFor(() => {
@@ -312,9 +308,9 @@ describe('CtrlsPage', () => {
     mockedCtrlsApi.getAll.mockImplementation(() => new Promise(() => {}));
 
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     expect(screen.getByText('Loading configurations...')).toBeInTheDocument();
