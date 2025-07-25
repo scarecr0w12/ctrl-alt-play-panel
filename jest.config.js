@@ -24,5 +24,7 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/src/$1'
   },
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
-  testTimeout: 10000
+  testTimeout: 10000,
+  globalSetup: '<rootDir>/tests/globalSetup.ts',
+  globalTeardown: '<rootDir>/tests/globalTeardown.ts'
 };

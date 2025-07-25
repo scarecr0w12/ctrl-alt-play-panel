@@ -6,15 +6,35 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seeding...');
 
-  // Clear existing data
+  // Clear existing data in proper order to respect foreign key constraints
   console.log('🧹 Clearing existing data...');
+  await prisma.workshopInstallation.deleteMany({});
+  await prisma.voiceServer.deleteMany({});
+  await prisma.subuser.deleteMany({});
+  await prisma.serverTransfer.deleteMany({});
   await prisma.serverMetrics.deleteMany({});
+  await prisma.schedule.deleteMany({});
+  await prisma.modInstallation.deleteMany({});
+  await prisma.database.deleteMany({});
+  await prisma.backup.deleteMany({});
+  await prisma.auditLog.deleteMany({});
   await prisma.allocation.deleteMany({});
+  await prisma.alert.deleteMany({});
+  await prisma.serverVariable.deleteMany({});
   await prisma.server.deleteMany({});
+  await prisma.altVariable.deleteMany({});
   await prisma.alt.deleteMany({});
   await prisma.ctrl.deleteMany({});
-  await prisma.node.deleteMany({});
+  await prisma.userSshKey.deleteMany({});
+  await prisma.userSession.deleteMany({});
+  await prisma.userPermission.deleteMany({});
+  await prisma.recoveryToken.deleteMany({});
+  await prisma.apiKey.deleteMany({});
   await prisma.user.deleteMany({});
+  await prisma.rolePermission.deleteMany({});
+  await prisma.role.deleteMany({});
+  await prisma.permission.deleteMany({});
+  await prisma.node.deleteMany({});
   await prisma.location.deleteMany({});
 
   console.log('📍 Creating location...');
