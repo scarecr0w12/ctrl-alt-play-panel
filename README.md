@@ -203,6 +203,20 @@ npm run dev          # Start agent in development
 npm run build        # Build agent for production
 ```
 
+### Version Management
+
+```bash
+./version.sh patch "Fix authentication bug"     # Bug fixes (1.0.0 → 1.0.1)
+./version.sh minor "Add new features"           # New features (1.0.0 → 1.1.0)
+./version.sh major "Breaking API changes"       # Breaking changes (1.0.0 → 2.0.0)
+```
+
+The version script automatically:
+- Updates all package.json files
+- Updates CHANGELOG.md with release notes
+- Creates git commit and annotated tag
+- Pushes changes to remote repository
+
 ## 📚 Documentation
 
 ### For Developers
