@@ -4,16 +4,17 @@
 
 ## 🎯 Project Overview
 
-This is a comprehensive web-based game server management panel inspired by Pelican Panel, built with Node.js/TypeScript, featuring a modern glass morphism UI and real-time server management capabilities.
+This is a comprehensive web-based game server management panel featuring a Panel+Agent distributed architecture, built with Node.js/TypeScript backend and Next.js/React frontend, featuring modern glass morphism UI and external agent integration.
 
 ## 🏗️ Architecture & Stack
 
 - **Backend**: Node.js 18+ with TypeScript, Express.js framework
-- **Database**: PostgreSQL with Prisma ORM
+- **Database**: PostgreSQL with Prisma ORM, foreign key constraints properly managed
 - **Cache**: Redis for session management and caching
-- **Frontend**: Vanilla JavaScript with Monaco Editor, Chart.js, xterm.js
+- **Frontend**: Next.js/React with TypeScript, TailwindCSS
 - **Styling**: TailwindCSS with glass morphism design
-- **WebSocket**: Real-time communication for console and monitoring
+- **External Agents**: HTTP REST API communication with separate agent projects
+- **Testing**: Jest with comprehensive database cleanup utilities
 - **Deployment**: Docker with Docker Compose, Nginx reverse proxy
 
 ## 📁 Project Structure

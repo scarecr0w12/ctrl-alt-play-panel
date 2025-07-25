@@ -1,7 +1,7 @@
 ---
-description: Implement features and write high-quality code aligned with the project's established patterns.
+description: Implement features and write high-quality code aligned with the project's established patterns. Database issues resolved, focus on external agent integration.
 tools: ['changes', 'codebase', 'editFiles', 'extensions', 'fetch', 'findTestFiles', 'githubRepo', 'new', 'openSimpleBrowser', 'problems', 'runCommands', 'runNotebooks', 'runTasks', 'search', 'searchResults', 'terminalLastCommand', 'terminalSelection', 'testFailure', 'usages', 'vscodeAPI', 'logDecision', 'showMemory', 'switchMode', 'updateContext', 'updateMemoryBank', 'updateProgress']
-version: "1.0.0"
+version: "1.1.0"
 ---
 # Code Expert
 

@@ -1,7 +1,7 @@
 ---
-description: Design robust and scalable software systems, make high-level architectural decisions, and maintain the project's memory bank.
+description: Design robust and scalable software systems, make high-level architectural decisions, and maintain the project's memory bank. Database layer now stable.
 tools: ['changes', 'codebase', 'editFiles', 'extensions', 'fetch', 'findTestFiles', 'githubRepo', 'new', 'openSimpleBrowser', 'problems', 'runCommands', 'runNotebooks', 'runTasks', 'search', 'searchResults', 'terminalLastCommand', 'terminalSelection', 'testFailure', 'usages', 'vscodeAPI', 'logDecision', 'showMemory', 'switchMode', 'updateContext', 'updateMemoryBank', 'updateProgress', 'sequentialthinking']
-version: "1.0.0"
+version: "1.1.0"
 ---
 # System Architect
 

@@ -57,7 +57,18 @@ Security implemented through multiple layers: JWT authentication with httpOnly c
 
 ## Panel-Agent Communication Protocol
 
-Hybrid REST API + WebSocket communication pattern where Panel sends commands via WebSocket to Agents and receives real-time status updates. Agents maintain persistent WebSocket connections for low-latency communication while using JWT tokens for authentication. Commands are JSON messages with action types (start, stop, restart, status) and server IDs.
+External Agent HTTP REST API communication pattern where Panel sends commands via HTTP to external Agent projects. Agents run as separate services on nodes, discovered via AgentDiscoveryService, and managed through `/api/agents` endpoints. Commands use standardized REST endpoints with JSON payloads for server lifecycle management.
+
+## Database Foreign Key Management Pattern
+
+**CRITICAL PATTERN**: Proper database cleanup order respecting foreign key constraints. The `cleanupTestDatabase()` function in `tests/setup.ts` demonstrates the correct deletion order: dependent records (Servers) must be deleted before their parent records (Alts). Jest global setup/teardown ensures proper test database lifecycle management without constraint violations.
+
+**Implementation Examples:**
+
+- tests/setup.ts - cleanupTestDatabase() with proper deletion order
+- tests/globalSetup.ts - Jest global database initialization  
+- tests/globalTeardown.ts - Jest global database cleanup
+- prisma/seed.ts - Seeding with foreign key awareness
 
 ### Examples
 
