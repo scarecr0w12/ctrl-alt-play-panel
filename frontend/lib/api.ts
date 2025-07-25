@@ -401,9 +401,128 @@ export const altsApi = {
   export: (id: string) => api.get<ApiResponse<any>>(`/api/alts/${id}/export`),
 };
 
+// External Agent interfaces
+interface AgentStatus {
+  nodeUuid: string;
+  isOnline: boolean;
+  lastSeen: string;
+  baseUrl: string;
+  apiKey?: string;
+  metadata?: any;
+}
+
+interface AgentHealthStatus {
+  nodeUuid: string;
+  status: {
+    online: boolean;
+    lastSeen: string;
+    responseTime?: number;
+    error?: string;
+  };
+}
+
+interface AgentCommand {
+  action: string;
+  serverId?: string;
+  parameters?: any;
+}
+
+interface AgentCommandResult {
+  success: boolean;
+  data?: any;
+  error?: string;
+  timestamp: string;
+}
+
+// External Agent API
+export const agentsApi = {
+  // Get all registered agents
+  getAll: () => api.get<ApiResponse<AgentStatus[]>>('/api/agents'),
+  
+  // Get agent status for specific node
+  getStatus: (nodeUuid: string) => 
+    api.get<ApiResponse<{ nodeUuid: string; status: any }>>(`/api/agents/${nodeUuid}/status`),
+  
+  // Manually register an agent
+  register: (nodeUuid: string, baseUrl: string, apiKey?: string) => 
+    api.post<ApiResponse<{ nodeUuid: string; baseUrl: string }>>('/api/agents/register', {
+      nodeUuid,
+      baseUrl,
+      apiKey,
+    }),
+  
+  // Unregister an agent
+  unregister: (nodeUuid: string) => 
+    api.delete<ApiResponse<{ nodeUuid: string }>>(`/api/agents/${nodeUuid}`),
+  
+  // Force agent discovery
+  discover: () => 
+    api.post<ApiResponse<{ message: string }>>('/api/agents/discover'),
+  
+  // Send command to agent
+  sendCommand: (nodeUuid: string, command: AgentCommand) => 
+    api.post<ApiResponse<AgentCommandResult>>(`/api/agents/${nodeUuid}/command`, command),
+  
+  // Health check for all agents
+  healthCheckAll: () => 
+    api.get<ApiResponse<AgentHealthStatus[]>>('/api/agents/health/all'),
+  
+  // Server control commands via agents
+  servers: {
+    start: (nodeUuid: string, serverId: string) => 
+      api.post<ApiResponse<AgentCommandResult>>(`/api/agents/${nodeUuid}/command`, {
+        action: 'server.start',
+        serverId,
+      }),
+    
+    stop: (nodeUuid: string, serverId: string) => 
+      api.post<ApiResponse<AgentCommandResult>>(`/api/agents/${nodeUuid}/command`, {
+        action: 'server.stop',
+        serverId,
+      }),
+    
+    restart: (nodeUuid: string, serverId: string) => 
+      api.post<ApiResponse<AgentCommandResult>>(`/api/agents/${nodeUuid}/command`, {
+        action: 'server.restart',
+        serverId,
+      }),
+    
+    kill: (nodeUuid: string, serverId: string) => 
+      api.post<ApiResponse<AgentCommandResult>>(`/api/agents/${nodeUuid}/command`, {
+        action: 'server.kill',
+        serverId,
+      }),
+    
+    sendConsoleCommand: (nodeUuid: string, serverId: string, command: string) => 
+      api.post<ApiResponse<AgentCommandResult>>(`/api/agents/${nodeUuid}/command`, {
+        action: 'server.console',
+        serverId,
+        parameters: { command },
+      }),
+  },
+};
+
 // Health check
 export const healthApi = {
   check: () => api.get<{ status: string; timestamp: string; uptime: number }>('/health'),
+};
+
+// Export interfaces for use in components
+export type { 
+  User, 
+  UserProfile, 
+  ActivityLog, 
+  Server, 
+  ServerMetrics, 
+  MonitoringStats, 
+  Ctrl, 
+  Alt, 
+  AltVariable,
+  AgentStatus,
+  AgentHealthStatus,
+  AgentCommand,
+  AgentCommandResult,
+  ApiResponse 
 };
 
 export default api;
