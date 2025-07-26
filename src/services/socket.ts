@@ -4,6 +4,16 @@ import { logger } from '../utils/logger';
 import { User } from '../types';
 import DatabaseService from './database';
 
+interface JWTPayload {
+  user: User;
+  iat?: number;
+  exp?: number;
+}
+
+interface AuthenticatedSocket extends Socket {
+  user: User;
+}
+
 export class SocketService {
   private static io: SocketIOServer;
   private static connectedClients: Map<string, Socket> = new Map();
@@ -20,16 +30,16 @@ export class SocketService {
       }
 
       try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-        (socket as any).user = decoded.user;
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload;
+        (socket as AuthenticatedSocket).user = decoded.user;
         next();
-      } catch (error) {
+      } catch {
         next(new Error('Authentication error'));
       }
     });
 
     io.on('connection', (socket: Socket) => {
-      const user = (socket as any).user as User;
+      const user = (socket as AuthenticatedSocket).user;
       logger.info(`User ${user.username} connected via WebSocket`);
 
       // Store the connection
@@ -263,18 +273,18 @@ export class SocketService {
     logger.info(`User ${user.username} requested file write: ${path} on server ${serverId} (${content.length} chars)`);
   }
 
-  public static emitToUser(userId: string, event: string, data: any): void {
+  public static emitToUser(userId: string, event: string, data: unknown): void {
     const socket = this.connectedClients.get(userId);
     if (socket) {
       socket.emit(event, data);
     }
   }
 
-  public static emitToServer(serverId: string, event: string, data: any): void {
+  public static emitToServer(serverId: string, event: string, data: unknown): void {
     this.io.to(`server:${serverId}`).emit(event, data);
   }
 
-  public static emitToAll(event: string, data: any): void {
+  public static emitToAll(event: string, data: unknown): void {
     this.io.emit(event, data);
   }
 
@@ -282,18 +292,18 @@ export class SocketService {
     return Array.from(this.connectedClients.keys());
   }
 
-  public static broadcastMonitoring(event: string, data: any): void {
+  public static broadcastMonitoring(event: string, data: unknown): void {
     this.io.to('monitoring').emit(event, data);
   }
 
-  public static emitMetricsUpdate(metrics: any): void {
+  public static emitMetricsUpdate(metrics: Record<string, unknown>): void {
     this.broadcastMonitoring('metrics:update', {
       ...metrics,
       timestamp: new Date().toISOString()
     });
   }
 
-  public static emitServerStatusUpdate(statusData: any): void {
+  public static emitServerStatusUpdate(statusData: unknown): void {
     this.broadcastMonitoring('server:status', statusData);
   }
 }

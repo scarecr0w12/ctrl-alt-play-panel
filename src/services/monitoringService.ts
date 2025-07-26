@@ -5,6 +5,27 @@ import SystemMetricsCollector from './systemMetricsCollector';
 
 const prisma = new PrismaClient();
 
+interface ServerWithNode {
+  id: string;
+  name: string;
+  status: string;
+  node: {
+    id: string;
+    name: string;
+  };
+}
+
+interface AggregatedStats extends Record<string, unknown> {
+  total: number;
+  running: number;
+  stopped: number;
+  cpu: number;
+  memory: number;
+  memoryTotal: number;
+  players: number;
+  timestamp: string;
+}
+
 export interface ResourceMetrics {
   cpu: number;
   memory: number;
@@ -86,7 +107,7 @@ export class MonitoringService {
       include: { node: true }
     });
 
-    const promises = activeServers.map((server: any) =>
+    const promises = activeServers.map((server: ServerWithNode) =>
       this.collectServerMetrics(server.id)
     );
 
@@ -99,10 +120,10 @@ export class MonitoringService {
   /**
    * Get aggregated stats for dashboard
    */
-  async getAggregatedStats(): Promise<any> {
+  async getAggregatedStats(): Promise<AggregatedStats> {
     const servers = await prisma.server.findMany();
-    const runningServers = servers.filter(s => s.status === 'RUNNING').length;
-    const stoppedServers = servers.filter(s => ['OFFLINE', 'STOPPED', 'CRASHED'].includes(s.status)).length;
+    const runningServers = servers.filter((s: any) => s.status === 'RUNNING').length;
+    const stoppedServers = servers.filter((s: any) => ['OFFLINE', 'STOPPED', 'CRASHED'].includes(s.status)).length;
 
     // Get latest metrics for aggregate calculations
     const latestMetrics = await prisma.serverMetrics.findMany({
@@ -116,15 +137,15 @@ export class MonitoringService {
     });
 
     const avgCpu = latestMetrics.length > 0 
-      ? latestMetrics.reduce((sum, m) => sum + m.cpu, 0) / latestMetrics.length 
+      ? latestMetrics.reduce((sum: number, m: any) => sum + m.cpu, 0) / latestMetrics.length 
       : 0;
     
     const totalMemory = latestMetrics.length > 0 
-      ? latestMetrics.reduce((sum, m) => sum + m.memory, 0) 
+      ? latestMetrics.reduce((sum: number, m: any) => sum + m.memory, 0) 
       : 0;
     
     const totalPlayers = latestMetrics.length > 0 
-      ? latestMetrics.reduce((sum, m) => sum + m.players, 0) 
+      ? latestMetrics.reduce((sum: number, m: any) => sum + m.players, 0) 
       : 0;
 
     return {
@@ -295,6 +316,8 @@ export class MonitoringService {
       };
 
       const hoursAgo = timeRanges[timeRange];
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const startTime = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
 
       // For now, return mock aggregated data

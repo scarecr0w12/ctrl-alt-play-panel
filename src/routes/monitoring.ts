@@ -5,7 +5,6 @@ import {
   requirePermission, 
   requireAnyPermission 
 } from '../middlewares/permissions';
-import { UserRole } from '../types';
 
 const router = Router();
 const monitoringService = new MonitoringService();
@@ -161,6 +160,8 @@ router.post('/collect', authenticateToken, requirePermission('monitoring.view'),
  */
 router.get('/alerts', authenticateToken, requirePermission('monitoring.view'), async (req, res) => {
   try {
+    // Future implementation will use these query parameters for filtering
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { acknowledged = 'false', severity } = req.query;
 
     const alerts = await monitoringService.getAlerts({
