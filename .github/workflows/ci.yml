@@ -89,7 +89,7 @@ jobs:
           cd frontend && npm run build && cd ..
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           file: ./coverage/lcov.info
           flags: unittests
