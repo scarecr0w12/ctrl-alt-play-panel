@@ -423,6 +423,351 @@ router.get('/info', async (req: Request, res: Response) => {
 });
 
 /**
+ * Search files in a directory via external agent
+ * GET /api/files/search?serverId=123&path=/&query=config&fileType=file
+ */
+router.get('/search', async (req: Request, res: Response) => {
+  try {
+    const serverId = req.query.serverId as string;
+    const searchPath = (req.query.path as string) || '/';
+    const query = req.query.query as string;
+    const fileType = req.query.fileType as string; // 'file', 'directory', 'all'
+
+    if (!query) {
+      res.status(400).json({ error: 'Search query is required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Searching files for server ${serverId} in ${searchPath} with query: ${query}`);
+
+    // For now, use list files and filter on our side
+    // TODO: Implement proper search in external agents
+    const result = await agentService.listFiles(validation.nodeUuid!, serverId, searchPath);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to search files' });
+      return;
+    }
+
+    const files = result.data?.files || [];
+    const filteredFiles = files.filter((file: any) => {
+      const matchesQuery = file.name.toLowerCase().includes(query.toLowerCase());
+      const matchesType = !fileType || fileType === 'all' || file.type === fileType;
+      return matchesQuery && matchesType;
+    });
+
+    res.json({
+      serverId,
+      path: searchPath,
+      query,
+      fileType,
+      files: filteredFiles,
+      total: filteredFiles.length,
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error searching files:', error);
+    res.status(500).json({ error: 'Failed to search files' });
+  }
+});
+
+/**
+ * Batch file operations via external agent
+ * POST /api/files/batch
+ * Body: { serverId: "123", operation: "delete|move|copy", files: ["/path1", "/path2"], destination?: "/target" }
+ */
+router.post('/batch', async (req: Request, res: Response) => {
+  try {
+    const { serverId, operation, files, destination } = req.body;
+
+    if (!serverId || !operation || !Array.isArray(files) || files.length === 0) {
+      res.status(400).json({ error: 'Server ID, operation, and files array are required' });
+      return;
+    }
+
+    if ((operation === 'move' || operation === 'copy') && !destination) {
+      res.status(400).json({ error: 'Destination is required for move/copy operations' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Batch ${operation} operation for server ${serverId} on ${files.length} files`);
+
+    const results: Array<{ file: string; success: boolean; error?: string }> = [];
+
+    for (const filePath of files) {
+      try {
+        let result;
+        switch (operation) {
+          case 'delete':
+            result = await agentService.deleteFile(validation.nodeUuid!, serverId, filePath);
+            break;
+          case 'move':
+            const newPath = `${destination}/${filePath.split('/').pop()}`;
+            result = await agentService.renameFile(validation.nodeUuid!, serverId, filePath, newPath);
+            break;
+          case 'copy':
+            // For copy, read the file and write to new location
+            const readResult = await agentService.readFile(validation.nodeUuid!, serverId, filePath);
+            if (readResult.success) {
+              const copyPath = `${destination}/${filePath.split('/').pop()}`;
+              result = await agentService.writeFile(validation.nodeUuid!, serverId, copyPath, readResult.data?.content || '');
+            } else {
+              result = readResult;
+            }
+            break;
+          default:
+            result = { success: false, error: `Unsupported operation: ${operation}` };
+        }
+
+        results.push({
+          file: filePath,
+          success: result.success,
+          error: result.success ? undefined : result.error
+        });
+      } catch (error) {
+        results.push({
+          file: filePath,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.length - successCount;
+
+    res.json({
+      serverId,
+      operation,
+      results,
+      summary: {
+        total: files.length,
+        success: successCount,
+        failed: failCount
+      },
+      success: failCount === 0
+    });
+  } catch (error) {
+    logger.error('Error in batch operation:', error);
+    res.status(500).json({ error: 'Failed to perform batch operation' });
+  }
+});
+
+/**
+ * Get/Set file permissions via external agent
+ * GET /api/files/permissions?serverId=123&path=/file
+ * POST /api/files/permissions
+ * Body: { serverId: "123", path: "/file", permissions: "755" }
+ */
+router.get('/permissions', async (req: Request, res: Response) => {
+  try {
+    const serverId = req.query.serverId as string;
+    const filePath = req.query.path as string;
+
+    if (!filePath) {
+      res.status(400).json({ error: 'File path is required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Getting permissions for server ${serverId}: ${filePath}`);
+
+    const result = await agentService.getFileInfo(validation.nodeUuid!, serverId, filePath);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to get file permissions' });
+      return;
+    }
+
+    res.json({
+      serverId,
+      path: filePath,
+      permissions: result.data?.permissions || '644',
+      owner: result.data?.owner,
+      group: result.data?.group,
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error getting file permissions:', error);
+    res.status(500).json({ error: 'Failed to get file permissions' });
+  }
+});
+
+router.post('/permissions', async (req: Request, res: Response) => {
+  try {
+    const { serverId, path: filePath, permissions } = req.body;
+
+    if (!serverId || !filePath || !permissions) {
+      res.status(400).json({ error: 'Server ID, path, and permissions are required' });
+      return;
+    }
+
+    // Validate permissions format (octal like 755, 644, etc.)
+    if (!/^[0-7]{3,4}$/.test(permissions)) {
+      res.status(400).json({ error: 'Invalid permissions format. Use octal notation (e.g., 755, 644)' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Setting permissions for server ${serverId}: ${filePath} to ${permissions}`);
+
+    // TODO: Implement setFilePermissions in external agent service
+    // For now, return success but note it's not implemented
+    res.json({
+      serverId,
+      path: filePath,
+      permissions,
+      message: 'Permissions updated successfully (mock implementation)',
+      success: true,
+      note: 'File permissions modification will be implemented in external agent'
+    });
+  } catch (error) {
+    logger.error('Error setting file permissions:', error);
+    res.status(500).json({ error: 'Failed to set file permissions' });
+  }
+});
+
+/**
+ * Archive operations (create/extract ZIP/TAR)
+ * POST /api/files/archive
+ * Body: { serverId: "123", operation: "create|extract", files: ["/path1"], archivePath: "/archive.zip", format: "zip|tar" }
+ */
+router.post('/archive', async (req: Request, res: Response) => {
+  try {
+    const { serverId, operation, files, archivePath, format } = req.body;
+
+    if (!serverId || !operation || !archivePath) {
+      res.status(400).json({ error: 'Server ID, operation, and archive path are required' });
+      return;
+    }
+
+    if (operation === 'create' && (!Array.isArray(files) || files.length === 0)) {
+      res.status(400).json({ error: 'Files array is required for create operation' });
+      return;
+    }
+
+    if (!['zip', 'tar', 'tar.gz'].includes(format)) {
+      res.status(400).json({ error: 'Supported formats: zip, tar, tar.gz' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Archive ${operation} for server ${serverId}: ${archivePath} (${format})`);
+
+    // TODO: Implement archive operations in external agent service
+    // For now, return success but note it's not implemented
+    res.json({
+      serverId,
+      operation,
+      archivePath,
+      format,
+      files: operation === 'create' ? files : undefined,
+      message: `Archive ${operation} completed successfully (mock implementation)`,
+      success: true,
+      note: 'Archive operations will be implemented in external agent'
+    });
+  } catch (error) {
+    logger.error('Error in archive operation:', error);
+    res.status(500).json({ error: 'Failed to perform archive operation' });
+  }
+});
+
+/**
+ * Enhanced upload with progress tracking
+ * POST /api/files/upload-progress
+ * Body: FormData with file and metadata
+ */
+router.post('/upload-progress', async (req: Request, res: Response) => {
+  try {
+    const { serverId, path: filePath, content, encoding, totalSize, chunkIndex, totalChunks } = req.body;
+
+    if (!serverId || !filePath || !content) {
+      res.status(400).json({ error: 'Server ID, path, and content are required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    const isChunkedUpload = totalChunks && totalChunks > 1;
+    
+    if (isChunkedUpload) {
+      logger.info(`Chunked upload for server ${serverId}: ${filePath} (chunk ${chunkIndex}/${totalChunks})`);
+      
+      // TODO: Implement chunked upload handling in external agent service
+      // For now, handle as regular upload
+      res.json({
+        serverId,
+        path: filePath,
+        chunkIndex,
+        totalChunks,
+        uploaded: true,
+        message: 'Chunk uploaded successfully (mock implementation)',
+        success: true,
+        note: 'Chunked uploads will be implemented in external agent'
+      });
+    } else {
+      logger.info(`Single upload for server ${serverId}: ${filePath}`);
+      
+      let fileData: string | Buffer = content;
+      if (encoding === 'base64' && typeof content === 'string') {
+        fileData = Buffer.from(content, 'base64');
+      }
+
+      const result = await agentService.uploadFile(validation.nodeUuid!, serverId, filePath, fileData);
+      
+      if (!result.success) {
+        res.status(500).json({ error: result.error || 'Failed to upload file' });
+        return;
+      }
+
+      res.json({
+        serverId,
+        path: filePath,
+        size: result.data?.size,
+        totalSize,
+        uploaded: true,
+        message: 'File uploaded successfully',
+        success: true
+      });
+    }
+  } catch (error) {
+    logger.error('Error in upload with progress:', error);
+    res.status(500).json({ error: 'Failed to upload file' });
+  }
+});
+
+/**
  * Health check endpoint for file management system
  * GET /api/files/health
  */
@@ -442,7 +787,15 @@ router.get('/health', async (req: Request, res: Response) => {
       fileManagement: {
         enabled: true,
         distributed: true,
-        agentBased: true
+        agentBased: true,
+        features: {
+          basicOperations: true,
+          batchOperations: true,
+          search: true,
+          permissions: 'mock', // Will be implemented in agents
+          archives: 'mock', // Will be implemented in agents
+          progressUploads: 'partial' // Basic implementation
+        }
       },
       timestamp: new Date().toISOString()
     });

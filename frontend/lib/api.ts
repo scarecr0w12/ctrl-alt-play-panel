@@ -262,10 +262,13 @@ export const nodesApi = {
 export const filesApi = {
   getFiles: (serverId: string, path: string = '/') => 
     api.get(`/files/list?serverId=${serverId}&path=${encodeURIComponent(path)}`),
+  
   getContent: (serverId: string, filePath: string) => 
     api.get(`/files/read?serverId=${serverId}&path=${encodeURIComponent(filePath)}`),
+  
   updateContent: (serverId: string, filePath: string, content: string) => 
     api.post(`/files/write`, { serverId, path: filePath, content }),
+  
   create: (serverId: string, path: string, type: 'file' | 'directory', content?: string) => {
     if (type === 'directory') {
       return api.post('/files/mkdir', { serverId, path });
@@ -273,25 +276,67 @@ export const filesApi = {
       return api.post('/files/write', { serverId, path, content: content || '' });
     }
   },
+  
   delete: (serverId: string, path: string) => 
     api.delete(`/files/delete?serverId=${serverId}&path=${encodeURIComponent(path)}`),
+  
   rename: (serverId: string, oldPath: string, newPath: string) => 
     api.post('/files/rename', { serverId, oldPath, newPath }),
-  upload: (serverId: string, path: string, file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('serverId', serverId);
-    formData.append('path', path);
-    return api.post('/files/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+  
+  upload: (serverId: string, path: string, fileOrData: File | { content: string; encoding?: string; totalSize?: number }) => {
+    if (fileOrData instanceof File) {
+      const formData = new FormData();
+      formData.append('file', fileOrData);
+      formData.append('serverId', serverId);
+      formData.append('path', path);
+      return api.post('/files/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+    } else {
+      return api.post('/files/upload', {
+        serverId,
+        path,
+        ...fileOrData
+      });
+    }
   },
+  
+  uploadProgress: (serverId: string, path: string, data: { 
+    content: string; 
+    encoding?: string; 
+    totalSize?: number; 
+    chunkIndex?: number; 
+    totalChunks?: number; 
+  }) => 
+    api.post('/files/upload-progress', { serverId, path, ...data }),
+  
   download: (serverId: string, filePath: string) => 
     api.get(`/files/download?serverId=${serverId}&path=${encodeURIComponent(filePath)}`, {
       responseType: 'blob'
     }),
+  
   getInfo: (serverId: string, filePath: string) => 
     api.get(`/files/info?serverId=${serverId}&path=${encodeURIComponent(filePath)}`),
+  
+  // Enhanced file operations
+  search: (serverId: string, path: string, query: string, fileType?: string) => 
+    api.get(`/files/search?serverId=${serverId}&path=${encodeURIComponent(path)}&query=${encodeURIComponent(query)}${fileType ? `&fileType=${fileType}` : ''}`),
+  
+  batchOperation: (serverId: string, operation: 'delete' | 'move' | 'copy', files: string[], destination?: string) => 
+    api.post('/files/batch', { serverId, operation, files, destination }),
+  
+  getPermissions: (serverId: string, filePath: string) => 
+    api.get(`/files/permissions?serverId=${serverId}&path=${encodeURIComponent(filePath)}`),
+  
+  setPermissions: (serverId: string, filePath: string, permissions: string) => 
+    api.post('/files/permissions', { serverId, path: filePath, permissions }),
+  
+  createArchive: (serverId: string, files: string[], archivePath: string, format: 'zip' | 'tar' | 'tar.gz') => 
+    api.post('/files/archive', { serverId, operation: 'create', files, archivePath, format }),
+  
+  extractArchive: (serverId: string, archivePath: string, format: 'zip' | 'tar' | 'tar.gz') => 
+    api.post('/files/archive', { serverId, operation: 'extract', archivePath, format }),
+  
   getHealth: () => api.get('/files/health'),
 };
 

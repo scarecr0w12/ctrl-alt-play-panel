@@ -2,73 +2,55 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
-import { filesApi } from '@/lib/api';
+import FileManagerGrid from '@/components/FileManagerGrid';
+import FileOperationsToolbar from '@/components/FileOperationsToolbar';
+import FilePreviewModal from '@/components/FilePreviewModal';
+import FileUploadProgress from '@/components/FileUploadProgress';
+import FilePermissionsDialog from '@/components/FilePermissionsDialog';
+import { useFiles, FileItem } from '@/hooks/useFiles';
+import { useNotification } from '@/contexts/NotificationContext';
 import {
   FolderIcon,
   DocumentIcon,
-  ArrowUpTrayIcon,
-  TrashIcon,
-  PencilIcon,
-  MagnifyingGlassIcon,
-  FolderPlusIcon,
-  DocumentPlusIcon,
 } from '@heroicons/react/24/outline';
-
-interface FileItem {
-  name: string;
-  type: 'file' | 'directory';
-  size?: number;
-  modified: string;
-  permissions?: string;
-}
 
 export default function FilesPage() {
   const { user } = useAuth();
   const router = useRouter();
   const { serverId } = router.query;
+  const { addNotification } = useNotification();
   
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [currentPath, setCurrentPath] = useState('/');
-  const [loading, setLoading] = useState(true);
+  const {
+    files,
+    currentPath,
+    loading,
+    error,
+    navigateTo,
+    goUp,
+    refetch,
+    createFile,
+    createDirectory,
+    deleteFile,
+    renameFile,
+  } = useFiles(serverId as string);
+
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
-
-  useEffect(() => {
-    if (serverId && typeof serverId === 'string') {
-      loadFiles();
-    }
-  }, [serverId, currentPath]);
-
-  const loadFiles = async () => {
-    if (typeof serverId !== 'string') return;
-    
-    try {
-      setLoading(true);
-      const response = await filesApi.getFiles(serverId as string, currentPath);
-      if (response.data.success) {
-        setFiles(response.data.data || []);
-      }
-    } catch (error) {
-      console.error('Failed to load files:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const navigateToPath = (path: string) => {
-    setCurrentPath(path);
-    setSelectedFiles([]);
-  };
+  const [filter, setFilter] = useState('all');
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showPermissionsDialog, setShowPermissionsDialog] = useState(false);
+  const [permissionsFile, setPermissionsFile] = useState<FileItem | null>(null);
 
   const handleFileClick = (file: FileItem) => {
     if (file.type === 'directory') {
       const newPath = currentPath === '/' 
         ? `/${file.name}` 
         : `${currentPath}/${file.name}`;
-      navigateToPath(newPath);
+      navigateTo(newPath);
+      setSelectedFiles([]);
     } else {
-      // Open file for editing or viewing
+      // For files, open the edit page
       router.push(`/files/${serverId}/edit?path=${encodeURIComponent(currentPath)}/${encodeURIComponent(file.name)}`);
     }
   };
@@ -81,22 +63,111 @@ export default function FilesPage() {
     );
   };
 
-  const handleDelete = async () => {
-    if (selectedFiles.length === 0 || typeof serverId !== 'string') return;
+  const handleFileAction = async (action: string, file: FileItem) => {
+    const filePath = currentPath === '/' ? `/${file.name}` : `${currentPath}/${file.name}`;
     
-    if (!confirm(`Delete ${selectedFiles.length} selected item(s)?`)) return;
+    try {
+      switch (action) {
+        case 'preview':
+          setPreviewFile(file);
+          break;
+        case 'edit':
+          router.push(`/files/${serverId}/edit?path=${encodeURIComponent(filePath)}`);
+          break;
+        case 'download':
+          window.open(`/api/files/download?serverId=${serverId}&path=${encodeURIComponent(filePath)}`, '_blank');
+          break;
+        case 'copy':
+          // TODO: Implement copy to clipboard functionality
+          addNotification('info', 'Copy functionality will be implemented');
+          break;
+        case 'rename':
+          const newName = prompt('Enter new name:', file.name);
+          if (newName && newName !== file.name) {
+            const newPath = currentPath === '/' ? `/${newName}` : `${currentPath}/${newName}`;
+            await renameFile(filePath, newPath);
+          }
+          break;
+        case 'permissions':
+          setPermissionsFile(file);
+          setShowPermissionsDialog(true);
+          break;
+        case 'delete':
+          if (confirm(`Delete ${file.name}?`)) {
+            await deleteFile(filePath);
+          }
+          break;
+      }
+    } catch (error) {
+      console.error(`Failed to ${action} file:`, error);
+    }
+  };
+
+  const handleBatchAction = async (action: string, data?: any) => {
+    if (!serverId) return;
 
     try {
-      for (const fileName of selectedFiles) {
-        const filePath = currentPath === '/' 
-          ? `/${fileName}` 
-          : `${currentPath}/${fileName}`;
-        await filesApi.delete(serverId as string, filePath);
+      switch (action) {
+        case 'delete':
+          if (selectedFiles.length === 0) return;
+          if (!confirm(`Delete ${selectedFiles.length} selected item(s)?`)) return;
+          
+          for (const fileName of selectedFiles) {
+            const filePath = currentPath === '/' ? `/${fileName}` : `${currentPath}/${fileName}`;
+            await deleteFile(filePath);
+          }
+          setSelectedFiles([]);
+          break;
+
+        case 'copy':
+        case 'move':
+          if (selectedFiles.length === 0) return;
+          addNotification('info', `${action} operation will be implemented`);
+          break;
+
+        case 'archive':
+          if (selectedFiles.length === 0) return;
+          addNotification('info', `Archive creation (${data?.format}) will be implemented`);
+          break;
+
+        case 'upload':
+          setShowUploadModal(true);
+          break;
+
+        case 'refresh':
+          await refetch();
+          addNotification('success', 'File list refreshed');
+          break;
+
+        default:
+          addNotification('info', `${action} operation will be implemented`);
       }
-      await loadFiles();
-      setSelectedFiles([]);
     } catch (error) {
-      console.error('Failed to delete files:', error);
+      console.error(`Failed to perform batch ${action}:`, error);
+    }
+  };
+
+  const handleNewFile = async () => {
+    const fileName = prompt('Enter file name:');
+    if (fileName) {
+      try {
+        const filePath = currentPath === '/' ? `/${fileName}` : `${currentPath}/${fileName}`;
+        await createFile(filePath);
+      } catch (error) {
+        console.error('Failed to create file:', error);
+      }
+    }
+  };
+
+  const handleNewFolder = async () => {
+    const folderName = prompt('Enter folder name:');
+    if (folderName) {
+      try {
+        const folderPath = currentPath === '/' ? `/${folderName}` : `${currentPath}/${folderName}`;
+        await createDirectory(folderPath);
+      } catch (error) {
+        console.error('Failed to create folder:', error);
+      }
     }
   };
 
@@ -105,28 +176,22 @@ export default function FilesPage() {
   };
 
   const navigateUp = () => {
-    const segments = getPathSegments();
-    if (segments.length === 0) return;
+    goUp();
+    setSelectedFiles([]);
+  };
+
+  // Filter files based on search query and filter type
+  const filteredFiles = files.filter(file => {
+    const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = filter === 'all' || 
+      (filter === 'file' && file.type === 'file') ||
+      (filter === 'directory' && file.type === 'directory') ||
+      (filter === 'image' && file.type === 'file' && /\.(jpg|jpeg|png|gif|bmp|svg|webp)$/i.test(file.name)) ||
+      (filter === 'text' && file.type === 'file' && /\.(txt|md|log|cfg|conf|ini|json|xml|yml|yaml)$/i.test(file.name)) ||
+      (filter === 'archive' && file.type === 'file' && /\.(zip|tar|gz|rar|7z)$/i.test(file.name));
     
-    segments.pop();
-    const newPath = segments.length === 0 ? '/' : `/${segments.join('/')}`;
-    navigateToPath(newPath);
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (!bytes) return '-';
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
-
-  const filteredFiles = files.filter(file =>
-    file.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    return matchesSearch && matchesFilter;
+  });
 
   if (!serverId) {
     return (
@@ -136,6 +201,26 @@ export default function FilesPage() {
             <DocumentIcon className="h-16 w-16 text-red-400 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-white mb-2">No Server Selected</h2>
             <p className="text-gray-400">Please select a server to view files.</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="glass-card rounded-xl p-8 text-center">
+            <DocumentIcon className="h-16 w-16 text-red-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-white mb-2">Error Loading Files</h2>
+            <p className="text-gray-400 mb-4">{error}</p>
+            <button
+              onClick={refetch}
+              className="bg-panel-primary hover:bg-panel-primary/80 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              Try Again
+            </button>
           </div>
         </div>
       </Layout>
@@ -155,161 +240,111 @@ export default function FilesPage() {
                   <FolderIcon className="w-6 h-6 text-panel-primary" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-white">File Manager</h1>
+                  <h1 className="text-2xl font-bold text-white">Advanced File Manager</h1>
                   <p className="text-gray-400">Server: {serverId}</p>
                 </div>
               </div>
-              
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={() => setUploadModalOpen(true)}
-                  className="flex items-center space-x-2 bg-panel-primary hover:bg-panel-primary/80 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  <ArrowUpTrayIcon className="h-4 w-4" />
-                  <span>Upload</span>
-                </button>
-                
-                <button
-                  onClick={handleDelete}
-                  disabled={selectedFiles.length === 0}
-                  className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                  <span>Delete ({selectedFiles.length})</span>
-                </button>
-              </div>
             </div>
           </div>
 
-          {/* Navigation */}
+          {/* Breadcrumb Navigation */}
           <div className="glass-card rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={navigateUp}
-                  disabled={currentPath === '/'}
-                  className="p-2 bg-panel-surface hover:bg-panel-light disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors"
-                >
-                  ←
-                </button>
-                
-                <div className="flex items-center space-x-1 text-sm">
-                  <button 
-                    onClick={() => navigateToPath('/')}
-                    className="text-panel-primary hover:text-panel-primary/80"
-                  >
-                    /
-                  </button>
-                  {getPathSegments().map((segment, index) => {
-                    const segmentPath = '/' + getPathSegments().slice(0, index + 1).join('/');
-                    return (
-                      <span key={index} className="flex items-center space-x-1">
-                        <span className="text-gray-400">/</span>
-                        <button
-                          onClick={() => navigateToPath(segmentPath)}
-                          className="text-panel-primary hover:text-panel-primary/80"
-                        >
-                          {segment}
-                        </button>
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={navigateUp}
+                disabled={currentPath === '/'}
+                className="p-2 bg-panel-surface hover:bg-panel-light disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors"
+              >
+                ←
+              </button>
               
-              <div className="flex items-center space-x-2">
-                <div className="relative">
-                  <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search files..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 bg-panel-surface border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-panel-primary"
-                  />
-                </div>
+              <div className="flex items-center space-x-1 text-sm">
+                <button 
+                  onClick={() => navigateTo('/')}
+                  className="text-panel-primary hover:text-panel-primary/80"
+                >
+                  /
+                </button>
+                {getPathSegments().map((segment, index) => {
+                  const segmentPath = '/' + getPathSegments().slice(0, index + 1).join('/');
+                  return (
+                    <span key={index} className="flex items-center space-x-1">
+                      <span className="text-gray-400">/</span>
+                      <button
+                        onClick={() => navigateTo(segmentPath)}
+                        className="text-panel-primary hover:text-panel-primary/80"
+                      >
+                        {segment}
+                      </button>
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </div>
 
-          {/* File List */}
-          <div className="glass-card rounded-xl overflow-hidden">
-            <div className="bg-panel-darker p-4 border-b border-white/10">
-              <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-300">
-                <div className="col-span-6">Name</div>
-                <div className="col-span-2">Size</div>
-                <div className="col-span-3">Modified</div>
-                <div className="col-span-1">Actions</div>
-              </div>
-            </div>
-            
-            <div className="max-h-96 overflow-y-auto">
-              {loading ? (
-                <div className="p-8 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-panel-primary mx-auto mb-4"></div>
-                  <p className="text-gray-400">Loading files...</p>
-                </div>
-              ) : filteredFiles.length === 0 ? (
-                <div className="p-8 text-center">
-                  <FolderIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-400">
-                    {searchQuery ? 'No files match your search' : 'No files in this directory'}
-                  </p>
-                </div>
-              ) : (
-                filteredFiles.map((file, index) => (
-                  <div
-                    key={index}
-                    className={`grid grid-cols-12 gap-4 p-4 border-b border-white/5 hover:bg-white/5 transition-colors ${
-                      selectedFiles.includes(file.name) ? 'bg-panel-primary/10' : ''
-                    }`}
-                  >
-                    <div className="col-span-6 flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedFiles.includes(file.name)}
-                        onChange={() => handleFileSelect(file.name)}
-                        className="rounded border-gray-600 bg-panel-surface text-panel-primary focus:ring-panel-primary"
-                      />
-                      
-                      <div
-                        className="flex items-center space-x-2 cursor-pointer"
-                        onClick={() => handleFileClick(file)}
-                      >
-                        {file.type === 'directory' ? (
-                          <FolderIcon className="h-5 w-5 text-blue-400" />
-                        ) : (
-                          <DocumentIcon className="h-5 w-5 text-gray-400" />
-                        )}
-                        <span className="text-white hover:text-panel-primary transition-colors">
-                          {file.name}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="col-span-2 text-gray-400 text-sm">
-                      {file.type === 'file' ? formatFileSize(file.size || 0) : '-'}
-                    </div>
-                    
-                    <div className="col-span-3 text-gray-400 text-sm">
-                      {formatDate(file.modified)}
-                    </div>
-                    
-                    <div className="col-span-1">
-                      {file.type === 'file' && (
-                        <button
-                          onClick={() => handleFileClick(file)}
-                          className="p-1 hover:bg-white/10 rounded"
-                        >
-                          <PencilIcon className="h-4 w-4 text-gray-400 hover:text-white" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          {/* Operations Toolbar */}
+          <FileOperationsToolbar
+            selectedFiles={selectedFiles}
+            onBatchAction={handleBatchAction}
+            onNewFile={handleNewFile}
+            onNewFolder={handleNewFolder}
+            onUpload={() => setShowUploadModal(true)}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            filter={filter}
+            onFilterChange={setFilter}
+          />
+
+          {/* File Grid */}
+          <FileManagerGrid
+            files={filteredFiles}
+            selectedFiles={selectedFiles}
+            onFileSelect={handleFileSelect}
+            onFileClick={handleFileClick}
+            onFileAction={handleFileAction}
+            onBatchAction={handleBatchAction}
+            loading={loading}
+            searchQuery={searchQuery}
+          />
+
+          {/* Modals */}
+          <FilePreviewModal
+            file={previewFile}
+            serverId={serverId as string}
+            currentPath={currentPath}
+            isOpen={!!previewFile}
+            onClose={() => setPreviewFile(null)}
+            onEdit={handleFileClick}
+            onDownload={(file) => handleFileAction('download', file)}
+          />
+
+          <FileUploadProgress
+            isOpen={showUploadModal}
+            serverId={serverId as string}
+            currentPath={currentPath}
+            onClose={() => setShowUploadModal(false)}
+            onUploadComplete={() => {
+              setShowUploadModal(false);
+              refetch();
+              addNotification('success', 'Files uploaded successfully');
+            }}
+          />
+
+          <FilePermissionsDialog
+            file={permissionsFile}
+            serverId={serverId as string}
+            currentPath={currentPath}
+            isOpen={showPermissionsDialog}
+            onClose={() => {
+              setShowPermissionsDialog(false);
+              setPermissionsFile(null);
+            }}
+            onPermissionsUpdated={() => {
+              refetch();
+              addNotification('success', 'File permissions updated');
+            }}
+          />
         </div>
       </div>
     </Layout>
