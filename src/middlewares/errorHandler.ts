@@ -17,9 +17,11 @@ export const errorHandler = (
   err: AppError,
   req: Request,
   res: Response,
-  next: NextFunction
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _next: NextFunction
 ): void => {
-  let { statusCode = 500, message } = err;
+  const statusCode = err.statusCode || 500;
+  let { message } = err;
 
   // Log the error
   logger.error(`Error ${statusCode}: ${message}`, {

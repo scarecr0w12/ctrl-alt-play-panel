@@ -5,6 +5,27 @@ import SystemMetricsCollector from './systemMetricsCollector';
 
 const prisma = new PrismaClient();
 
+interface ServerWithNode {
+  id: string;
+  name: string;
+  status: string;
+  node: {
+    id: string;
+    name: string;
+  };
+}
+
+interface AggregatedStats extends Record<string, unknown> {
+  total: number;
+  running: number;
+  stopped: number;
+  cpu: number;
+  memory: number;
+  memoryTotal: number;
+  players: number;
+  timestamp: string;
+}
+
 export interface ResourceMetrics {
   cpu: number;
   memory: number;
@@ -86,7 +107,7 @@ export class MonitoringService {
       include: { node: true }
     });
 
-    const promises = activeServers.map((server: any) =>
+    const promises = activeServers.map((server: ServerWithNode) =>
       this.collectServerMetrics(server.id)
     );
 
@@ -99,7 +120,7 @@ export class MonitoringService {
   /**
    * Get aggregated stats for dashboard
    */
-  async getAggregatedStats(): Promise<any> {
+  async getAggregatedStats(): Promise<AggregatedStats> {
     const servers = await prisma.server.findMany();
     const runningServers = servers.filter(s => s.status === 'RUNNING').length;
     const stoppedServers = servers.filter(s => ['OFFLINE', 'STOPPED', 'CRASHED'].includes(s.status)).length;
@@ -295,6 +316,8 @@ export class MonitoringService {
       };
 
       const hoursAgo = timeRanges[timeRange];
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const startTime = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
 
       // For now, return mock aggregated data

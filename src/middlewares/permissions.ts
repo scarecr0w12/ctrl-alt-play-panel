@@ -340,19 +340,21 @@ export const requireResourceOwnership = (resourceType: string, resourceIdParam: 
 
       // Check resource ownership based on type
       switch (resourceType) {
-        case 'server':
+        case 'server': {
           const server = await prisma.server.findFirst({
             where: { id: resourceId, userId: req.user.id },
           });
           isOwner = !!server;
           break;
+        }
         
-        case 'apiKey':
+        case 'apiKey': {
           const apiKey = await prisma.apiKey.findFirst({
             where: { id: resourceId, userId: req.user.id },
           });
           isOwner = !!apiKey;
           break;
+        }
         
         default:
           res.status(400).json({

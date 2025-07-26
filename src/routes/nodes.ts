@@ -3,8 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { asyncHandler, createError } from '../middlewares/errorHandler';
 import { 
   authenticateToken, 
-  requirePermission, 
-  requireAnyPermission 
+  requirePermission
 } from '../middlewares/permissions';
 import { logger } from '../utils/logger';
 

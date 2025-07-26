@@ -360,7 +360,7 @@ export class PermissionService {
     userAgent?: string,
     success: boolean = true,
     reason?: string,
-    metadata: any = {}
+    metadata: Record<string, unknown> = {}
   ): Promise<void> {
     try {
       await prisma.securityLog.create({
@@ -397,6 +397,7 @@ export class PermissionService {
       const limit = Math.min(params.limit || 50, 100);
       const skip = (page - 1) * limit;
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const where: any = {};
       
       if (params.userId) where.userId = params.userId;
