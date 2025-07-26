@@ -277,6 +277,20 @@ export const filesApi = {
     api.delete(`/files/delete?serverId=${serverId}&path=${encodeURIComponent(path)}`),
   rename: (serverId: string, oldPath: string, newPath: string) => 
     api.post('/files/rename', { serverId, oldPath, newPath }),
+  copy: (serverId: string, sourcePath: string, destinationPath: string) => 
+    api.post('/files/copy', { serverId, sourcePath, destinationPath }),
+  move: (serverId: string, sourcePath: string, destinationPath: string) => 
+    api.post('/files/move', { serverId, sourcePath, destinationPath }),
+  batchOperation: (serverId: string, operation: 'delete' | 'copy' | 'move', files: string[], destination?: string) => 
+    api.post('/files/batch', { serverId, operation, files, destination }),
+  getPermissions: (serverId: string, filePath: string) => 
+    api.get(`/files/permissions?serverId=${serverId}&path=${encodeURIComponent(filePath)}`),
+  setPermissions: (serverId: string, filePath: string, mode: string) => 
+    api.post('/files/permissions', { serverId, path: filePath, mode }),
+  createArchive: (serverId: string, files: string[], archivePath: string, format: string = 'zip') => 
+    api.post('/files/archive/create', { serverId, files, archivePath, format }),
+  extractArchive: (serverId: string, archivePath: string, extractPath: string) => 
+    api.post('/files/archive/extract', { serverId, archivePath, extractPath }),
   upload: (serverId: string, path: string, file: File) => {
     const formData = new FormData();
     formData.append('file', file);
