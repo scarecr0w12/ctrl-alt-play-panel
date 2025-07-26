@@ -283,7 +283,7 @@ router.post('/', authenticateToken, requirePermission('servers.create'), async (
 
     // Create server variables from alt template
     if (alt.variables && alt.variables.length > 0) {
-      const serverVariables = alt.variables.map(variable => ({
+      const serverVariables = alt.variables.map((variable: any) => ({
         serverId: server.id,
         altVariableId: variable.id,
         variableValue: environment[variable.envVariable] || variable.defaultValue
@@ -410,7 +410,7 @@ router.get('/nodes', authenticateToken, requirePermission('servers.create'), asy
 
     // Check agent availability for each node
     const externalAgentService = ExternalAgentService.getInstance();
-    const nodesWithStatus = nodes.map(node => ({
+    const nodesWithStatus = nodes.map((node: any) => ({
       ...node,
       agentOnline: externalAgentService.isAgentAvailable(node.uuid)
     }));

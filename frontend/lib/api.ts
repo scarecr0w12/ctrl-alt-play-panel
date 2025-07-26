@@ -243,7 +243,7 @@ export const agentsApi = {
   getStatus: (id: string) => api.get(`/agents/${id}/status`),
   sendCommand: (id: string, command: any) => api.post(`/agents/${id}/command`, command),
   healthCheck: () => api.get('/agents/health'),
-  healthCheckAll: () => api.get('/agents/health-all'),
+  healthCheckAll: () => api.get('/agents/health/all'),
   discover: () => api.post('/agents/discover'),
 };
 

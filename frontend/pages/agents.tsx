@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import { PermissionGuard } from '@/components/PermissionGuard';
 import { useAgents } from '@/hooks/useAgents';
+import { ExternalAgent } from '@/lib/api';
 import {
   ServerIcon,
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
-  PlayIcon,
   PlusIcon,
   ArrowPathIcon,
   MagnifyingGlassIcon,
@@ -152,7 +152,7 @@ export default function AgentsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const handleUnregister = async (nodeUuid: string) => {
-    if (!confirm('Are you sure you want to unregister this agent?')) return;
+    if (typeof window !== 'undefined' && !window.confirm('Are you sure you want to unregister this agent?')) return;
     
     setActionLoading(nodeUuid);
     try {
@@ -171,7 +171,7 @@ export default function AgentsPage() {
     }
   };
 
-  const getAgentStatus = (agent: any) => {
+  const getAgentStatus = (agent: ExternalAgent) => {
     const health = healthStatuses.get(agent.nodeUuid);
     
     if (health?.status.online) {
