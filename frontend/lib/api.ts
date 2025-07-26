@@ -134,8 +134,14 @@ export const usersApi = {
   getAll: () => api.get('/users'),
   getById: (id: string) => api.get(`/users/${id}`),
   create: (userData: any) => api.post('/users', userData),
-  update: (id: string, userData: any) => api.put(`/users/${id}`, userData),
+  update: (id: string, userData: any) => api.patch(`/users/${id}`, userData),
   delete: (id: string) => api.delete(`/users/${id}`),
+  bulkDelete: (userIds: string[]) => api.delete('/users/bulk', { data: { userIds } }),
+  bulkUpdateRole: (userIds: string[], role: string) => api.patch('/users/bulk/role', { userIds, role }),
+  bulkUpdateStatus: (userIds: string[], isActive: boolean) => api.patch('/users/bulk/status', { userIds, isActive }),
+  getStats: () => api.get('/users/stats'),
+  getActivity: (page?: number, limit?: number) => 
+    api.get(`/users/activity?page=${page || 1}&limit=${limit || 10}`),
   updatePassword: (id: string, passwordData: any) => api.put(`/users/${id}/password`, passwordData),
 };
 
