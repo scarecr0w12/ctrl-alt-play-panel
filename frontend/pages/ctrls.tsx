@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import { nodesApi, serversApi, altsApi } from '@/lib/api';
@@ -334,7 +334,7 @@ export default function CtrlsPage() {
                           
                           <Menu as="div" className="relative">
                             <Menu.Button
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e: React.MouseEvent) => e.stopPropagation()}
                               className="p-1 hover:bg-white/10 rounded"
                             >
                               <EllipsisVerticalIcon className="h-4 w-4 text-gray-400" />
