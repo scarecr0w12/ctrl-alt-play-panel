@@ -11,7 +11,7 @@ const workshopService = new SteamWorkshopService();
  */
 router.get('/search', authenticateToken, async (req, res) => {
   try {
-    const { gameId, query, type, page = '1', limit = '20' } = req.query;
+    const { gameId, query, type } = req.query;
 
     if (!gameId) {
       return res.status(400).json({ error: 'Game ID is required' });
@@ -20,9 +20,7 @@ router.get('/search', authenticateToken, async (req, res) => {
     const result = await workshopService.searchWorkshopItems(
       gameId as string,
       query as string,
-      type as string,
-      parseInt(page as string),
-      parseInt(limit as string)
+      type as string
     );
 
     return res.json({
