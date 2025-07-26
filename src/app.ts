@@ -15,6 +15,7 @@ import usersRoutes from './routes/users';
 import nodesRoutes from './routes/nodes';
 import ctrlsRoutes from './routes/ctrls';
 import altsRoutes from './routes/alts';
+import consoleRoutes from './routes/console';
 
 // Import middleware
 import { errorHandler } from './middlewares/errorHandler';
@@ -83,6 +84,7 @@ export function createApp(): express.Application {
   app.use('/api/nodes', nodesRoutes);
   app.use('/api/ctrls', ctrlsRoutes);
   app.use('/api/alts', altsRoutes);
+  app.use('/api/console', consoleRoutes);
   app.use('/api/monitoring', monitoringRoutes);
   app.use('/api/analytics', analyticsRoutes);
   app.use('/api/workshop', workshopRoutes);

@@ -20,6 +20,7 @@ import nodesRoutes from './routes/nodes';
 import ctrlsRoutes from './routes/ctrls';
 import altsRoutes from './routes/alts';
 import agentsRoutes from './routes/agents';
+import consoleRoutes from './routes/console';
 
 // Import middleware and services
 import { errorHandler } from './middlewares/errorHandler';
@@ -93,6 +94,7 @@ class GamePanelApp {
     this.app.use('/api/ctrls', ctrlsRoutes);
     this.app.use('/api/alts', altsRoutes);
     this.app.use('/api/agents', agentsRoutes); // External agent management
+    this.app.use('/api/console', consoleRoutes); // Console management
     this.app.use('/api/monitoring', monitoringRoutes);
     this.app.use('/api/analytics', analyticsRoutes); // Resource analytics
     this.app.use('/api/workshop', workshopRoutes);
