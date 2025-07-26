@@ -155,7 +155,7 @@ export default function DashboardPage() {
                 Welcome back, {user?.firstName}!
               </h1>
               <p className="text-gray-400 mt-1">
-                Here's what's happening with your servers.
+                Here&apos;s what&apos;s happening with your servers.
               </p>
             </div>
             <div className="text-right">

@@ -18,9 +18,23 @@ export interface SystemMetrics {
   timestamp: Date;
 }
 
+interface CpuUsage {
+  user: number;
+  nice: number;
+  sys: number;
+  idle: number;
+  irq: number;
+}
+
+interface NetworkStats {
+  bytesReceived: number;
+  bytesTransmitted: number;
+  timestamp: number;
+}
+
 export class SystemMetricsCollector {
-  private lastCpuUsage: any = null;
-  private lastNetworkStats: any = null;
+  private lastCpuUsage: CpuUsage[] | null = null;
+  private lastNetworkStats: NetworkStats | null = null;
 
   /**
    * Collect real system metrics from the host
@@ -126,7 +140,7 @@ export class SystemMetricsCollector {
           };
         }
       }
-    } catch (error) {
+    } catch {
       console.warn('Could not get real disk usage, using mock data');
     }
 

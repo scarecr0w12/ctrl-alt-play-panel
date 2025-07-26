@@ -53,7 +53,7 @@ export interface Server {
   io: number;
   image: string;
   startup: string;
-  environment: Record<string, any>;
+  environment: Record<string, string | number | boolean>;
   limits: ServerLimits;
   feature_limits: ServerFeatureLimits;
   allocation: Allocation;
@@ -139,7 +139,7 @@ export interface LogEntry {
   action: string;
   level: LogLevel;
   message: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   timestamp: Date;
 }
 
@@ -151,7 +151,7 @@ export enum LogLevel {
   FATAL = 'fatal'
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;

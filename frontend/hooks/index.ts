@@ -1,6 +1,6 @@
 // Core hooks
 export { useServers, useServer } from './useServers';
-export { useUsers, useUser } from './useUsers';
+export { useUsers, useUser, useUserStats, useUserActivity } from './useUsers';
 export { useAgents } from './useAgents';
 export { useFiles, useFileContent } from './useFiles';
 export { useNodes } from './useNodes';
@@ -11,7 +11,7 @@ export { useNotifications } from '../components/NotificationSystem';
 
 // Re-export types
 export type { Server, ServerStats } from './useServers';
-export type { User, CreateUserData, UpdateUserData } from './useUsers';
+export type { User, CreateUserData, UpdateUserData, UserStats, UserActivityLog } from './useUsers';
 export type { FileItem, FileContent } from './useFiles';
 export type { Node, CreateNodeData, UpdateNodeData, NodeStats } from './useNodes';
 export type { UserProfile, UpdateProfileData, ChangePasswordData, ChangeEmailData, UserActivity } from './useProfile';

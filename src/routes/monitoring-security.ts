@@ -8,6 +8,13 @@ import {
 import fs from 'fs/promises';
 import path from 'path';
 
+interface SecurityEvent {
+  action: string;
+  _count: {
+    action: number;
+  };
+}
+
 const router = Router();
 const prisma = new PrismaClient();
 
@@ -86,7 +93,7 @@ router.get('/security/dashboard',
       data: {
         timeRange,
         summary: {
-          totalEvents: securityEvents.reduce((sum: number, event: any) => sum + event._count.action, 0),
+          totalEvents: securityEvents.reduce((sum: number, event: SecurityEvent) => sum + event._count.action, 0),
           failedLogins,
           permissionDenials,
           activeUsers
@@ -157,7 +164,7 @@ router.get('/security/alerts',
       try {
         const alertsContent = await fs.readFile(alertsPath, 'utf8');
         alerts = JSON.parse(alertsContent);
-      } catch (e) {
+      } catch {
         // No alerts file for today
       }
       
@@ -168,7 +175,7 @@ router.get('/security/alerts',
           count: alerts.length
         }
       });
-    } catch (error) {
+    } catch {
       res.json({
         success: true,
         data: {

@@ -141,6 +141,8 @@ router.patch('/:id', authenticateToken, requireAdmin, asyncHandler(async (req: R
   const updateData = req.body;
 
   // Remove variables from update data if present - handle separately
+  // variables is destructured but not used to prevent it from being passed to Prisma update
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { variables, ...altUpdateData } = updateData;
 
   const updatedAlt = await prisma.alt.update({

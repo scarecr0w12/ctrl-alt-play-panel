@@ -134,8 +134,14 @@ export const usersApi = {
   getAll: () => api.get('/users'),
   getById: (id: string) => api.get(`/users/${id}`),
   create: (userData: any) => api.post('/users', userData),
-  update: (id: string, userData: any) => api.put(`/users/${id}`, userData),
+  update: (id: string, userData: any) => api.patch(`/users/${id}`, userData),
   delete: (id: string) => api.delete(`/users/${id}`),
+  bulkDelete: (userIds: string[]) => api.delete('/users/bulk', { data: { userIds } }),
+  bulkUpdateRole: (userIds: string[], role: string) => api.patch('/users/bulk/role', { userIds, role }),
+  bulkUpdateStatus: (userIds: string[], isActive: boolean) => api.patch('/users/bulk/status', { userIds, isActive }),
+  getStats: () => api.get('/users/stats'),
+  getActivity: (page?: number, limit?: number) => 
+    api.get(`/users/activity?page=${page || 1}&limit=${limit || 10}`),
   updatePassword: (id: string, passwordData: any) => api.put(`/users/${id}/password`, passwordData),
 };
 
@@ -230,7 +236,52 @@ export const serversApi = {
 export const monitoringApi = {
   getHealth: () => api.get('/monitoring/health'),
   getMetrics: () => api.get('/monitoring/metrics'),
-  getSystemStats: () => api.get('/monitoring/system'),
+  getSystemStats: () => api.get('/monitoring/stats'),
+  getServerMetrics: (serverId: string, timeRange: string = '24h') => 
+    api.get(`/monitoring/servers/${serverId}/metrics?timeRange=${timeRange}`),
+  getCurrentServerMetrics: (serverId: string) => 
+    api.get(`/monitoring/servers/${serverId}/current`),
+  getNodeMetrics: (nodeId: string, timeRange: string = '24h') => 
+    api.get(`/monitoring/nodes/${nodeId}/metrics?timeRange=${timeRange}`),
+  getAlerts: (acknowledged: boolean = false, severity?: string) => 
+    api.get(`/monitoring/alerts?acknowledged=${acknowledged}${severity ? `&severity=${severity}` : ''}`),
+  acknowledgeAlert: (alertId: string) => 
+    api.post(`/monitoring/alerts/${alertId}/acknowledge`),
+  collectMetrics: () => api.post('/monitoring/collect'),
+  exportData: (timeRange: string, format: 'json' | 'csv' = 'json') => 
+    api.get(`/monitoring/export?timeRange=${timeRange}&format=${format}`, { responseType: 'blob' }),
+};
+
+// Analytics API
+export const analyticsApi = {
+  getTrends: (params?: {
+    serverId?: string;
+    startDate?: string;
+    endDate?: string;
+    interval?: 'minute' | 'hour' | 'day' | 'week';
+  }) => api.get('/analytics/trends', { params }),
+  compareServers: (data: {
+    serverIds: string[];
+    startDate?: string;
+    endDate?: string;
+  }) => api.post('/analytics/compare', data),
+  getThresholds: (serverId?: string) => 
+    api.get('/analytics/thresholds', { params: { serverId } }),
+  updateThreshold: (threshold: any) => 
+    api.put('/analytics/thresholds', threshold),
+  getRecommendations: (serverId?: string) => 
+    api.get('/analytics/recommendations', { params: { serverId } }),
+  getAlerts: (params?: { serverId?: string; severity?: string }) => 
+    api.get('/analytics/alerts', { params }),
+  exportData: (data: {
+    serverIds: string[];
+    startDate?: string;
+    endDate?: string;
+    format?: 'json' | 'csv' | 'pdf';
+    includeGraphs?: boolean;
+  }) => api.post('/analytics/export', data, { responseType: 'blob' }),
+  getOverview: (timeRange?: string) => 
+    api.get('/analytics/overview', { params: { timeRange } }),
 };
 
 // Agents API
@@ -243,8 +294,14 @@ export const agentsApi = {
   getStatus: (id: string) => api.get(`/agents/${id}/status`),
   sendCommand: (id: string, command: any) => api.post(`/agents/${id}/command`, command),
   healthCheck: () => api.get('/agents/health'),
-  healthCheckAll: () => api.get('/agents/health-all'),
+  healthCheckAll: () => api.get('/agents/health/all'),
   discover: () => api.post('/agents/discover'),
+  getConfig: (nodeUuid: string) => api.get(`/agents/${nodeUuid}/config`),
+  updateConfig: (nodeUuid: string, config: { baseUrl: string; apiKey?: string }) => 
+    api.put(`/agents/${nodeUuid}/config`, config),
+  getServers: (nodeUuid: string) => api.get(`/agents/${nodeUuid}/servers`),
+  testConnection: (nodeUuid: string) => api.post(`/agents/${nodeUuid}/test`),
+  getMetrics: (nodeUuid: string) => api.get(`/agents/${nodeUuid}/metrics`),
 };
 
 // Nodes API
@@ -277,6 +334,20 @@ export const filesApi = {
     api.delete(`/files/delete?serverId=${serverId}&path=${encodeURIComponent(path)}`),
   rename: (serverId: string, oldPath: string, newPath: string) => 
     api.post('/files/rename', { serverId, oldPath, newPath }),
+  copy: (serverId: string, sourcePath: string, destinationPath: string) => 
+    api.post('/files/copy', { serverId, sourcePath, destinationPath }),
+  move: (serverId: string, sourcePath: string, destinationPath: string) => 
+    api.post('/files/move', { serverId, sourcePath, destinationPath }),
+  batchOperation: (serverId: string, operation: 'delete' | 'copy' | 'move', files: string[], destination?: string) => 
+    api.post('/files/batch', { serverId, operation, files, destination }),
+  getPermissions: (serverId: string, filePath: string) => 
+    api.get(`/files/permissions?serverId=${serverId}&path=${encodeURIComponent(filePath)}`),
+  setPermissions: (serverId: string, filePath: string, mode: string) => 
+    api.post('/files/permissions', { serverId, path: filePath, mode }),
+  createArchive: (serverId: string, files: string[], archivePath: string, format: string = 'zip') => 
+    api.post('/files/archive/create', { serverId, files, archivePath, format }),
+  extractArchive: (serverId: string, archivePath: string, extractPath: string) => 
+    api.post('/files/archive/extract', { serverId, archivePath, extractPath }),
   upload: (serverId: string, path: string, file: File) => {
     const formData = new FormData();
     formData.append('file', file);

@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 
 // Import routes
 import monitoringRoutes from './routes/monitoring';
+import analyticsRoutes from './routes/analytics';
 import workshopRoutes from './routes/workshop';
 import filesRoutes from './routes/files';
 import authRoutes from './routes/auth';
@@ -85,6 +86,7 @@ export function createApp(): express.Application {
   app.use('/api/alts', altsRoutes);
   app.use('/api/console', consoleRoutes);
   app.use('/api/monitoring', monitoringRoutes);
+  app.use('/api/analytics', analyticsRoutes);
   app.use('/api/workshop', workshopRoutes);
   app.use('/api/files', filesRoutes);
 

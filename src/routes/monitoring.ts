@@ -5,7 +5,6 @@ import {
   requirePermission, 
   requireAnyPermission 
 } from '../middlewares/permissions';
-import { UserRole } from '../types';
 
 const router = Router();
 const monitoringService = new MonitoringService();
@@ -161,14 +160,18 @@ router.post('/collect', authenticateToken, requirePermission('monitoring.view'),
  */
 router.get('/alerts', authenticateToken, requirePermission('monitoring.view'), async (req, res) => {
   try {
+    // Future implementation will use these query parameters for filtering
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { acknowledged = 'false', severity } = req.query;
 
-    // This would be implemented in the MonitoringService
-    // For now, return a placeholder response
+    const alerts = await monitoringService.getAlerts({
+      acknowledged: acknowledged === 'true',
+      severity: severity as string,
+    });
+
     return res.json({
       success: true,
-      data: [],
-      message: 'Alerts endpoint placeholder - to be implemented'
+      data: alerts
     });
   } catch (error) {
     console.error('Failed to get alerts:', error);
@@ -183,8 +186,10 @@ router.get('/alerts', authenticateToken, requirePermission('monitoring.view'), a
 router.post('/alerts/:id/acknowledge', authenticateToken, requirePermission('monitoring.view'), async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = (req as any).user.id;
 
-    // This would be implemented in the MonitoringService
+    await monitoringService.acknowledgeAlert(id, userId);
+
     return res.json({
       success: true,
       message: `Alert ${id} acknowledged`
@@ -192,6 +197,66 @@ router.post('/alerts/:id/acknowledge', authenticateToken, requirePermission('mon
   } catch (error) {
     console.error('Failed to acknowledge alert:', error);
     return res.status(500).json({ error: 'Failed to acknowledge alert' });
+  }
+});
+
+/**
+ * Export monitoring data
+ * GET /api/monitoring/export
+ */
+router.get('/export', authenticateToken, requirePermission('monitoring.view'), async (req, res) => {
+  try {
+    const { timeRange = '24h', format = 'json' } = req.query;
+
+    const exportData = await monitoringService.exportData(
+      timeRange as string,
+      format as 'json' | 'csv'
+    );
+
+    if (format === 'csv') {
+      res.set({
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="monitoring-data-${new Date().toISOString().split('T')[0]}.csv"`,
+      });
+      return res.send(exportData);
+    } else {
+      res.set({
+        'Content-Type': 'application/json',
+        'Content-Disposition': `attachment; filename="monitoring-data-${new Date().toISOString().split('T')[0]}.json"`,
+      });
+      return res.json(exportData);
+    }
+  } catch (error) {
+    console.error('Failed to export data:', error);
+    return res.status(500).json({ error: 'Failed to export data' });
+  }
+});
+
+/**
+ * Get multi-server comparison data
+ * POST /api/monitoring/compare
+ */
+router.post('/compare', authenticateToken, requirePermission('monitoring.view'), async (req, res) => {
+  try {
+    const { serverIds, timeRange = '24h', metric = 'cpu' } = req.body;
+
+    if (!Array.isArray(serverIds) || serverIds.length === 0) {
+      return res.status(400).json({ error: 'Server IDs array is required' });
+    }
+
+    const comparisonData = await monitoringService.compareServers(
+      serverIds,
+      timeRange as string,
+      metric as string
+    );
+
+    return res.json({
+      success: true,
+      data: comparisonData
+    });
+  } catch (error) {
+    console.error('Failed to get comparison data:', error);
+    return res.status(500).json({ error: 'Failed to get comparison data' });
   }
 });
 
