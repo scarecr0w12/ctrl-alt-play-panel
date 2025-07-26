@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { ctrlsApi, altsApi } from '../../frontend/lib/api';
+import { nodesApi, serversApi } from '../../frontend/lib/api';
 
 const prisma = new PrismaClient();
 

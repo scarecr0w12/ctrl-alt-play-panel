@@ -2,6 +2,7 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger';
 import { User } from '../types';
+import DatabaseService from './database';
 
 export class SocketService {
   private static io: SocketIOServer;
@@ -74,9 +75,32 @@ export class SocketService {
   }
 
   private static async joinUserToServerRooms(socket: Socket, user: User): Promise<void> {
-    // TODO: Get user's servers from database and join rooms
-    // For now, just log the action
-    logger.debug(`Joining user ${user.username} to their server rooms`);
+    try {
+      // Get user's servers from database and join rooms
+      const db = await DatabaseService.getInstance();
+      const userServers = await db.server.findMany({
+        where: {
+          OR: [
+            { userId: user.id },
+            { subusers: { some: { userId: user.id } } }
+          ]
+        },
+        select: {
+          uuid: true,
+          name: true
+        }
+      });
+
+      // Join socket to server-specific rooms for real-time updates
+      for (const server of userServers) {
+        socket.join(`server:${server.uuid}`);
+        logger.debug(`User ${user.username} joined room for server: ${server.name}`);
+      }
+      
+      logger.debug(`User ${user.username} joined ${userServers.length} server rooms`);
+    } catch (error) {
+      logger.error(`Failed to join user ${user.username} to server rooms:`, error);
+    }
   }
 
   private static handleServerCommand(socket: Socket, data: any): void {

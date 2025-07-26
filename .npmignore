@@ -1,0 +1,62 @@
+# NPM Ignore - Exclude Internal Development Files
+
+# AI Development & Memory Files (Local Development Only)
+memory-bank/
+.copilot/
+.github/chatmodes/
+.github/copilot-instructions.md
+shared-context.md
+development-context.md
+DEVELOPMENT_CONTEXT.md
+
+# Internal Development Documents (Local Only)
+ACTION_PLAN.md
+BACKEND_REVIEW_COMPLETE.md
+DEVELOPMENT_COMPLETE.md
+FEATURES.md
+GITHUB_SETUP.md
+INTEGRATION_TEST_RESULTS.md
+PANEL_AGENT_INTEGRATION.md
+PROJECT_PLAN.md
+PROJECT_SUMMARY.md
+REFACTORING_SUMMARY.md
+STATUS_REPORT.md
+TERMINOLOGY_UPDATE_SUMMARY.md
+VPS_DEPLOYMENT_GUIDE.md
+PANEL_AGENT_API_SPEC.md
+README-old.md
+
+# Test and Build Scripts (Local Development)
+test-*.sh
+setup.sh
+vps-setup.sh
+
+# Development files
+.env*
+.git*
+*.log
+node_modules/
+coverage/
+dist/
+build/
+out/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Build and cache files
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+.turbo
+.vercel
+.jest
+
+# Upload directories
+uploads/
+temp/
+tmp/

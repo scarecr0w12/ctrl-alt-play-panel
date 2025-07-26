@@ -1,388 +1,459 @@
 import { Router, Request, Response } from 'express';
-import fs from 'fs/promises';
-import path from 'path';
+import { ExternalAgentService } from '../services/externalAgentService';
+import { ServerAgentMappingService } from '../services/serverAgentMappingService';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
-// Base directory for file operations (in real implementation, this would be configurable)
-const BASE_DIR = process.env.SERVER_FILES_DIR || '/tmp/server-files';
+// Get service instances
+const agentService = ExternalAgentService.getInstance();
+const mappingService = ServerAgentMappingService.getInstance();
 
-// Ensure base directory exists
-async function ensureBaseDir() {
-  try {
-    await fs.access(BASE_DIR);
-  } catch {
-    await fs.mkdir(BASE_DIR, { recursive: true });
-
-    // Create some mock directories and files for demonstration
-    await createMockStructure();
+/**
+ * Helper function to validate server and get agent UUID
+ */
+async function validateServerAndGetAgent(serverId: string): Promise<{ valid: boolean; nodeUuid?: string; error?: string }> {
+  if (!serverId) {
+    return { valid: false, error: 'Server ID is required' };
   }
-}
 
-// Create mock file structure for demonstration
-async function createMockStructure() {
-  const mockStructure = {
-    'server.properties': `# Minecraft server properties
-server-port=25565
-gamemode=survival
-difficulty=normal
-max-players=20
-motd=A Minecraft Server
-online-mode=true
-white-list=false
-enable-command-block=false
-spawn-protection=16
-max-world-size=29999984`,
-
-    'config/bukkit.yml': `settings:
-  allow-end: true
-  warn-on-overload: true
-  permissions-file: permissions.yml
-  update-folder: update
-  plugin-profiling: false
-  connection-throttle: 4000
-  query-plugins: true
-  deprecated-verbose: default
-  shutdown-message: Server closed`,
-
-    'config/spigot.yml': `config-version: 12
-settings:
-  debug: false
-  save-user-cache-on-stop-only: false
-  sample-count: 12
-  bungeecord: false
-  player-shuffle: 0
-  user-cache-size: 1000
-  moved-wrongly-threshold: 0.0625
-  moved-too-quickly-multiplier: 10.0
-  log-villager-deaths: true
-  log-named-deaths: true`,
-
-    'banned-players.json': '[]',
-    'whitelist.json': '[]',
-    'ops.json': '[]',
-
-    'logs/latest.log': `[12:00:00] [ServerMain/INFO]: Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
-[12:00:00] [ServerMain/INFO]: Loaded 7 recipes
-[12:00:00] [Server thread/INFO]: Starting minecraft server version 1.20.4
-[12:00:00] [Server thread/INFO]: Loading properties
-[12:00:00] [Server thread/INFO]: Default game type: SURVIVAL
-[12:00:00] [Server thread/INFO]: Generating keypair
-[12:00:00] [Server thread/INFO]: Starting Minecraft server on *:25565
-[12:00:00] [Server thread/INFO]: Using epoll channel type
-[12:00:00] [Server thread/INFO]: Preparing level "world"
-[12:00:00] [Server thread/INFO]: Done (2.345s)! For help, type "help"`
-  };
-
-  for (const [filePath, content] of Object.entries(mockStructure)) {
-    const fullPath = path.join(BASE_DIR, filePath);
-    const dir = path.dirname(fullPath);
-
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(fullPath, content, 'utf8');
+  const validation = mappingService.validateServerAgent(serverId);
+  if (!validation.valid) {
+    return validation;
   }
+
+  // Check if agent is actually available
+  if (!agentService.isAgentAvailable(validation.nodeUuid!)) {
+    return {
+      valid: false,
+      error: `Agent for server ${serverId} is not available`
+    };
+  }
+
+  return validation;
 }
 
-// Get file type and icon
-function getFileInfo(filename: string, stats: any) {
-  const ext = path.extname(filename).toLowerCase().slice(1);
-  const isDirectory = stats.isDirectory();
-
-  return {
-    type: isDirectory ? 'directory' : 'file',
-    extension: isDirectory ? null : ext,
-    size: isDirectory ? null : stats.size,
-    modified: stats.mtime.toISOString().slice(0, 19).replace('T', ' ')
-  };
-}
-
-// Validate and sanitize path
-function sanitizePath(userPath: string): string {
-  // Remove any path traversal attempts
-  const normalized = path.normalize(userPath).replace(/^(\.\.[\/\\])+/, '');
-  return normalized.startsWith('/') ? normalized : '/' + normalized;
-}
-
-// Get absolute path within base directory
-function getAbsolutePath(userPath: string): string {
-  const sanitized = sanitizePath(userPath);
-  return path.join(BASE_DIR, sanitized);
-}
-
-// List files in directory
+/**
+ * List files in a server directory via external agent
+ * GET /api/files/list?serverId=123&path=/config
+ */
 router.get('/list', async (req: Request, res: Response) => {
   try {
+    const serverId = req.query.serverId as string;
     const userPath = (req.query.path as string) || '/';
-    const absolutePath = getAbsolutePath(userPath);
 
-    // Ensure we're still within the base directory
-    if (!absolutePath.startsWith(BASE_DIR)) {
-      res.status(403).json({ error: 'Access denied' });
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
       return;
     }
 
-    const items = await fs.readdir(absolutePath);
-    const files = [];
+    logger.info(`Listing files for server ${serverId} at path ${userPath}`);
 
-    for (const item of items) {
-      try {
-        const itemPath = path.join(absolutePath, item);
-        const stats = await fs.stat(itemPath);
-        const fileInfo = getFileInfo(item, stats);
-
-        files.push({
-          name: item,
-          ...fileInfo
-        });
-      } catch (error) {
-        console.error(`Error reading ${item}:`, error);
-      }
+    const result = await agentService.listFiles(validation.nodeUuid!, serverId, userPath);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to list files' });
+      return;
     }
 
-    // Sort directories first, then files
-    files.sort((a, b) => {
-      if (a.type !== b.type) {
-        return a.type === 'directory' ? -1 : 1;
-      }
-      return a.name.localeCompare(b.name);
-    });
-
     res.json({
+      serverId,
       path: userPath,
-      files
+      files: result.data?.files || [],
+      success: true
     });
   } catch (error) {
-    console.error('Error listing files:', error);
+    logger.error('Error listing files:', error);
     res.status(500).json({ error: 'Failed to list files' });
   }
 });
 
-// Read file content
+/**
+ * Read file content via external agent
+ * GET /api/files/read?serverId=123&path=/server.properties
+ */
 router.get('/read', async (req: Request, res: Response) => {
   try {
-    const userPath = req.query.path as string;
-    if (!userPath) {
-      res.status(400).json({ error: 'Path is required' });
+    const serverId = req.query.serverId as string;
+    const filePath = req.query.path as string;
+
+    if (!filePath) {
+      res.status(400).json({ error: 'File path is required' });
       return;
     }
 
-    const absolutePath = getAbsolutePath(userPath);
-
-    // Ensure we're still within the base directory
-    if (!absolutePath.startsWith(BASE_DIR)) {
-      res.status(403).json({ error: 'Access denied' });
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
       return;
     }
 
-    const stats = await fs.stat(absolutePath);
-    if (stats.isDirectory()) {
-      res.status(400).json({ error: 'Cannot read directory as file' });
+    logger.info(`Reading file for server ${serverId}: ${filePath}`);
+
+    const result = await agentService.readFile(validation.nodeUuid!, serverId, filePath);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to read file' });
       return;
     }
-
-    // Check file size (limit to 10MB for text files)
-    if (stats.size > 10 * 1024 * 1024) {
-      res.status(400).json({ error: 'File too large to read' });
-      return;
-    }
-
-    const content = await fs.readFile(absolutePath, 'utf8');
 
     res.json({
-      path: userPath,
-      content,
-      size: stats.size,
-      modified: stats.mtime.toISOString()
+      serverId,
+      path: filePath,
+      content: result.data?.content || '',
+      size: result.data?.size,
+      modified: result.data?.modified,
+      success: true
     });
   } catch (error) {
-    console.error('Error reading file:', error);
+    logger.error('Error reading file:', error);
     res.status(500).json({ error: 'Failed to read file' });
   }
 });
 
-// Write file content
+/**
+ * Write file content via external agent
+ * POST /api/files/write
+ * Body: { serverId: "123", path: "/server.properties", content: "..." }
+ */
 router.post('/write', async (req: Request, res: Response) => {
   try {
-    const { path: userPath, content } = req.body;
+    const { serverId, path: filePath, content } = req.body;
 
-    if (!userPath || content === undefined) {
-      res.status(400).json({ error: 'Path and content are required' });
+    if (!serverId || !filePath || content === undefined) {
+      res.status(400).json({ error: 'Server ID, path, and content are required' });
       return;
     }
 
-    const absolutePath = getAbsolutePath(userPath);
-
-    // Ensure we're still within the base directory
-    if (!absolutePath.startsWith(BASE_DIR)) {
-      res.status(403).json({ error: 'Access denied' });
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
       return;
     }
 
-    // Ensure directory exists
-    const dir = path.dirname(absolutePath);
-    await fs.mkdir(dir, { recursive: true });
+    logger.info(`Writing file for server ${serverId}: ${filePath}`);
 
-    await fs.writeFile(absolutePath, content, 'utf8');
-
-    const stats = await fs.stat(absolutePath);
+    const result = await agentService.writeFile(validation.nodeUuid!, serverId, filePath, content);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to write file' });
+      return;
+    }
 
     res.json({
-      path: userPath,
-      size: stats.size,
-      modified: stats.mtime.toISOString(),
-      message: 'File saved successfully'
+      serverId,
+      path: filePath,
+      size: result.data?.size,
+      modified: result.data?.modified,
+      message: 'File saved successfully',
+      success: true
     });
   } catch (error) {
-    console.error('Error writing file:', error);
+    logger.error('Error writing file:', error);
     res.status(500).json({ error: 'Failed to write file' });
   }
 });
 
-// Create directory
+/**
+ * Create directory via external agent
+ * POST /api/files/mkdir
+ * Body: { serverId: "123", path: "/new-folder" }
+ */
 router.post('/mkdir', async (req: Request, res: Response) => {
   try {
-    const { path: userPath } = req.body;
+    const { serverId, path: dirPath } = req.body;
 
-    if (!userPath) {
-      res.status(400).json({ error: 'Path is required' });
+    if (!serverId || !dirPath) {
+      res.status(400).json({ error: 'Server ID and path are required' });
       return;
     }
 
-    const absolutePath = getAbsolutePath(userPath);
-
-    // Ensure we're still within the base directory
-    if (!absolutePath.startsWith(BASE_DIR)) {
-      res.status(403).json({ error: 'Access denied' });
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
       return;
     }
 
-    await fs.mkdir(absolutePath, { recursive: true });
+    logger.info(`Creating directory for server ${serverId}: ${dirPath}`);
+
+    const result = await agentService.createDirectory(validation.nodeUuid!, serverId, dirPath);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to create directory' });
+      return;
+    }
 
     res.json({
-      path: userPath,
-      message: 'Directory created successfully'
+      serverId,
+      path: dirPath,
+      message: 'Directory created successfully',
+      success: true
     });
   } catch (error) {
-    console.error('Error creating directory:', error);
+    logger.error('Error creating directory:', error);
     res.status(500).json({ error: 'Failed to create directory' });
   }
 });
 
-// Delete file or directory
+/**
+ * Delete file or directory via external agent
+ * DELETE /api/files/delete?serverId=123&path=/file-to-delete
+ */
 router.delete('/delete', async (req: Request, res: Response) => {
   try {
-    const userPath = req.query.path as string;
+    const serverId = req.query.serverId as string;
+    const filePath = req.query.path as string;
 
-    if (!userPath) {
-      res.status(400).json({ error: 'Path is required' });
+    if (!filePath) {
+      res.status(400).json({ error: 'File path is required' });
       return;
     }
 
-    const absolutePath = getAbsolutePath(userPath);
-
-    // Ensure we're still within the base directory
-    if (!absolutePath.startsWith(BASE_DIR)) {
-      res.status(403).json({ error: 'Access denied' });
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
       return;
     }
 
-    // Don't allow deleting the base directory
-    if (absolutePath === BASE_DIR) {
-      res.status(403).json({ error: 'Cannot delete base directory' });
+    logger.info(`Deleting file for server ${serverId}: ${filePath}`);
+
+    const result = await agentService.deleteFile(validation.nodeUuid!, serverId, filePath);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to delete file' });
       return;
-    }
-
-    const stats = await fs.stat(absolutePath);
-
-    if (stats.isDirectory()) {
-      await fs.rmdir(absolutePath, { recursive: true });
-    } else {
-      await fs.unlink(absolutePath);
     }
 
     res.json({
-      path: userPath,
-      message: `${stats.isDirectory() ? 'Directory' : 'File'} deleted successfully`
+      serverId,
+      path: filePath,
+      message: result.data?.message || 'File deleted successfully',
+      success: true
     });
   } catch (error) {
-    console.error('Error deleting:', error);
-    res.status(500).json({ error: 'Failed to delete' });
+    logger.error('Error deleting file:', error);
+    res.status(500).json({ error: 'Failed to delete file' });
   }
 });
 
-// Rename/move file or directory
+/**
+ * Rename/move file or directory via external agent
+ * POST /api/files/rename
+ * Body: { serverId: "123", oldPath: "/old-name", newPath: "/new-name" }
+ */
 router.post('/rename', async (req: Request, res: Response) => {
   try {
-    const { oldPath, newPath } = req.body;
+    const { serverId, oldPath, newPath } = req.body;
 
-    if (!oldPath || !newPath) {
-      res.status(400).json({ error: 'Both oldPath and newPath are required' });
+    if (!serverId || !oldPath || !newPath) {
+      res.status(400).json({ error: 'Server ID, oldPath, and newPath are required' });
       return;
     }
 
-    const absoluteOldPath = getAbsolutePath(oldPath);
-    const absoluteNewPath = getAbsolutePath(newPath);
-
-    // Ensure both paths are within the base directory
-    if (!absoluteOldPath.startsWith(BASE_DIR) || !absoluteNewPath.startsWith(BASE_DIR)) {
-      res.status(403).json({ error: 'Access denied' });
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
       return;
     }
 
-    // Ensure new path directory exists
-    const newDir = path.dirname(absoluteNewPath);
-    await fs.mkdir(newDir, { recursive: true });
+    logger.info(`Renaming file for server ${serverId}: ${oldPath} -> ${newPath}`);
 
-    await fs.rename(absoluteOldPath, absoluteNewPath);
+    const result = await agentService.renameFile(validation.nodeUuid!, serverId, oldPath, newPath);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to rename file' });
+      return;
+    }
 
     res.json({
+      serverId,
       oldPath,
       newPath,
-      message: 'Renamed successfully'
+      message: 'File renamed successfully',
+      success: true
     });
   } catch (error) {
-    console.error('Error renaming:', error);
-    res.status(500).json({ error: 'Failed to rename' });
+    logger.error('Error renaming file:', error);
+    res.status(500).json({ error: 'Failed to rename file' });
   }
 });
 
-// Download file
+/**
+ * Download file via external agent
+ * GET /api/files/download?serverId=123&path=/file-to-download
+ */
 router.get('/download', async (req: Request, res: Response) => {
   try {
-    const userPath = req.query.path as string;
+    const serverId = req.query.serverId as string;
+    const filePath = req.query.path as string;
 
-    if (!userPath) {
-      res.status(400).json({ error: 'Path is required' });
+    if (!filePath) {
+      res.status(400).json({ error: 'File path is required' });
       return;
     }
 
-    const absolutePath = getAbsolutePath(userPath);
-
-    // Ensure we're still within the base directory
-    if (!absolutePath.startsWith(BASE_DIR)) {
-      res.status(403).json({ error: 'Access denied' });
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
       return;
     }
 
-    const stats = await fs.stat(absolutePath);
-    if (stats.isDirectory()) {
-      res.status(400).json({ error: 'Cannot download directory' });
+    logger.info(`Downloading file for server ${serverId}: ${filePath}`);
+
+    const result = await agentService.downloadFile(validation.nodeUuid!, serverId, filePath);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to download file' });
       return;
     }
 
-    const filename = path.basename(absolutePath);
+    // Extract filename from path
+    const filename = filePath.split('/').pop() || 'download';
+    
+    // Set appropriate headers for file download
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/octet-stream');
 
-    const fileStream = require('fs').createReadStream(absolutePath);
-    fileStream.pipe(res);
+    // If the agent returns file data, stream it
+    if (result.data?.content) {
+      // Handle base64 encoded files
+      if (result.data.encoding === 'base64') {
+        const buffer = Buffer.from(result.data.content, 'base64');
+        res.send(buffer);
+      } else {
+        res.send(result.data.content);
+      }
+    } else {
+      res.status(500).json({ error: 'No file data received from agent' });
+    }
   } catch (error) {
-    console.error('Error downloading file:', error);
+    logger.error('Error downloading file:', error);
     res.status(500).json({ error: 'Failed to download file' });
   }
 });
 
-// Initialize base directory on module load
-ensureBaseDir().catch(console.error);
+/**
+ * Upload file via external agent
+ * POST /api/files/upload
+ * Body: FormData or { serverId: "123", path: "/uploaded-file", content: "...", encoding?: "base64" }
+ */
+router.post('/upload', async (req: Request, res: Response) => {
+  try {
+    const { serverId, path: filePath, content, encoding } = req.body;
+
+    if (!serverId || !filePath || !content) {
+      res.status(400).json({ error: 'Server ID, path, and content are required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Uploading file for server ${serverId}: ${filePath}`);
+
+    // Handle different content types
+    let fileData: string | Buffer = content;
+    if (encoding === 'base64' && typeof content === 'string') {
+      fileData = Buffer.from(content, 'base64');
+    }
+
+    const result = await agentService.uploadFile(validation.nodeUuid!, serverId, filePath, fileData);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to upload file' });
+      return;
+    }
+
+    res.json({
+      serverId,
+      path: filePath,
+      size: result.data?.size,
+      message: 'File uploaded successfully',
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error uploading file:', error);
+    res.status(500).json({ error: 'Failed to upload file' });
+  }
+});
+
+/**
+ * Get file information via external agent
+ * GET /api/files/info?serverId=123&path=/file-info
+ */
+router.get('/info', async (req: Request, res: Response) => {
+  try {
+    const serverId = req.query.serverId as string;
+    const filePath = req.query.path as string;
+
+    if (!filePath) {
+      res.status(400).json({ error: 'File path is required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Getting file info for server ${serverId}: ${filePath}`);
+
+    const result = await agentService.getFileInfo(validation.nodeUuid!, serverId, filePath);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to get file info' });
+      return;
+    }
+
+    res.json({
+      serverId,
+      path: filePath,
+      info: result.data,
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error getting file info:', error);
+    res.status(500).json({ error: 'Failed to get file info' });
+  }
+});
+
+/**
+ * Health check endpoint for file management system
+ * GET /api/files/health
+ */
+router.get('/health', async (req: Request, res: Response) => {
+  try {
+    const agentStatuses = await agentService.healthCheckAll();
+    const totalAgents = agentStatuses.size;
+    const onlineAgents = Array.from(agentStatuses.values()).filter(status => status.online).length;
+
+    res.json({
+      status: 'operational',
+      agents: {
+        total: totalAgents,
+        online: onlineAgents,
+        offline: totalAgents - onlineAgents
+      },
+      fileManagement: {
+        enabled: true,
+        distributed: true,
+        agentBased: true
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logger.error('Error in file management health check:', error);
+    res.status(500).json({ 
+      status: 'error',
+      error: 'Failed to perform health check',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 export default router;

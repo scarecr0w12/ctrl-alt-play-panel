@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { logger } from '../utils/logger';
+import DatabaseService from './database';
 
 export interface AgentCommand {
   action: string;
@@ -33,6 +34,19 @@ export interface ExternalAgent {
   version?: string;
 }
 
+export interface FileInfo {
+  name: string;
+  type: 'file' | 'directory';
+  size?: number;
+  modified: string;
+  extension?: string;
+}
+
+export interface FileListResponse {
+  path: string;
+  files: FileInfo[];
+}
+
 /**
  * Service for communicating with external agent processes
  * Agents are separate projects that run on nodes and manage game servers
@@ -59,9 +73,38 @@ export class ExternalAgentService {
    */
   private async initializeAgents(): Promise<void> {
     try {
-      // TODO: Load agent configurations from database
-      // For now, this is a placeholder for the agent discovery/registration system
-      logger.info('External agent service initialized');
+      // Load node configurations from database
+      const db = DatabaseService.getInstance();
+      const nodes = await db.node.findMany({
+        where: {
+          isMaintenanceMode: false,
+          isPublic: true
+        },
+        select: {
+          uuid: true,
+          name: true,
+          fqdn: true,
+          scheme: true,
+          port: true,
+          daemonToken: true
+        }
+      });
+
+      // Initialize agent configurations
+      for (const node of nodes) {
+        const baseUrl = `${node.scheme}://${node.fqdn}:${node.port}`;
+        this.agents.set(node.uuid, {
+          id: node.uuid,
+          nodeId: node.uuid,
+          nodeUuid: node.uuid,
+          baseUrl,
+          apiKey: node.daemonToken,
+          isOnline: false,
+          lastSeen: undefined
+        });
+      }
+
+      logger.info(`External agent service initialized with ${nodes.length} nodes`);
     } catch (error) {
       logger.error('Failed to initialize external agents:', error);
     }
@@ -163,6 +206,17 @@ export class ExternalAgentService {
         error: `Failed to communicate with agent: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
+  }
+
+  /**
+   * Create a server via external agent
+   */
+  public async createServer(nodeUuid: string, serverId: string, serverConfig: any): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'create_server',
+      serverId,
+      payload: serverConfig
+    });
   }
 
   /**
@@ -276,6 +330,117 @@ export class ExternalAgentService {
       action: 'get_server_metrics',
       serverId,
       payload: {}
+    });
+  }
+
+  // =====================================================
+  // FILE MANAGEMENT METHODS VIA EXTERNAL AGENTS
+  // =====================================================
+
+  /**
+   * List files in a directory via external agent
+   */
+  public async listFiles(nodeUuid: string, serverId: string, path: string = '/'): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'list_files',
+      serverId,
+      payload: { path }
+    });
+  }
+
+  /**
+   * Read file content via external agent
+   */
+  public async readFile(nodeUuid: string, serverId: string, filePath: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'read_file',
+      serverId,
+      payload: { path: filePath }
+    });
+  }
+
+  /**
+   * Write file content via external agent
+   */
+  public async writeFile(nodeUuid: string, serverId: string, filePath: string, content: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'write_file',
+      serverId,
+      payload: { path: filePath, content }
+    });
+  }
+
+  /**
+   * Create directory via external agent
+   */
+  public async createDirectory(nodeUuid: string, serverId: string, path: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'create_directory',
+      serverId,
+      payload: { path }
+    });
+  }
+
+  /**
+   * Delete file or directory via external agent
+   */
+  public async deleteFile(nodeUuid: string, serverId: string, path: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'delete_file',
+      serverId,
+      payload: { path }
+    });
+  }
+
+  /**
+   * Rename/move file or directory via external agent
+   */
+  public async renameFile(nodeUuid: string, serverId: string, oldPath: string, newPath: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'rename_file',
+      serverId,
+      payload: { oldPath, newPath }
+    });
+  }
+
+  /**
+   * Download file via external agent (returns file data)
+   */
+  public async downloadFile(nodeUuid: string, serverId: string, filePath: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'download_file',
+      serverId,
+      payload: { path: filePath }
+    });
+  }
+
+  /**
+   * Upload file via external agent
+   */
+  public async uploadFile(nodeUuid: string, serverId: string, filePath: string, fileData: string | Buffer): Promise<AgentResponse> {
+    // Convert Buffer to base64 for transmission
+    const content = Buffer.isBuffer(fileData) ? fileData.toString('base64') : fileData;
+    const isBase64 = Buffer.isBuffer(fileData);
+
+    return this.sendCommand(nodeUuid, {
+      action: 'upload_file',
+      serverId,
+      payload: { 
+        path: filePath, 
+        content,
+        encoding: isBase64 ? 'base64' : 'utf8'
+      }
+    });
+  }
+
+  /**
+   * Get file information via external agent
+   */
+  public async getFileInfo(nodeUuid: string, serverId: string, filePath: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'get_file_info',
+      serverId,
+      payload: { path: filePath }
     });
   }
 

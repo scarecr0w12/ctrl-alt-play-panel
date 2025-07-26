@@ -22,7 +22,7 @@ A modern, secure game server management panel built with **Panel+Agent distribut
 - **Discovery**: Automatic agent discovery and health monitoring
 - **Scalability**: Agents run independently and can be deployed on any node
 
-### 🔗 External Agent Integration (v1.1.0)
+### 🔗 External Agent Integration (v1.0.3)
 
 The panel now communicates with external agent processes instead of embedded agent code:
 
@@ -177,8 +177,6 @@ ctrl-alt-play-panel/
 │   ├── components/        # UI components
 │   ├── pages/            # Route pages
 │   └── styles/           # TailwindCSS styles
-├── agent/                 # Agent source code
-│   └── src/              # Agent implementation
 ├── docs/                  # Documentation
 │   ├── development/      # Dev guides and specs
 │   ├── deployment/       # Production deployment
@@ -217,15 +215,6 @@ docker-compose up -d              # Start all services
 docker-compose up -d postgres     # Start database only
 docker-compose logs -f            # View logs
 docker-compose down               # Stop all services
-```
-
-### Agent Development
-
-```bash
-cd agent
-npm install          # Install agent dependencies
-npm run dev          # Start agent in development
-npm run build        # Build agent for production
 ```
 
 ### Version Management

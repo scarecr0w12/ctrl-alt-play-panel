@@ -45,7 +45,7 @@ export default function FilesPage() {
     
     try {
       setLoading(true);
-      const response = await filesApi.list(currentPath);
+      const response = await filesApi.getFiles(serverId as string, currentPath);
       if (response.data.success) {
         setFiles(response.data.data || []);
       }
@@ -91,7 +91,7 @@ export default function FilesPage() {
         const filePath = currentPath === '/' 
           ? `/${fileName}` 
           : `${currentPath}/${fileName}`;
-        await filesApi.delete(filePath);
+        await filesApi.delete(serverId as string, filePath);
       }
       await loadFiles();
       setSelectedFiles([]);

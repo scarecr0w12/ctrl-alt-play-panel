@@ -2,12 +2,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import CtrlsPage from '@/pages/ctrls';
-import { ctrlsApi, altsApi } from '@/lib/api';
+import { nodesApi, serversApi } from '@/lib/api';
 
 // Mock the API modules
 jest.mock('@/lib/api');
-const mockedCtrlsApi = ctrlsApi as jest.Mocked<typeof ctrlsApi>;
-const mockedAltsApi = altsApi as jest.Mocked<typeof altsApi>;
+const mockedNodesApi = nodesApi as jest.Mocked<typeof nodesApi>;
+const mockedServersApi = serversApi as jest.Mocked<typeof serversApi>;
 
 // Mock Next.js router
 const mockPush = jest.fn();
@@ -30,13 +30,7 @@ const mockUser = {
   isActive: true,
 };
 
-const MockAuthProvider = ({ children }: { children: React.ReactNode }) => (
-  <AuthProvider>
-    {children}
-  </AuthProvider>
-);
-
-// Override the useAuth hook
+// Mock auth context and provider
 jest.mock('@/contexts/AuthContext', () => ({
   ...jest.requireActual('@/contexts/AuthContext'),
   useAuth: () => ({
@@ -47,7 +41,9 @@ jest.mock('@/contexts/AuthContext', () => ({
     login: jest.fn(),
     logout: jest.fn(),
   }),
-  AuthProvider: MockAuthProvider,
+  AuthProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="mock-auth-provider">{children}</div>
+  ),
 }));
 
 describe('CtrlsPage', () => {
@@ -55,7 +51,7 @@ describe('CtrlsPage', () => {
     jest.clearAllMocks();
     
     // Setup default API responses
-    mockedCtrlsApi.getAll.mockResolvedValue({
+    mockedNodesApi.getAll.mockResolvedValue({
       data: {
         success: true,
         data: [
@@ -79,7 +75,7 @@ describe('CtrlsPage', () => {
       }
     } as any);
 
-    mockedAltsApi.getAll.mockResolvedValue({
+    mockedServersApi.getTemplates.mockResolvedValue({
       data: {
         success: true,
         data: [
@@ -109,9 +105,9 @@ describe('CtrlsPage', () => {
 
   it('renders categories and configurations', async () => {
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     // Wait for categories to load
@@ -127,9 +123,9 @@ describe('CtrlsPage', () => {
 
   it('shows create category modal when button is clicked', async () => {
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     await waitFor(() => {
@@ -146,7 +142,7 @@ describe('CtrlsPage', () => {
   });
 
   it('creates a new category when form is submitted', async () => {
-    mockedCtrlsApi.create.mockResolvedValue({
+    mockedNodesApi.create.mockResolvedValue({
       data: {
         success: true,
         data: {
@@ -160,9 +156,9 @@ describe('CtrlsPage', () => {
     } as any);
 
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     await waitFor(() => {
@@ -185,7 +181,7 @@ describe('CtrlsPage', () => {
 
     // Verify API call
     await waitFor(() => {
-      expect(mockedCtrlsApi.create).toHaveBeenCalledWith({
+      expect(mockedNodesApi.create).toHaveBeenCalledWith({
         name: 'New Category',
         description: 'Test description',
       });
@@ -194,9 +190,9 @@ describe('CtrlsPage', () => {
 
   it('loads alts when category is selected', async () => {
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     await waitFor(() => {
@@ -208,15 +204,15 @@ describe('CtrlsPage', () => {
 
     // Wait for alts to load
     await waitFor(() => {
-      expect(mockedAltsApi.getAll).toHaveBeenCalledWith('ctrl-1');
+      expect(mockedServersApi.getTemplates).toHaveBeenCalledWith('ctrl-1');
     });
   });
 
   it('shows import modal when import button is clicked', async () => {
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     await waitFor(() => {
@@ -241,7 +237,7 @@ describe('CtrlsPage', () => {
   });
 
   it('handles delete category confirmation', async () => {
-    mockedCtrlsApi.delete.mockResolvedValue({
+    mockedNodesApi.delete.mockResolvedValue({
       data: { success: true }
     } as any);
 
@@ -249,9 +245,9 @@ describe('CtrlsPage', () => {
     const mockConfirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
 
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     await waitFor(() => {
@@ -280,7 +276,7 @@ describe('CtrlsPage', () => {
       );
       
       await waitFor(() => {
-        expect(mockedCtrlsApi.delete).toHaveBeenCalledWith('ctrl-1');
+        expect(mockedNodesApi.delete).toHaveBeenCalledWith('ctrl-1');
       });
     }
 
@@ -288,7 +284,7 @@ describe('CtrlsPage', () => {
   });
 
   it('displays empty state when no categories exist', async () => {
-    mockedCtrlsApi.getAll.mockResolvedValue({
+    mockedNodesApi.getAll.mockResolvedValue({
       data: {
         success: true,
         data: []
@@ -296,9 +292,9 @@ describe('CtrlsPage', () => {
     } as any);
 
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     await waitFor(() => {
@@ -309,12 +305,12 @@ describe('CtrlsPage', () => {
 
   it('displays loading state initially', () => {
     // Mock API to never resolve to test loading state
-    mockedCtrlsApi.getAll.mockImplementation(() => new Promise(() => {}));
+    mockedNodesApi.getAll.mockImplementation(() => new Promise(() => {}));
 
     render(
-      <MockAuthProvider>
+      <AuthProvider>
         <CtrlsPage />
-      </MockAuthProvider>
+      </AuthProvider>
     );
 
     expect(screen.getByText('Loading configurations...')).toBeInTheDocument();

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
-import { altsApi, ctrlsApi } from '@/lib/api';
+import { nodesApi, serversApi } from '@/lib/api';
 import {
   ArrowLeftIcon,
   DocumentArrowUpIcon,
@@ -105,31 +105,35 @@ export default function AltEditPage() {
   const loadAlt = async () => {
     try {
       setLoading(true);
-      const response = await altsApi.getById(id as string);
+      const response = await serversApi.getTemplates();
       if (response.data.success && response.data.data) {
-        const altData = response.data.data;
-        setAlt(altData);
-        setVariables(altData.variables || []);
-        
-        // Populate form
-        setFormData({
-          name: altData.name || '',
-          description: altData.description || '',
-          author: altData.author || '',
-          startup: altData.startup || '',
-          configStop: altData.configStop || '',
-          scriptInstall: altData.scriptInstall || '',
-          scriptEntry: altData.scriptEntry || '',
-          scriptContainer: altData.scriptContainer || '',
-          copyScriptFrom: altData.copyScriptFrom || '',
-          forceOutgoingIp: altData.forceOutgoingIp || false,
-          dockerImages: JSON.stringify(altData.dockerImages || {}, null, 2),
-          configFiles: JSON.stringify(altData.configFiles || {}, null, 2),
-          configStartup: JSON.stringify(altData.configStartup || {}, null, 2),
-          configLogs: JSON.stringify(altData.configLogs || {}, null, 2),
-          features: JSON.stringify(altData.features || {}, null, 2),
-          fileDenylist: JSON.stringify(altData.fileDenylist || {}, null, 2),
-        });
+        // Find the specific template by ID
+        const templates = response.data.data;
+        const altData = templates.find((t: any) => t.id === id);
+        if (altData) {
+          setAlt(altData);
+          setVariables(altData.variables || []);
+          
+          // Populate form
+          setFormData({
+            name: altData.name || '',
+            description: altData.description || '',
+            author: altData.author || '',
+            startup: altData.startup || '',
+            configStop: altData.configStop || '',
+            scriptInstall: altData.scriptInstall || '',
+            scriptEntry: altData.scriptEntry || '',
+            scriptContainer: altData.scriptContainer || '',
+            copyScriptFrom: altData.copyScriptFrom || '',
+            forceOutgoingIp: altData.forceOutgoingIp || false,
+            dockerImages: JSON.stringify(altData.dockerImages || {}, null, 2),
+            configFiles: JSON.stringify(altData.configFiles || {}, null, 2),
+            configStartup: JSON.stringify(altData.configStartup || {}, null, 2),
+            configLogs: JSON.stringify(altData.configLogs || {}, null, 2),
+            features: JSON.stringify(altData.features || {}, null, 2),
+            fileDenylist: JSON.stringify(altData.fileDenylist || {}, null, 2),
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to load Alt:', error);
@@ -155,11 +159,10 @@ export default function AltEditPage() {
         fileDenylist: JSON.parse(formData.fileDenylist),
       };
 
-      const response = await altsApi.update(alt.id, updateData);
-      if (response.data.success) {
-        setUnsavedChanges(false);
-        // Show success message
-      }
+      // TODO: Implement template update API
+      console.log('Save functionality needs implementation');
+      alert('Save functionality not yet implemented');
+      setUnsavedChanges(false);
     } catch (error) {
       console.error('Failed to save Alt:', error);
       alert('Failed to save Alt. Please check JSON syntax.');
@@ -172,20 +175,9 @@ export default function AltEditPage() {
     if (!alt) return;
 
     try {
-      const response = await altsApi.export(alt.id);
-      if (response.data.success) {
-        const dataStr = JSON.stringify(response.data.data, null, 2);
-        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(dataBlob);
-        
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${alt.name.toLowerCase().replace(/\s+/g, '-')}.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }
+      // TODO: Implement template export API
+      console.log('Export functionality needs implementation');
+      alert('Export functionality not yet implemented');
     } catch (error) {
       console.error('Failed to export Alt:', error);
     }

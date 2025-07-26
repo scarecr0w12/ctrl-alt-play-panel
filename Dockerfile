@@ -16,8 +16,8 @@ WORKDIR /app/frontend
 # Copy frontend package files
 COPY frontend/package*.json ./
 
-# Install frontend dependencies
-RUN npm ci --only=production
+# Install frontend dependencies (including dev dependencies for build)
+RUN npm ci
 
 # Copy frontend source
 COPY frontend/ ./
@@ -92,9 +92,6 @@ COPY --from=backend-builder /app/dist ./dist
 # Copy built frontend from frontend builder stage
 COPY --from=frontend-builder /app/frontend/.next ./frontend/.next
 COPY --from=frontend-builder /app/frontend/public ./frontend/public
-
-# Copy any additional static files
-COPY uploads ./uploads
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S appuser && \

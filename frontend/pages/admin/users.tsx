@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { userManagementApi } from '@/lib/api';
+import { usersApi as userManagementApi } from '@/lib/api';
 import {
   UsersIcon,
   MagnifyingGlassIcon,
@@ -91,7 +91,7 @@ export default function UserManagementPage() {
         isActive: statusFilter !== 'all' ? statusFilter : undefined,
       };
 
-      const response = await userManagementApi.getUsers(params);
+      const response = await userManagementApi.getAll();
       if (response.data.success && response.data.data) {
         setUsers(response.data.data.users);
         setTotalPages(response.data.data.pagination.totalPages);
@@ -121,7 +121,7 @@ export default function UserManagementPage() {
     if (!selectedUser) return;
 
     try {
-      const response = await userManagementApi.updateUser(selectedUser.id, editForm);
+      const response = await userManagementApi.update(selectedUser.id, editForm);
       if (response.data.success) {
         setMessage({ type: 'success', text: 'User updated successfully' });
         setShowEditModal(false);
@@ -140,7 +140,7 @@ export default function UserManagementPage() {
     if (!selectedUser) return;
 
     try {
-      const response = await userManagementApi.deleteUser(selectedUser.id);
+      const response = await userManagementApi.delete(selectedUser.id);
       if (response.data.success) {
         setMessage({ type: 'success', text: 'User deleted successfully' });
         setShowDeleteModal(false);
@@ -160,7 +160,7 @@ export default function UserManagementPage() {
     if (!selectedUser) return;
 
     try {
-      const response = await userManagementApi.resetPassword(selectedUser.id, {
+      const response = await userManagementApi.updatePassword(selectedUser.id, {
         newPassword,
       });
       if (response.data.success) {

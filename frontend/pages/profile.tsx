@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { userProfileApi } from '@/lib/api';
+import { usersApi, authApi } from '@/lib/api';
 import {
   UserIcon,
   EnvelopeIcon,
@@ -68,7 +68,7 @@ export default function ProfilePage() {
   const loadProfile = async () => {
     try {
       setLoading(true);
-      const response = await userProfileApi.getProfile();
+      const response = await authApi.me();
       if (response.data.success && response.data.data) {
         const profileData = response.data.data;
         setProfile(profileData);
@@ -90,7 +90,7 @@ export default function ProfilePage() {
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await userProfileApi.updateProfile(profileForm);
+      const response = await usersApi.update(profile?.id || '', profileForm);
       if (response.data.success) {
         setMessage({ type: 'success', text: 'Profile updated successfully' });
         loadProfile(); // Reload profile data
@@ -107,7 +107,7 @@ export default function ProfilePage() {
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await userProfileApi.changePassword(passwordForm);
+      const response = await usersApi.updatePassword(profile?.id || '', passwordForm);
       if (response.data.success) {
         setMessage({ type: 'success', text: 'Password changed successfully' });
         setPasswordForm({
@@ -128,7 +128,7 @@ export default function ProfilePage() {
   const handleEmailChange = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await userProfileApi.changeEmail(emailForm);
+      const response = await usersApi.update(profile?.id || '', { email: emailForm.newEmail });
       if (response.data.success) {
         setMessage({ type: 'success', text: 'Email updated successfully' });
         setEmailForm({

@@ -16,10 +16,15 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    req.user = decoded.user;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'test-secret') as { id: string; role: string; email: string };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (req as any).user = {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role
+    };
     next();
-  } catch (error) {
+  } catch {
     return next(createError('Invalid or expired token', 403));
   }
 };

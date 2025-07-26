@@ -6,15 +6,35 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seeding...');
 
-  // Clear existing data
+  // Clear existing data in proper order to respect foreign key constraints
   console.log('🧹 Clearing existing data...');
+  await prisma.workshopInstallation.deleteMany({});
+  await prisma.voiceServer.deleteMany({});
+  await prisma.subuser.deleteMany({});
+  await prisma.serverTransfer.deleteMany({});
   await prisma.serverMetrics.deleteMany({});
+  await prisma.schedule.deleteMany({});
+  await prisma.modInstallation.deleteMany({});
+  await prisma.database.deleteMany({});
+  await prisma.backup.deleteMany({});
+  await prisma.auditLog.deleteMany({});
   await prisma.allocation.deleteMany({});
+  await prisma.alert.deleteMany({});
+  await prisma.serverVariable.deleteMany({});
   await prisma.server.deleteMany({});
-  await prisma.egg.deleteMany({});
-  await prisma.nest.deleteMany({});
-  await prisma.node.deleteMany({});
+  await prisma.altVariable.deleteMany({});
+  await prisma.alt.deleteMany({});
+  await prisma.ctrl.deleteMany({});
+  await prisma.userSshKey.deleteMany({});
+  await prisma.userSession.deleteMany({});
+  await prisma.userPermission.deleteMany({});
+  await prisma.recoveryToken.deleteMany({});
+  await prisma.apiKey.deleteMany({});
   await prisma.user.deleteMany({});
+  await prisma.rolePermission.deleteMany({});
+  await prisma.role.deleteMany({});
+  await prisma.permission.deleteMany({});
+  await prisma.node.deleteMany({});
   await prisma.location.deleteMany({});
 
   console.log('📍 Creating location...');
@@ -97,62 +117,55 @@ async function main() {
     }
   });
 
-  // Create sample nest first
-  const gameNest = await prisma.nest.create({
+    // Create a Ctrl (container template)
+  console.log('🎮 Creating Ctrl...');
+  const gameCtrl = await prisma.ctrl.create({
     data: {
       name: 'Game Servers',
-      description: 'Various game server configurations'
+      description: 'Container for game server types',
     }
   });
 
-  // Create sample egg (server type)
-  const minecraftEgg = await prisma.egg.create({
+  // Create an Alt (server template)
+  console.log('🥚 Creating Alt...');
+  const minecraftAlt = await prisma.alt.create({
     data: {
-      name: 'Minecraft Java',
-      description: 'Minecraft Java Edition server',
+      ctrlId: gameCtrl.id,
+      name: 'Minecraft Java Edition',
+      description: 'Minecraft Java Edition Server',
       author: 'System',
-      startup: 'java -Xms{{SERVER_MEMORY}}M -Xmx{{SERVER_MEMORY}}M -jar {{SERVER_JARFILE}}',
-      dockerImages: JSON.stringify({
-        'itzg/minecraft-server': 'latest'
-      }),
+      dockerImages: JSON.stringify(['itzg/minecraft-server:latest']),
+      startup: 'java -Xmx{{SERVER_MEMORY}}M -Xms{{SERVER_MEMORY}}M -jar server.jar',
       configFiles: JSON.stringify({
-        'server.properties': {
-          parser: 'properties',
-          find: {
-            'server-port': '{{SERVER_PORT}}',
-            'max-players': '{{MAX_PLAYERS}}',
-            'motd': '{{SERVER_MOTD}}'
-          }
-        }
+        'server.properties': 'server-port={{SERVER_PORT}}\\nmotd={{SERVER_NAME}}\\nmax-players={{MAX_PLAYERS}}'
       }),
-      configStartup: JSON.stringify({
-        done: 'Done (',
-        userInteraction: []
+      configStartup: JSON.stringify({}),
+      configLogs: JSON.stringify({
+        'server.log': '/logs/latest.log'
       }),
       configStop: 'stop',
-      configLogs: JSON.stringify({
-        custom: true,
-        location: 'logs/latest.log'
-      }),
-      nestId: gameNest.id
+      scriptContainer: 'openjdk:11',
+      scriptEntry: 'ash',
+      scriptInstall: 'echo "Installing Minecraft server..."\\nwget -O server.jar https://papermc.io/api/v2/projects/paper/versions/1.19.4/builds/489/downloads/paper-1.19.4-489.jar',
+      copyScriptFrom: null,
     }
   });
 
   // Create sample servers
   const server1 = await prisma.server.create({
     data: {
-      name: 'Minecraft Survival',
-      description: 'A survival Minecraft server',
+      name: 'Test Server 1',
+      description: 'A test Minecraft server for development',
+      memory: 1024,
+      disk: 2048,
+      cpu: 100,
+      swap: 512,
+      io: 500,
+      image: 'itzg/minecraft-server:latest',
+      startup: 'java -Xmx1024M -Xms1024M -jar server.jar',
       userId: regularUser.id,
       nodeId: node.id,
-      eggId: minecraftEgg.id,
-      memory: 2048,
-      disk: 5000,
-      io: 500,
-      cpu: 100,
-      swap: 0,
-      image: 'itzg/minecraft-server:latest',
-      startup: 'java -Xms2048M -Xmx2048M -jar server.jar',
+      altId: minecraftAlt.id,
       status: 'OFFLINE',
       environment: JSON.stringify({
         SERVER_JARFILE: 'server.jar',
@@ -171,25 +184,18 @@ async function main() {
 
   const server2 = await prisma.server.create({
     data: {
-      name: 'Rust Experimental',
-      description: 'Rust experimental server',
-      userId: adminUser.id,
-      nodeId: node.id,
-      eggId: minecraftEgg.id, // We'll use minecraft egg for now
-      memory: 4096,
-      disk: 10000,
-      io: 500,
+      name: 'Development Server',
+      description: 'Another test server for development purposes',
+      memory: 2048,
+      disk: 4096,
       cpu: 200,
       swap: 1024,
+      io: 500,
       image: 'itzg/minecraft-server:latest',
-      startup: 'java -Xms4096M -Xmx4096M -jar server.jar',
-      status: 'RUNNING',
-      environment: JSON.stringify({
-        SERVER_JARFILE: 'server.jar',
-        SERVER_MEMORY: '4096',
-        MAX_PLAYERS: '100',
-        SERVER_MOTD: 'Rust Experimental Server'
-      })
+      startup: 'java -Xmx2048M -Xms2048M -jar server.jar',
+      userId: adminUser.id,
+      nodeId: node.id,
+      altId: minecraftAlt.id, // We'll use minecraft alt for now
     }
   });
 
