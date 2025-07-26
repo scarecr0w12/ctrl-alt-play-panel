@@ -340,6 +340,40 @@ export const filesApi = {
   getHealth: () => api.get('/files/health'),
 };
 
+// Console API
+export const consoleApi = {
+  getStatus: (serverId: string) => 
+    api.get(`/console/status?serverId=${serverId}`),
+  
+  connect: (serverId: string) => 
+    api.post('/console/connect', { serverId }),
+  
+  disconnect: (serverId: string) => 
+    api.post('/console/disconnect', { serverId }),
+  
+  sendCommand: (serverId: string, command: string) => 
+    api.post('/console/command', { serverId, command }),
+  
+  getHistory: (serverId: string, lines: number = 100) => 
+    api.get(`/console/history?serverId=${serverId}&lines=${lines}`),
+  
+  clear: (serverId: string) => 
+    api.post('/console/clear', { serverId }),
+  
+  download: (serverId: string, format: string = 'txt') => 
+    api.get(`/console/download?serverId=${serverId}&format=${format}`, {
+      responseType: 'blob'
+    }),
+  
+  getSettings: (serverId: string) => 
+    api.get(`/console/settings?serverId=${serverId}`),
+  
+  updateSettings: (serverId: string, settings: any) => 
+    api.post('/console/settings', { serverId, settings }),
+  
+  getHealth: () => api.get('/console/health'),
+};
+
 // Steam Workshop API
 export const steamApi = {
   search: (query: string, type?: string) => 

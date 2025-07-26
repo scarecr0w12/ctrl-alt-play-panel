@@ -11,6 +11,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import monitoringRoutes from './routes/monitoring';
 import workshopRoutes from './routes/workshop';
 import filesRoutes from './routes/files';
+import consoleRoutes from './routes/console';
 import authRoutes from './routes/auth';
 import serversRoutes from './routes/servers';
 import usersRoutes from './routes/users';
@@ -95,6 +96,7 @@ class GamePanelApp {
     this.app.use('/api/monitoring', monitoringRoutes);
     this.app.use('/api/workshop', workshopRoutes);
     this.app.use('/api/files', filesRoutes);
+    this.app.use('/api/console', consoleRoutes); // Server console management
 
     // Basic info endpoint
     this.app.get('/api/info', (req, res) => {
