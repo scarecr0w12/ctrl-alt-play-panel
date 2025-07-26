@@ -22,6 +22,9 @@ RUN npm ci
 # Copy frontend source
 COPY frontend/ ./
 
+# Clear npm cache and reinstall to ensure all dependencies are available
+RUN npm cache clean --force && npm install
+
 # Build frontend
 RUN npm run build
 
