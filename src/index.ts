@@ -9,6 +9,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 
 // Import routes that are working
 import monitoringRoutes from './routes/monitoring';
+import analyticsRoutes from './routes/analytics';
 import workshopRoutes from './routes/workshop';
 import filesRoutes from './routes/files';
 import authRoutes from './routes/auth';
@@ -93,6 +94,7 @@ class GamePanelApp {
     this.app.use('/api/alts', altsRoutes);
     this.app.use('/api/agents', agentsRoutes); // External agent management
     this.app.use('/api/monitoring', monitoringRoutes);
+    this.app.use('/api/analytics', analyticsRoutes); // Resource analytics
     this.app.use('/api/workshop', workshopRoutes);
     this.app.use('/api/files', filesRoutes);
 

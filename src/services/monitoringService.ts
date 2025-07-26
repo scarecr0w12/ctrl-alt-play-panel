@@ -122,8 +122,8 @@ export class MonitoringService {
    */
   async getAggregatedStats(): Promise<AggregatedStats> {
     const servers = await prisma.server.findMany();
-    const runningServers = servers.filter(s => s.status === 'RUNNING').length;
-    const stoppedServers = servers.filter(s => ['OFFLINE', 'STOPPED', 'CRASHED'].includes(s.status)).length;
+    const runningServers = servers.filter((s: any) => s.status === 'RUNNING').length;
+    const stoppedServers = servers.filter((s: any) => ['OFFLINE', 'STOPPED', 'CRASHED'].includes(s.status)).length;
 
     // Get latest metrics for aggregate calculations
     const latestMetrics = await prisma.serverMetrics.findMany({
@@ -137,15 +137,15 @@ export class MonitoringService {
     });
 
     const avgCpu = latestMetrics.length > 0 
-      ? latestMetrics.reduce((sum, m) => sum + m.cpu, 0) / latestMetrics.length 
+      ? latestMetrics.reduce((sum: number, m: any) => sum + m.cpu, 0) / latestMetrics.length 
       : 0;
     
     const totalMemory = latestMetrics.length > 0 
-      ? latestMetrics.reduce((sum, m) => sum + m.memory, 0) 
+      ? latestMetrics.reduce((sum: number, m: any) => sum + m.memory, 0) 
       : 0;
     
     const totalPlayers = latestMetrics.length > 0 
-      ? latestMetrics.reduce((sum, m) => sum + m.players, 0) 
+      ? latestMetrics.reduce((sum: number, m: any) => sum + m.players, 0) 
       : 0;
 
     return {
