@@ -12,6 +12,7 @@ import monitoringRoutes from './routes/monitoring';
 import analyticsRoutes from './routes/analytics';
 import workshopRoutes from './routes/workshop';
 import filesRoutes from './routes/files';
+import consoleRoutes from './routes/console';
 import authRoutes from './routes/auth';
 import serversRoutes from './routes/servers';
 import usersRoutes from './routes/users';
@@ -20,7 +21,6 @@ import nodesRoutes from './routes/nodes';
 import ctrlsRoutes from './routes/ctrls';
 import altsRoutes from './routes/alts';
 import agentsRoutes from './routes/agents';
-import consoleRoutes from './routes/console';
 
 // Import middleware and services
 import { errorHandler } from './middlewares/errorHandler';

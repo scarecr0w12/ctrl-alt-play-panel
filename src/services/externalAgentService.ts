@@ -444,6 +444,123 @@ export class ExternalAgentService {
     });
   }
 
+  // ============== CONSOLE OPERATIONS ==============
+
+  /**
+   * Get console status for a server
+   */
+  public async getConsoleStatus(nodeUuid: string, serverId: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'console:status',
+      serverId,
+    });
+  }
+
+  /**
+   * Connect to server console
+   */
+  public async connectConsole(nodeUuid: string, serverId: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'console:connect',
+      serverId,
+    });
+  }
+
+  /**
+   * Disconnect from server console
+   */
+  public async disconnectConsole(nodeUuid: string, serverId: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'console:disconnect',
+      serverId,
+    });
+  }
+
+  /**
+   * Send command to server console
+   */
+  public async sendConsoleCommand(nodeUuid: string, serverId: string, command: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'console:command',
+      serverId,
+      payload: { command }
+    });
+  }
+
+  /**
+   * Get console history/buffer
+   */
+  public async getConsoleHistory(nodeUuid: string, serverId: string, lines: number = 100): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'console:history',
+      serverId,
+      payload: { lines }
+    });
+  }
+
+  /**
+   * Clear console buffer
+   */
+  public async clearConsoleBuffer(nodeUuid: string, serverId: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'console:clear',
+      serverId,
+    });
+  }
+
+  /**
+   * Download console logs
+   */
+  public async downloadConsoleLogs(nodeUuid: string, serverId: string, format: string = 'txt'): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'console:download',
+      serverId,
+      payload: { format }
+    });
+  }
+
+  /**
+   * Send raw input to console (for interactive commands)
+   */
+  public async sendConsoleInput(nodeUuid: string, serverId: string, input: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'console:input',
+      serverId,
+      payload: { input }
+    });
+  }
+
+  /**
+   * Send interrupt signal to console (Ctrl+C)
+   */
+  public async sendConsoleInterrupt(nodeUuid: string, serverId: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'console:interrupt',
+      serverId,
+    });
+  }
+
+  /**
+   * Get console settings for a server
+   */
+  public async getConsoleSettings(nodeUuid: string, serverId: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'console:settings:get',
+      serverId,
+    });
+  }
+
+  /**
+   * Update console settings for a server
+   */
+  public async updateConsoleSettings(nodeUuid: string, serverId: string, settings: any): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'console:settings:update',
+      serverId,
+      payload: { settings }
+    });
+  }
+
   /**
    * Copy file or directory via external agent
    */

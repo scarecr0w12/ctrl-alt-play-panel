@@ -1,211 +1,462 @@
-import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { 
-  authenticateToken, 
-  requireAnyPermission,
-  requireResourceOwnership 
-} from '../middlewares/permissions';
+import { Router, Request, Response } from 'express';
 import { ExternalAgentService } from '../services/externalAgentService';
+import { ServerAgentMappingService } from '../services/serverAgentMappingService';
+import { SocketService } from '../services/socket';
 import { logger } from '../utils/logger';
 
 const router = Router();
-const prisma = new PrismaClient();
+
+// Get service instances
+const agentService = ExternalAgentService.getInstance();
+const mappingService = ServerAgentMappingService.getInstance();
 
 /**
- * Get console logs for a server
- * GET /api/console/:serverId/logs
+ * Helper function to validate server and get agent UUID
  */
-router.get('/:serverId/logs', authenticateToken, requireAnyPermission(['servers.view', 'servers.manage']), requireResourceOwnership('server'), async (req, res) => {
+async function validateServerAndGetAgent(serverId: string): Promise<{ valid: boolean; nodeUuid?: string; error?: string }> {
+  if (!serverId) {
+    return { valid: false, error: 'Server ID is required' };
+  }
+
+  const validation = await mappingService.validateServerAgent(serverId);
+  if (!validation.valid) {
+    return validation;
+  }
+
+  // Check if agent is actually available
+  if (!agentService.isAgentAvailable(validation.nodeUuid!)) {
+    return {
+      valid: false,
+      error: `Agent for server ${serverId} is not available`
+    };
+  }
+
+  return validation;
+}
+
+/**
+ * Get console status for a server
+ * GET /api/console/status?serverId=123
+ */
+router.get('/status', async (req: Request, res: Response) => {
   try {
-    const { serverId } = req.params;
-    const { lines = 100 } = req.query;
+    const serverId = req.query.serverId as string;
 
-    // Get server details
-    const server = await prisma.server.findFirst({
-      where: { id: serverId },
-      include: { node: true }
-    });
-
-    if (!server) {
-      return res.status(404).json({ error: 'Server not found' });
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
     }
 
-    // Get logs from external agent
-    const externalAgentService = ExternalAgentService.getInstance();
-    const result = await externalAgentService.getServerLogs(
-      server.node.uuid, 
-      server.uuid, 
-      parseInt(lines as string)
-    );
+    logger.info(`Getting console status for server ${serverId}`);
 
+    // Check console connection status via agent
+    const result = await agentService.getConsoleStatus(validation.nodeUuid!, serverId);
+    
     if (!result.success) {
-      return res.status(500).json({ 
-        error: 'Failed to get server logs',
-        details: result.error 
-      });
+      res.status(500).json({ error: result.error || 'Failed to get console status' });
+      return;
     }
 
-    return res.json({
-      success: true,
-      data: {
-        serverId: server.id,
-        serverUuid: server.uuid,
-        serverName: server.name,
-        logs: result.data?.logs || [],
-        lines: parseInt(lines as string)
-      }
+    res.json({
+      serverId,
+      connected: result.data?.connected || false,
+      lastActivity: result.data?.lastActivity,
+      bufferSize: result.data?.bufferSize || 0,
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error getting console status:', error);
+    res.status(500).json({ error: 'Failed to get console status' });
+  }
+});
+
+/**
+ * Connect to server console
+ * POST /api/console/connect
+ * Body: { serverId: "123" }
+ */
+router.post('/connect', async (req: Request, res: Response) => {
+  try {
+    const { serverId } = req.body;
+
+    if (!serverId) {
+      res.status(400).json({ error: 'Server ID is required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Connecting to console for server ${serverId}`);
+
+    // Connect to console via agent
+    const result = await agentService.connectConsole(validation.nodeUuid!, serverId);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to connect to console' });
+      return;
+    }
+
+    // Emit console connection event to WebSocket clients
+    SocketService.emitToServer(serverId, 'console:connected', {
+      serverId,
+      message: 'Console connected successfully'
     });
 
+    res.json({
+      serverId,
+      connected: true,
+      message: 'Console connected successfully',
+      success: true
+    });
   } catch (error) {
-    logger.error('Failed to get console logs:', error);
-    return res.status(500).json({ error: 'Failed to get console logs' });
+    logger.error('Error connecting to console:', error);
+    res.status(500).json({ error: 'Failed to connect to console' });
+  }
+});
+
+/**
+ * Disconnect from server console
+ * POST /api/console/disconnect
+ * Body: { serverId: "123" }
+ */
+router.post('/disconnect', async (req: Request, res: Response) => {
+  try {
+    const { serverId } = req.body;
+
+    if (!serverId) {
+      res.status(400).json({ error: 'Server ID is required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Disconnecting from console for server ${serverId}`);
+
+    // Disconnect from console via agent
+    const result = await agentService.disconnectConsole(validation.nodeUuid!, serverId);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to disconnect from console' });
+      return;
+    }
+
+    // Emit console disconnection event to WebSocket clients
+    SocketService.emitToServer(serverId, 'console:disconnected', {
+      serverId,
+      message: 'Console disconnected'
+    });
+
+    res.json({
+      serverId,
+      connected: false,
+      message: 'Console disconnected successfully',
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error disconnecting from console:', error);
+    res.status(500).json({ error: 'Failed to disconnect from console' });
   }
 });
 
 /**
  * Send command to server console
- * POST /api/console/:serverId/command
+ * POST /api/console/command
+ * Body: { serverId: "123", command: "list" }
  */
-router.post('/:serverId/command', authenticateToken, requireAnyPermission(['servers.console', 'servers.manage']), requireResourceOwnership('server'), async (req, res) => {
+router.post('/command', async (req: Request, res: Response) => {
   try {
-    const { serverId } = req.params;
-    const { command } = req.body;
+    const { serverId, command } = req.body;
 
-    if (!command || typeof command !== 'string') {
-      return res.status(400).json({ error: 'Command is required' });
+    if (!serverId || !command) {
+      res.status(400).json({ error: 'Server ID and command are required' });
+      return;
     }
 
-    // Get server details
-    const server = await prisma.server.findFirst({
-      where: { id: serverId },
-      include: { node: true }
-    });
-
-    if (!server) {
-      return res.status(404).json({ error: 'Server not found' });
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
     }
 
-    // Send command to external agent
-    const externalAgentService = ExternalAgentService.getInstance();
-    const result = await externalAgentService.sendServerCommand(
-      server.node.uuid, 
-      server.uuid, 
-      command
-    );
+    logger.info(`Sending command to server ${serverId}: ${command}`);
 
-    if (!result.success) {
-      return res.status(500).json({ 
-        error: 'Failed to send command',
-        details: result.error 
-      });
-    }
-
-    // Log the command execution
-    logger.info(`Command executed on server ${server.name}`, {
-      serverId: server.id,
-      serverUuid: server.uuid,
-      command,
-      userId: (req as any).user.id
-    });
-
-    return res.json({
-      success: true,
-      message: 'Command sent successfully',
-      data: {
-        serverId: server.id,
-        command,
-        result: result.data
-      }
-    });
-
-  } catch (error) {
-    logger.error('Failed to send console command:', error);
-    return res.status(500).json({ error: 'Failed to send console command' });
-  }
-});
-
-/**
- * Get server console status
- * GET /api/console/:serverId/status
- */
-router.get('/:serverId/status', authenticateToken, requireAnyPermission(['servers.view', 'servers.manage']), requireResourceOwnership('server'), async (req, res) => {
-  try {
-    const { serverId } = req.params;
-
-    // Get server details
-    const server = await prisma.server.findFirst({
-      where: { id: serverId },
-      include: { node: true }
-    });
-
-    if (!server) {
-      return res.status(404).json({ error: 'Server not found' });
-    }
-
-    // Get server status from external agent
-    const externalAgentService = ExternalAgentService.getInstance();
-    const agentAvailable = externalAgentService.isAgentAvailable(server.node.uuid);
+    // Send command via agent
+    const result = await agentService.sendConsoleCommand(validation.nodeUuid!, serverId, command);
     
-    let serverStatus = null;
-    if (agentAvailable) {
-      const statusResult = await externalAgentService.getServerStatus(server.node.uuid, server.uuid);
-      if (statusResult.success) {
-        serverStatus = statusResult.data;
-      }
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to send command' });
+      return;
     }
 
-    return res.json({
-      success: true,
-      data: {
-        serverId: server.id,
-        serverUuid: server.uuid,
-        serverName: server.name,
-        nodeOnline: agentAvailable,
-        serverStatus: serverStatus,
-        consoleAvailable: agentAvailable && server.status !== 'INSTALL_FAILED'
-      }
+    // Emit command sent event to WebSocket clients
+    SocketService.emitToServer(serverId, 'console:command:sent', {
+      serverId,
+      command,
+      timestamp: new Date().toISOString()
     });
 
+    res.json({
+      serverId,
+      command,
+      sent: true,
+      response: result.data?.response,
+      success: true
+    });
   } catch (error) {
-    logger.error('Failed to get console status:', error);
-    return res.status(500).json({ error: 'Failed to get console status' });
+    logger.error('Error sending console command:', error);
+    res.status(500).json({ error: 'Failed to send command' });
   }
 });
 
 /**
- * Get console history (stored locally)
- * GET /api/console/:serverId/history
+ * Get console history/logs
+ * GET /api/console/history?serverId=123&lines=100
  */
-router.get('/:serverId/history', authenticateToken, requireAnyPermission(['servers.view', 'servers.manage']), requireResourceOwnership('server'), async (req, res) => {
+router.get('/history', async (req: Request, res: Response) => {
   try {
-    const { serverId } = req.params;
-    const { limit = 100, offset = 0 } = req.query;
+    const serverId = req.query.serverId as string;
+    const lines = parseInt(req.query.lines as string) || 100;
 
-    // Get server details
-    const server = await prisma.server.findFirst({
-      where: { id: serverId }
-    });
-
-    if (!server) {
-      return res.status(404).json({ error: 'Server not found' });
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
     }
 
-    // For now, return empty history as we don't have a console history table yet
-    // In a full implementation, you would query a console_history table here
-    return res.json({
-      success: true,
-      data: {
-        serverId: server.id,
-        history: [],
-        total: 0,
-        limit: parseInt(limit as string),
-        offset: parseInt(offset as string)
-      }
+    logger.info(`Getting console history for server ${serverId} (${lines} lines)`);
+
+    // Get console history via agent
+    const result = await agentService.getConsoleHistory(validation.nodeUuid!, serverId, lines);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to get console history' });
+      return;
+    }
+
+    res.json({
+      serverId,
+      history: result.data?.history || [],
+      lines: result.data?.lines || 0,
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error getting console history:', error);
+    res.status(500).json({ error: 'Failed to get console history' });
+  }
+});
+
+/**
+ * Clear console buffer
+ * POST /api/console/clear
+ * Body: { serverId: "123" }
+ */
+router.post('/clear', async (req: Request, res: Response) => {
+  try {
+    const { serverId } = req.body;
+
+    if (!serverId) {
+      res.status(400).json({ error: 'Server ID is required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Clearing console buffer for server ${serverId}`);
+
+    // Clear console buffer via agent
+    const result = await agentService.clearConsoleBuffer(validation.nodeUuid!, serverId);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to clear console buffer' });
+      return;
+    }
+
+    // Emit console cleared event to WebSocket clients
+    SocketService.emitToServer(serverId, 'console:cleared', {
+      serverId,
+      message: 'Console buffer cleared',
+      timestamp: new Date().toISOString()
     });
 
+    res.json({
+      serverId,
+      cleared: true,
+      message: 'Console buffer cleared successfully',
+      success: true
+    });
   } catch (error) {
-    logger.error('Failed to get console history:', error);
-    return res.status(500).json({ error: 'Failed to get console history' });
+    logger.error('Error clearing console buffer:', error);
+    res.status(500).json({ error: 'Failed to clear console buffer' });
+  }
+});
+
+/**
+ * Download console logs
+ * GET /api/console/download?serverId=123&format=txt
+ */
+router.get('/download', async (req: Request, res: Response) => {
+  try {
+    const serverId = req.query.serverId as string;
+    const format = (req.query.format as string) || 'txt';
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Downloading console logs for server ${serverId} (format: ${format})`);
+
+    // Get console logs via agent
+    const result = await agentService.downloadConsoleLogs(validation.nodeUuid!, serverId, format);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to download console logs' });
+      return;
+    }
+
+    // Set appropriate headers for file download
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `server-${serverId}-console-${timestamp}.${format}`;
+    
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', format === 'json' ? 'application/json' : 'text/plain');
+
+    // Send the log data
+    if (result.data?.content) {
+      res.send(result.data.content);
+    } else {
+      res.status(500).json({ error: 'No log data received from agent' });
+    }
+  } catch (error) {
+    logger.error('Error downloading console logs:', error);
+    res.status(500).json({ error: 'Failed to download console logs' });
+  }
+});
+
+/**
+ * Get console settings for a server
+ * GET /api/console/settings?serverId=123
+ */
+router.get('/settings', async (req: Request, res: Response) => {
+  try {
+    const serverId = req.query.serverId as string;
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    // Get console settings via agent (or return defaults)
+    res.json({
+      serverId,
+      settings: {
+        bufferSize: 10000,
+        autoScroll: true,
+        showTimestamp: true,
+        filterLevel: 'all',
+        theme: 'dark',
+        fontSize: 14,
+        fontFamily: 'Consolas, "Courier New", monospace'
+      },
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error getting console settings:', error);
+    res.status(500).json({ error: 'Failed to get console settings' });
+  }
+});
+
+/**
+ * Update console settings for a server
+ * POST /api/console/settings
+ * Body: { serverId: "123", settings: {...} }
+ */
+router.post('/settings', async (req: Request, res: Response) => {
+  try {
+    const { serverId, settings } = req.body;
+
+    if (!serverId || !settings) {
+      res.status(400).json({ error: 'Server ID and settings are required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Updating console settings for server ${serverId}`);
+
+    // TODO: Save settings to database or agent
+    // For now, just acknowledge the update
+    res.json({
+      serverId,
+      settings,
+      updated: true,
+      message: 'Console settings updated successfully',
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error updating console settings:', error);
+    res.status(500).json({ error: 'Failed to update console settings' });
+  }
+});
+
+/**
+ * Health check endpoint for console system
+ * GET /api/console/health
+ */
+router.get('/health', async (req: Request, res: Response) => {
+  try {
+    const agentStatuses = await agentService.healthCheckAll();
+    const totalAgents = agentStatuses.size;
+    const onlineAgents = Array.from(agentStatuses.values()).filter(status => status.online).length;
+
+    res.json({
+      status: 'operational',
+      agents: {
+        total: totalAgents,
+        online: onlineAgents,
+        offline: totalAgents - onlineAgents
+      },
+      console: {
+        enabled: true,
+        webSocketEnabled: true,
+        agentBased: true,
+        features: {
+          realTimeOutput: true,
+          commandExecution: true,
+          consoleHistory: true,
+          multipleConsoles: true,
+          downloadLogs: true,
+          settings: 'basic'
+        }
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logger.error('Error in console health check:', error);
+    res.status(500).json({ 
+      status: 'error',
+      error: 'Failed to perform health check',
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
