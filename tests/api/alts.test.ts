@@ -91,9 +91,22 @@ describe('Alts API', () => {
 
   describe('GET /api/alts', () => {
     beforeEach(async () => {
-      // Clean up before each test
+      // Clean up before each test - more thorough cleanup
       await prisma.altVariable.deleteMany({});
       await prisma.alt.deleteMany({});
+      
+      // Recreate test ctrl for each test to ensure fresh state
+      await prisma.ctrl.deleteMany({
+        where: { name: 'Test Category' }
+      });
+      
+      const newCtrl = await prisma.ctrl.create({
+        data: {
+          name: 'Test Category',
+          description: 'Test category for alts',
+        },
+      });
+      testCtrlId = newCtrl.id;
     });
 
     it('should return empty array when no alts exist', async () => {
@@ -107,6 +120,22 @@ describe('Alts API', () => {
     });
 
     it('should return alts filtered by ctrlId', async () => {
+      // Ensure testCtrl exists before creating alt
+      const ctrl = await prisma.ctrl.findUnique({
+        where: { id: testCtrlId }
+      });
+      
+      if (!ctrl) {
+        // Recreate the ctrl if it doesn't exist
+        const newCtrl = await prisma.ctrl.create({
+          data: {
+            name: 'Test Category',
+            description: 'Test category for alts',
+          },
+        });
+        testCtrlId = newCtrl.id;
+      }
+
       // Create test alt
       const alt = await prisma.alt.create({
         data: {
@@ -142,11 +171,41 @@ describe('Alts API', () => {
 
   describe('POST /api/alts', () => {
     beforeEach(async () => {
+      // Clean up before each test
       await prisma.altVariable.deleteMany({});
       await prisma.alt.deleteMany({});
+      
+      // Ensure test ctrl exists and is fresh
+      await prisma.ctrl.deleteMany({
+        where: { name: 'Test Category' }
+      });
+      
+      const newCtrl = await prisma.ctrl.create({
+        data: {
+          name: 'Test Category',
+          description: 'Test category for alts',
+        },
+      });
+      testCtrlId = newCtrl.id;
     });
 
     it('should create a new alt as admin', async () => {
+      // Ensure testCtrl exists before creating alt
+      const ctrl = await prisma.ctrl.findUnique({
+        where: { id: testCtrlId }
+      });
+      
+      if (!ctrl) {
+        // Recreate the ctrl if it doesn't exist
+        const newCtrl = await prisma.ctrl.create({
+          data: {
+            name: 'Test Category',
+            description: 'Test category for alts',
+          },
+        });
+        testCtrlId = newCtrl.id;
+      }
+
       const altData = {
         name: 'New Alt',
         description: 'Test alt description',
