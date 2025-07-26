@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { authenticateToken, requireAdmin } from '../middlewares/auth';
 import { asyncHandler, createError } from '../middlewares/errorHandler';
 import { logger } from '../utils/logger';
@@ -553,18 +553,18 @@ router.post('/:id/clone', authenticateToken, requireAdmin, asyncHandler(async (r
       author: originalAlt.author,
       version: version || '1.0.0',
       changelog: changelog || `Cloned from ${originalAlt.name}`,
-      dockerImages: originalAlt.dockerImages,
+      dockerImages: originalAlt.dockerImages as Prisma.InputJsonValue,
       startup: originalAlt.startup,
-      configFiles: originalAlt.configFiles,
-      configStartup: originalAlt.configStartup,
-      configLogs: originalAlt.configLogs,
+      configFiles: originalAlt.configFiles as Prisma.InputJsonValue,
+      configStartup: originalAlt.configStartup as Prisma.InputJsonValue,
+      configLogs: originalAlt.configLogs as Prisma.InputJsonValue,
       configStop: originalAlt.configStop,
       scriptInstall: originalAlt.scriptInstall,
       scriptEntry: originalAlt.scriptEntry,
       scriptContainer: originalAlt.scriptContainer,
       copyScriptFrom: originalAlt.copyScriptFrom,
-      features: originalAlt.features,
-      fileDenylist: originalAlt.fileDenylist,
+      features: originalAlt.features as Prisma.InputJsonValue,
+      fileDenylist: originalAlt.fileDenylist as Prisma.InputJsonValue,
       forceOutgoingIp: originalAlt.forceOutgoingIp,
       ctrlId: originalAlt.ctrlId,
       variables: {
