@@ -262,4 +262,175 @@ router.get('/:id/servers', authenticateToken, requireAnyPermission(['users.view'
   });
 }));
 
+// Get user statistics (Admin only)
+router.get('/stats', authenticateToken, requirePermission('users.view'), asyncHandler(async (req: Request, res: Response) => {
+  const [
+    totalUsers,
+    activeUsers,
+    inactiveUsers,
+    usersByRole,
+    recentSignups,
+    recentActivity
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { isActive: true } }),
+    prisma.user.count({ where: { isActive: false } }),
+    prisma.user.groupBy({
+      by: ['role'],
+      _count: {
+        role: true
+      }
+    }),
+    prisma.user.count({
+      where: {
+        createdAt: {
+          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+        }
+      }
+    }),
+    prisma.user.count({
+      where: {
+        lastLogin: {
+          gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+        }
+      }
+    })
+  ]);
+
+  const roleStats = usersByRole.reduce((acc, item) => {
+    acc[item.role] = item._count.role;
+    return acc;
+  }, {} as Record<string, number>);
+
+  res.json({
+    success: true,
+    data: {
+      totalUsers,
+      activeUsers,
+      inactiveUsers,
+      usersByRole: {
+        USER: roleStats.USER || 0,
+        MODERATOR: roleStats.MODERATOR || 0,
+        ADMIN: roleStats.ADMIN || 0
+      },
+      recentSignups,
+      recentActivity
+    }
+  });
+}));
+
+// Get user activity (Admin only)
+router.get('/activity', authenticateToken, requirePermission('users.view'), asyncHandler(async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+  const skip = (page - 1) * limit;
+
+  // Note: This would require an audit/activity log table in a real implementation
+  // For now, we'll return mock data or empty array
+  const activities: any[] = [];
+  const total = 0;
+
+  res.json({
+    success: true,
+    data: {
+      activities,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    }
+  });
+}));
+
+// Bulk delete users (Admin only)
+router.delete('/bulk', authenticateToken, requirePermission('users.delete'), asyncHandler(async (req: Request, res: Response) => {
+  const { userIds } = req.body;
+
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    throw createError('User IDs array is required', 400);
+  }
+
+  // Check if any users have servers
+  const usersWithServers = await prisma.user.findMany({
+    where: { 
+      id: { in: userIds },
+      servers: { some: {} }
+    },
+    select: { id: true, username: true }
+  });
+
+  if (usersWithServers.length > 0) {
+    throw createError(
+      `Cannot delete users with existing servers: ${usersWithServers.map(u => u.username).join(', ')}`, 
+      400
+    );
+  }
+
+  const deletedUsers = await prisma.user.deleteMany({
+    where: { id: { in: userIds } }
+  });
+
+  logger.info(`Bulk deleted ${deletedUsers.count} users`);
+
+  res.json({
+    success: true,
+    data: { deletedCount: deletedUsers.count },
+    message: `Successfully deleted ${deletedUsers.count} user(s)`
+  });
+}));
+
+// Bulk update user roles (Admin only)
+router.patch('/bulk/role', authenticateToken, requirePermission('users.edit'), asyncHandler(async (req: Request, res: Response) => {
+  const { userIds, role } = req.body;
+
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    throw createError('User IDs array is required', 400);
+  }
+
+  if (!['USER', 'MODERATOR', 'ADMIN'].includes(role)) {
+    throw createError('Invalid role', 400);
+  }
+
+  const updatedUsers = await prisma.user.updateMany({
+    where: { id: { in: userIds } },
+    data: { role }
+  });
+
+  logger.info(`Bulk updated role for ${updatedUsers.count} users to ${role}`);
+
+  res.json({
+    success: true,
+    data: { updatedCount: updatedUsers.count },
+    message: `Successfully updated role for ${updatedUsers.count} user(s)`
+  });
+}));
+
+// Bulk update user status (Admin only)
+router.patch('/bulk/status', authenticateToken, requirePermission('users.edit'), asyncHandler(async (req: Request, res: Response) => {
+  const { userIds, isActive } = req.body;
+
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    throw createError('User IDs array is required', 400);
+  }
+
+  if (typeof isActive !== 'boolean') {
+    throw createError('isActive must be a boolean', 400);
+  }
+
+  const updatedUsers = await prisma.user.updateMany({
+    where: { id: { in: userIds } },
+    data: { isActive }
+  });
+
+  logger.info(`Bulk updated status for ${updatedUsers.count} users to ${isActive ? 'active' : 'inactive'}`);
+
+  res.json({
+    success: true,
+    data: { updatedCount: updatedUsers.count },
+    message: `Successfully updated status for ${updatedUsers.count} user(s)`
+  });
+}));
+
 export default router;
