@@ -245,6 +245,12 @@ export const agentsApi = {
   healthCheck: () => api.get('/agents/health'),
   healthCheckAll: () => api.get('/agents/health/all'),
   discover: () => api.post('/agents/discover'),
+  getConfig: (nodeUuid: string) => api.get(`/agents/${nodeUuid}/config`),
+  updateConfig: (nodeUuid: string, config: { baseUrl: string; apiKey?: string }) => 
+    api.put(`/agents/${nodeUuid}/config`, config),
+  getServers: (nodeUuid: string) => api.get(`/agents/${nodeUuid}/servers`),
+  testConnection: (nodeUuid: string) => api.post(`/agents/${nodeUuid}/test`),
+  getMetrics: (nodeUuid: string) => api.get(`/agents/${nodeUuid}/metrics`),
 };
 
 // Nodes API
