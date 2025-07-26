@@ -230,7 +230,39 @@ export const serversApi = {
 export const monitoringApi = {
   getHealth: () => api.get('/monitoring/health'),
   getMetrics: () => api.get('/monitoring/metrics'),
-  getSystemStats: () => api.get('/monitoring/system'),
+  getSystemStats: () => api.get('/monitoring/stats'),
+};
+
+// Analytics API
+export const analyticsApi = {
+  getTrends: (params?: {
+    serverId?: string;
+    startDate?: string;
+    endDate?: string;
+    interval?: 'minute' | 'hour' | 'day' | 'week';
+  }) => api.get('/analytics/trends', { params }),
+  compareServers: (data: {
+    serverIds: string[];
+    startDate?: string;
+    endDate?: string;
+  }) => api.post('/analytics/compare', data),
+  getThresholds: (serverId?: string) => 
+    api.get('/analytics/thresholds', { params: { serverId } }),
+  updateThreshold: (threshold: any) => 
+    api.put('/analytics/thresholds', threshold),
+  getRecommendations: (serverId?: string) => 
+    api.get('/analytics/recommendations', { params: { serverId } }),
+  getAlerts: (params?: { serverId?: string; severity?: string }) => 
+    api.get('/analytics/alerts', { params }),
+  exportData: (data: {
+    serverIds: string[];
+    startDate?: string;
+    endDate?: string;
+    format?: 'json' | 'csv' | 'pdf';
+    includeGraphs?: boolean;
+  }) => api.post('/analytics/export', data, { responseType: 'blob' }),
+  getOverview: (timeRange?: string) => 
+    api.get('/analytics/overview', { params: { timeRange } }),
 };
 
 // Agents API
