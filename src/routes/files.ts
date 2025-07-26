@@ -423,6 +423,347 @@ router.get('/info', async (req: Request, res: Response) => {
 });
 
 /**
+ * Copy file or directory via external agent
+ * POST /api/files/copy
+ * Body: { serverId: "123", sourcePath: "/source", destinationPath: "/destination" }
+ */
+router.post('/copy', async (req: Request, res: Response) => {
+  try {
+    const { serverId, sourcePath, destinationPath } = req.body;
+
+    if (!serverId || !sourcePath || !destinationPath) {
+      res.status(400).json({ error: 'Server ID, sourcePath, and destinationPath are required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Copying file for server ${serverId}: ${sourcePath} -> ${destinationPath}`);
+
+    const result = await agentService.copyFile(validation.nodeUuid!, serverId, sourcePath, destinationPath);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to copy file' });
+      return;
+    }
+
+    res.json({
+      serverId,
+      sourcePath,
+      destinationPath,
+      message: 'File copied successfully',
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error copying file:', error);
+    res.status(500).json({ error: 'Failed to copy file' });
+  }
+});
+
+/**
+ * Move file or directory via external agent
+ * POST /api/files/move
+ * Body: { serverId: "123", sourcePath: "/source", destinationPath: "/destination" }
+ */
+router.post('/move', async (req: Request, res: Response) => {
+  try {
+    const { serverId, sourcePath, destinationPath } = req.body;
+
+    if (!serverId || !sourcePath || !destinationPath) {
+      res.status(400).json({ error: 'Server ID, sourcePath, and destinationPath are required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Moving file for server ${serverId}: ${sourcePath} -> ${destinationPath}`);
+
+    const result = await agentService.moveFile(validation.nodeUuid!, serverId, sourcePath, destinationPath);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to move file' });
+      return;
+    }
+
+    res.json({
+      serverId,
+      sourcePath,
+      destinationPath,
+      message: 'File moved successfully',
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error moving file:', error);
+    res.status(500).json({ error: 'Failed to move file' });
+  }
+});
+
+/**
+ * Batch file operations via external agent
+ * POST /api/files/batch
+ * Body: { serverId: "123", operation: "delete|copy|move", files: [...], destination?: "/dest" }
+ */
+router.post('/batch', async (req: Request, res: Response) => {
+  try {
+    const { serverId, operation, files, destination } = req.body;
+
+    if (!serverId || !operation || !Array.isArray(files) || files.length === 0) {
+      res.status(400).json({ error: 'Server ID, operation, and files array are required' });
+      return;
+    }
+
+    if ((operation === 'copy' || operation === 'move') && !destination) {
+      res.status(400).json({ error: 'Destination is required for copy/move operations' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Batch ${operation} operation for server ${serverId} on ${files.length} files`);
+
+    const results = [];
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const filePath of files) {
+      try {
+        let result;
+        switch (operation) {
+          case 'delete':
+            result = await agentService.deleteFile(validation.nodeUuid!, serverId, filePath);
+            break;
+          case 'copy':
+            const copyDest = `${destination}/${filePath.split('/').pop()}`;
+            result = await agentService.copyFile(validation.nodeUuid!, serverId, filePath, copyDest);
+            break;
+          case 'move':
+            const moveDest = `${destination}/${filePath.split('/').pop()}`;
+            result = await agentService.moveFile(validation.nodeUuid!, serverId, filePath, moveDest);
+            break;
+          default:
+            result = { success: false, error: `Unknown operation: ${operation}` };
+        }
+
+        if (result.success) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+
+        results.push({
+          path: filePath,
+          success: result.success,
+          error: result.error
+        });
+      } catch (error) {
+        errorCount++;
+        results.push({
+          path: filePath,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+
+    res.json({
+      serverId,
+      operation,
+      totalFiles: files.length,
+      successCount,
+      errorCount,
+      results,
+      message: `Batch ${operation} completed: ${successCount} succeeded, ${errorCount} failed`,
+      success: errorCount === 0
+    });
+  } catch (error) {
+    logger.error('Error in batch operation:', error);
+    res.status(500).json({ error: 'Failed to perform batch operation' });
+  }
+});
+
+/**
+ * Get file permissions via external agent
+ * GET /api/files/permissions?serverId=123&path=/file
+ */
+router.get('/permissions', async (req: Request, res: Response) => {
+  try {
+    const serverId = req.query.serverId as string;
+    const filePath = req.query.path as string;
+
+    if (!filePath) {
+      res.status(400).json({ error: 'File path is required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Getting file permissions for server ${serverId}: ${filePath}`);
+
+    const result = await agentService.getFilePermissions(validation.nodeUuid!, serverId, filePath);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to get file permissions' });
+      return;
+    }
+
+    res.json({
+      serverId,
+      path: filePath,
+      permissions: result.data,
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error getting file permissions:', error);
+    res.status(500).json({ error: 'Failed to get file permissions' });
+  }
+});
+
+/**
+ * Set file permissions via external agent
+ * POST /api/files/permissions
+ * Body: { serverId: "123", path: "/file", mode: "755" }
+ */
+router.post('/permissions', async (req: Request, res: Response) => {
+  try {
+    const { serverId, path: filePath, mode } = req.body;
+
+    if (!serverId || !filePath || !mode) {
+      res.status(400).json({ error: 'Server ID, path, and mode are required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Setting file permissions for server ${serverId}: ${filePath} to ${mode}`);
+
+    const result = await agentService.setFilePermissions(validation.nodeUuid!, serverId, filePath, mode);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to set file permissions' });
+      return;
+    }
+
+    res.json({
+      serverId,
+      path: filePath,
+      mode,
+      message: 'File permissions updated successfully',
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error setting file permissions:', error);
+    res.status(500).json({ error: 'Failed to set file permissions' });
+  }
+});
+
+/**
+ * Create archive via external agent
+ * POST /api/files/archive/create
+ * Body: { serverId: "123", files: [...], archivePath: "/archive.zip", format: "zip" }
+ */
+router.post('/archive/create', async (req: Request, res: Response) => {
+  try {
+    const { serverId, files, archivePath, format = 'zip' } = req.body;
+
+    if (!serverId || !Array.isArray(files) || files.length === 0 || !archivePath) {
+      res.status(400).json({ error: 'Server ID, files array, and archivePath are required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Creating ${format} archive for server ${serverId}: ${archivePath} with ${files.length} files`);
+
+    const result = await agentService.createArchive(validation.nodeUuid!, serverId, files, archivePath, format);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to create archive' });
+      return;
+    }
+
+    res.json({
+      serverId,
+      archivePath,
+      format,
+      fileCount: files.length,
+      size: result.data?.size,
+      message: 'Archive created successfully',
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error creating archive:', error);
+    res.status(500).json({ error: 'Failed to create archive' });
+  }
+});
+
+/**
+ * Extract archive via external agent
+ * POST /api/files/archive/extract
+ * Body: { serverId: "123", archivePath: "/archive.zip", extractPath: "/extract" }
+ */
+router.post('/archive/extract', async (req: Request, res: Response) => {
+  try {
+    const { serverId, archivePath, extractPath } = req.body;
+
+    if (!serverId || !archivePath || !extractPath) {
+      res.status(400).json({ error: 'Server ID, archivePath, and extractPath are required' });
+      return;
+    }
+
+    const validation = await validateServerAndGetAgent(serverId);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    logger.info(`Extracting archive for server ${serverId}: ${archivePath} to ${extractPath}`);
+
+    const result = await agentService.extractArchive(validation.nodeUuid!, serverId, archivePath, extractPath);
+    
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to extract archive' });
+      return;
+    }
+
+    res.json({
+      serverId,
+      archivePath,
+      extractPath,
+      extractedFiles: result.data?.files || [],
+      message: 'Archive extracted successfully',
+      success: true
+    });
+  } catch (error) {
+    logger.error('Error extracting archive:', error);
+    res.status(500).json({ error: 'Failed to extract archive' });
+  }
+});
+
+/**
  * Health check endpoint for file management system
  * GET /api/files/health
  */
