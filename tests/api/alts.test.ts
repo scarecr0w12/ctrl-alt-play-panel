@@ -429,4 +429,302 @@ describe('Alts API', () => {
         .expect(404);
     });
   });
+
+  describe('POST /api/alts/import', () => {
+    const mockEggData = {
+      name: 'Imported Test Alt',
+      author: 'Imported Author',
+      description: 'Test imported alt',
+      startup: 'java -jar {{JAR_FILE}}',
+      docker_images: {
+        java: 'openjdk:17'
+      },
+      config: {
+        files: {},
+        startup: { done: 'Server started' },
+        logs: {},
+        stop: '^C'
+      },
+      scripts: {
+        installation: {
+          script: 'echo "Installing"',
+          container: 'alpine:3.4',
+          entrypoint: 'bash'
+        }
+      },
+      variables: [
+        {
+          name: 'JAR File',
+          description: 'Server JAR file name',
+          env_variable: 'JAR_FILE',
+          default_value: 'server.jar',
+          user_viewable: true,
+          user_editable: true,
+          rules: 'required|string'
+        }
+      ]
+    };
+
+    it('should import alt from egg data as admin', async () => {
+      const response = await request(app)
+        .post('/api/alts/import')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          ctrlId: testCtrlId,
+          eggData: mockEggData
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toMatchObject({
+        name: 'Imported Test Alt',
+        author: 'Imported Author',
+        version: '1.0.0',
+        changelog: 'Imported from egg file',
+        startup: 'java -jar {{JAR_FILE}}'
+      });
+      expect(response.body.data.variables).toHaveLength(1);
+    });
+
+    it('should require admin role', async () => {
+      await request(app)
+        .post('/api/alts/import')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          ctrlId: testCtrlId,
+          eggData: mockEggData
+        })
+        .expect(403);
+    });
+
+    it('should return 400 for missing data', async () => {
+      await request(app)
+        .post('/api/alts/import')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+        .expect(400);
+    });
+  });
+
+  describe('POST /api/alts/:id/preview', () => {
+    let testAltId: string;
+
+    beforeEach(async () => {
+      // Create test alt with variables
+      const alt = await prisma.alt.create({
+        data: {
+          name: 'Preview Test Alt',
+          author: 'test@example.com',
+          version: '1.0.0',
+          startup: 'java -jar {{JAR_FILE}} --port={{PORT}}',
+          configFiles: JSON.stringify({
+            'server.properties': 'server-port={{PORT}}\nmax-players={{MAX_PLAYERS}}'
+          }),
+          configStartup: JSON.stringify({ done: 'Server started' }),
+          configLogs: JSON.stringify({}),
+          dockerImages: JSON.stringify({ java: 'openjdk:17' }),
+          ctrlId: testCtrlId,
+        },
+      });
+
+      await prisma.altVariable.createMany({
+        data: [
+          {
+            name: 'JAR File',
+            description: 'Server JAR file',
+            envVariable: 'JAR_FILE',
+            defaultValue: 'server.jar',
+            userViewable: true,
+            userEditable: true,
+            rules: 'required',
+            altId: alt.id,
+          },
+          {
+            name: 'Port',
+            description: 'Server port',
+            envVariable: 'PORT',
+            defaultValue: '25565',
+            userViewable: true,
+            userEditable: true,
+            rules: 'required|numeric',
+            altId: alt.id,
+          }
+        ]
+      });
+
+      testAltId = alt.id;
+    });
+
+    it('should preview alt configuration with variable substitution', async () => {
+      const response = await request(app)
+        .post(`/api/alts/${testAltId}/preview`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          variables: {
+            JAR_FILE: 'custom-server.jar',
+            PORT: '25566'
+          }
+        })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.preview.startup).toBe('java -jar custom-server.jar --port=25566');
+      expect(response.body.data.preview.environment).toMatchObject({
+        JAR_FILE: 'custom-server.jar',
+        PORT: '25566'
+      });
+    });
+
+    it('should use default values when variables not provided', async () => {
+      const response = await request(app)
+        .post(`/api/alts/${testAltId}/preview`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.preview.startup).toBe('java -jar server.jar --port=25565');
+    });
+  });
+
+  describe('POST /api/alts/:id/validate', () => {
+    let testAltId: string;
+
+    beforeEach(async () => {
+      // Create test alt with variables for validation
+      const alt = await prisma.alt.create({
+        data: {
+          name: 'Validation Test Alt',
+          author: 'test@example.com',
+          version: '1.0.0',
+          startup: 'java -jar {{JAR_FILE}} --port={{PORT}} --undefined={{UNDEFINED_VAR}}',
+          dockerImages: JSON.stringify({ java: 'openjdk:17' }),
+          ctrlId: testCtrlId,
+        },
+      });
+
+      await prisma.altVariable.create({
+        data: {
+          name: 'JAR File',
+          description: 'Server JAR file',
+          envVariable: 'JAR_FILE',
+          defaultValue: '',
+          userViewable: true,
+          userEditable: true,
+          rules: 'required',
+          altId: alt.id,
+        }
+      });
+
+      testAltId = alt.id;
+    });
+
+    it('should validate alt configuration and return errors', async () => {
+      const response = await request(app)
+        .post(`/api/alts/${testAltId}/validate`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          variables: {}
+        })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.valid).toBe(false);
+      expect(response.body.data.errors).toContain("Variable 'JAR File' is required but has no value");
+      expect(response.body.data.errors).toContain("Undefined variable 'UNDEFINED_VAR' used in startup command");
+    });
+
+    it('should return valid when all requirements met', async () => {
+      const response = await request(app)
+        .post(`/api/alts/${testAltId}/validate`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          variables: {
+            JAR_FILE: 'server.jar',
+            PORT: '25565',
+            UNDEFINED_VAR: 'defined-now'
+          }
+        })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.valid).toBe(true);
+      expect(response.body.data.errors).toHaveLength(0);
+    });
+  });
+
+  describe('POST /api/alts/:id/clone', () => {
+    let testAltId: string;
+
+    beforeEach(async () => {
+      // Create test alt to clone
+      const alt = await prisma.alt.create({
+        data: {
+          name: 'Original Alt',
+          description: 'Original alt for cloning',
+          author: 'test@example.com',
+          version: '1.0.0',
+          startup: 'java -jar server.jar',
+          dockerImages: JSON.stringify({ java: 'openjdk:17' }),
+          ctrlId: testCtrlId,
+        },
+      });
+
+      await prisma.altVariable.create({
+        data: {
+          name: 'Test Variable',
+          description: 'Test variable',
+          envVariable: 'TEST_VAR',
+          defaultValue: 'test_value',
+          userViewable: true,
+          userEditable: true,
+          rules: 'required',
+          altId: alt.id,
+        }
+      });
+
+      testAltId = alt.id;
+    });
+
+    it('should clone alt as admin', async () => {
+      const response = await request(app)
+        .post(`/api/alts/${testAltId}/clone`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          name: 'Cloned Alt',
+          version: '1.1.0',
+          changelog: 'Cloned with modifications'
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toMatchObject({
+        name: 'Cloned Alt',
+        version: '1.1.0',
+        changelog: 'Cloned with modifications',
+        author: 'test@example.com',
+        startup: 'java -jar server.jar'
+      });
+      expect(response.body.data.variables).toHaveLength(1);
+      expect(response.body.data.id).not.toBe(testAltId);
+    });
+
+    it('should require admin role', async () => {
+      await request(app)
+        .post(`/api/alts/${testAltId}/clone`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          name: 'Cloned Alt'
+        })
+        .expect(403);
+    });
+
+    it('should return 400 for missing name', async () => {
+      await request(app)
+        .post(`/api/alts/${testAltId}/clone`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+        .expect(400);
+    });
+  });
 });

@@ -111,14 +111,27 @@ export interface Alt {
   id: string;
   name: string;
   description?: string;
+  author: string;
+  version: string;
+  changelog?: string;
+  isTemplate: boolean;
   dockerImage: string;
   startup: string;
   configFiles: string;
   configStartup: string;
   configLogs: string;
   configStop?: string;
+  scriptInstall?: string;
+  scriptEntry: string;
+  scriptContainer: string;
+  copyScriptFrom?: string;
+  features?: any;
+  fileDenylist?: any;
+  forceOutgoingIp: boolean;
   ctrlId: string;
   variables: AltVariable[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AltVariable {

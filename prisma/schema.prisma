@@ -251,6 +251,9 @@ model Alt {
   name            String
   description     String?
   author          String
+  version         String        @default("1.0.0")
+  changelog       String?
+  isTemplate      Boolean       @default(true)
   dockerImages    Json          @default("{}")
   startup         String
   configFiles     Json          @default("{}")
