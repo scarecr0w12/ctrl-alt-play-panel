@@ -230,7 +230,20 @@ export const serversApi = {
 export const monitoringApi = {
   getHealth: () => api.get('/monitoring/health'),
   getMetrics: () => api.get('/monitoring/metrics'),
-  getSystemStats: () => api.get('/monitoring/system'),
+  getSystemStats: () => api.get('/monitoring/stats'),
+  getServerMetrics: (serverId: string, timeRange: string = '24h') => 
+    api.get(`/monitoring/servers/${serverId}/metrics?timeRange=${timeRange}`),
+  getCurrentServerMetrics: (serverId: string) => 
+    api.get(`/monitoring/servers/${serverId}/current`),
+  getNodeMetrics: (nodeId: string, timeRange: string = '24h') => 
+    api.get(`/monitoring/nodes/${nodeId}/metrics?timeRange=${timeRange}`),
+  getAlerts: (acknowledged: boolean = false, severity?: string) => 
+    api.get(`/monitoring/alerts?acknowledged=${acknowledged}${severity ? `&severity=${severity}` : ''}`),
+  acknowledgeAlert: (alertId: string) => 
+    api.post(`/monitoring/alerts/${alertId}/acknowledge`),
+  collectMetrics: () => api.post('/monitoring/collect'),
+  exportData: (timeRange: string, format: 'json' | 'csv' = 'json') => 
+    api.get(`/monitoring/export?timeRange=${timeRange}&format=${format}`, { responseType: 'blob' }),
 };
 
 // Agents API
