@@ -1,10 +1,20 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt, { SignOptions } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { asyncHandler, createError } from '../middlewares/errorHandler';
 import { logger } from '../utils/logger';
-import { User, UserRole } from '../types';
+
+interface JWTPayload {
+  user: {
+    id: string;
+    email: string;
+    username: string;
+    role: string;
+  };
+  iat?: number;
+  exp?: number;
+}
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -140,7 +150,7 @@ router.post('/refresh', asyncHandler(async (req: Request, res: Response) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload;
 
     // Generate new token
     const newToken = jwt.sign(
@@ -154,7 +164,7 @@ router.post('/refresh', asyncHandler(async (req: Request, res: Response) => {
       data: { token: newToken },
       message: 'Token refreshed successfully'
     });
-  } catch (error) {
+  } catch {
     throw createError('Invalid refresh token', 401);
   }
 }));
@@ -179,7 +189,7 @@ router.get('/me', asyncHandler(async (req: Request, res: Response) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload;
 
     // Get full user details from database
     const user = await prisma.user.findUnique({
@@ -206,7 +216,7 @@ router.get('/me', asyncHandler(async (req: Request, res: Response) => {
       data: { user },
       message: 'User profile retrieved successfully'
     });
-  } catch (error) {
+  } catch {
     throw createError('Invalid token', 401);
   }
 }));
