@@ -201,6 +201,13 @@ export const altsApi = {
   update: (id: string, altData: any) => api.put(`/alts/${id}`, altData),
   delete: (id: string) => api.delete(`/alts/${id}`),
   clone: (id: string, name: string) => api.post(`/alts/${id}/clone`, { name }),
+  export: (id: string) => api.get(`/alts/${id}/export`),
+  import: (ctrlId: string, eggData: any, overrideName?: string) => 
+    api.post('/alts/import', { ctrlId, eggData, overrideName }),
+  preview: (id: string, variables?: any) => 
+    api.post(`/alts/${id}/preview`, { variables }),
+  validate: (id: string, variables?: any) => 
+    api.post(`/alts/${id}/validate`, { variables }),
 };
 
 // Servers API

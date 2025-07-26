@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
-import { nodesApi, serversApi } from '@/lib/api';
+import { nodesApi, serversApi, altsApi } from '@/lib/api';
 import {
   FolderIcon,
   PlusIcon,
@@ -163,14 +163,17 @@ export default function CtrlsPage() {
 
     try {
       const fileContent = await importFile.text();
-      const altData = JSON.parse(fileContent);
+      const eggData = JSON.parse(fileContent);
 
-      // Template import functionality would need to be implemented
-      // const response = await serversApi.importTemplate(selectedCtrl.id, altData);
-      // For now, just reload templates
-      await loadAlts(selectedCtrl.id);
-      setImportFile(null);
-      setShowImportAlt(false);
+      // Import the Alt using the new API endpoint
+      const response = await altsApi.import(selectedCtrl.id, eggData);
+      
+      if (response.data.success) {
+        await loadAlts(selectedCtrl.id);
+        setImportFile(null);
+        setShowImportAlt(false);
+        alert(`Successfully imported Alt: ${response.data.data.name}`);
+      }
     } catch (error) {
       console.error('Failed to import Alt:', error);
       alert('Failed to import Alt. Please check the file format.');
@@ -179,10 +182,27 @@ export default function CtrlsPage() {
 
   const handleExportAlt = async (altId: string, altName: string) => {
     try {
-      // Template export functionality would need to be implemented
-      // const response = await serversApi.exportTemplate(altId);
-      // For now, create a simple export
-      const dataStr = JSON.stringify({ name: altName }, null, 2);
+      // Export the Alt using the new API endpoint
+      const response = await altsApi.export(altId);
+      
+      if (response.data) {
+        // Create and download the file
+        const dataStr = JSON.stringify(response.data, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${altName.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Failed to export Alt:', error);
+      alert('Failed to export Alt.');
+    }
+  };
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(dataBlob);
       
@@ -195,6 +215,20 @@ export default function CtrlsPage() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to export Alt:', error);
+    }
+  };
+
+  const handleCloneAlt = async (altId: string, newName: string) => {
+    try {
+      const response = await altsApi.clone(altId, newName);
+      
+      if (response.data.success && selectedCtrl) {
+        await loadAlts(selectedCtrl.id);
+        alert(`Successfully cloned Alt as: ${newName}`);
+      }
+    } catch (error) {
+      console.error('Failed to clone Alt:', error);
+      alert('Failed to clone Alt.');
     }
   };
 
@@ -410,6 +444,9 @@ export default function CtrlsPage() {
                               <div>
                                 <h4 className="font-semibold text-white">{alt.name}</h4>
                                 <p className="text-sm text-gray-400">by {alt.author}</p>
+                                {alt.version && (
+                                  <p className="text-xs text-panel-primary">v{alt.version}</p>
+                                )}
                               </div>
                               
                               <Menu as="div" className="relative">
@@ -442,6 +479,24 @@ export default function CtrlsPage() {
                                       >
                                         <PencilIcon className="h-4 w-4 inline mr-2" />
                                         Edit
+                                      </button>
+                                    )}
+                                  </Menu.Item>
+                                  <Menu.Item>
+                                    {({ active }) => (
+                                      <button
+                                        className={`w-full text-left px-3 py-2 text-sm ${
+                                          active ? 'bg-white/10 text-white' : 'text-gray-300'
+                                        }`}
+                                        onClick={() => {
+                                          const newName = prompt(`Clone "${alt.name}" as:`, `${alt.name} Copy`);
+                                          if (newName) {
+                                            handleCloneAlt(alt.id, newName);
+                                          }
+                                        }}
+                                      >
+                                        <ServerIcon className="h-4 w-4 inline mr-2" />
+                                        Clone
                                       </button>
                                     )}
                                   </Menu.Item>

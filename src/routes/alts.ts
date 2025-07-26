@@ -290,7 +290,7 @@ router.get('/:id/export', authenticateToken, asyncHandler(async (req: Request, r
         entrypoint: alt.scriptEntry
       }
     },
-    variables: alt.variables.map(variable => ({
+    variables: alt.variables.map((variable: any) => ({
       name: variable.name,
       description: variable.description,
       env_variable: variable.envVariable,
@@ -402,7 +402,7 @@ router.post('/:id/preview', authenticateToken, asyncHandler(async (req: Request,
   // Merge input variables with defaults
   const variableValues: { [key: string]: string } = {};
   
-  alt.variables.forEach(variable => {
+  alt.variables.forEach((variable: any) => {
     variableValues[variable.envVariable] = inputVariables?.[variable.envVariable] || variable.defaultValue;
   });
 
@@ -440,7 +440,7 @@ router.post('/:id/preview', authenticateToken, asyncHandler(async (req: Request,
         configFiles: processedConfigFiles,
         environment: variableValues
       },
-      variables: alt.variables.map(variable => ({
+      variables: alt.variables.map((variable: any) => ({
         ...variable,
         currentValue: variableValues[variable.envVariable]
       }))
@@ -487,7 +487,7 @@ router.post('/:id/validate', authenticateToken, asyncHandler(async (req: Request
 
   // Validate variables
   const variableValues: { [key: string]: string } = {};
-  alt.variables.forEach(variable => {
+  alt.variables.forEach((variable: any) => {
     const value = inputVariables?.[variable.envVariable] || variable.defaultValue;
     variableValues[variable.envVariable] = value;
 
@@ -505,7 +505,7 @@ router.post('/:id/validate', authenticateToken, asyncHandler(async (req: Request
   // Check for undefined variables in startup command
   const variableMatches = alt.startup.match(/{{([^}]+)}}/g);
   if (variableMatches) {
-    variableMatches.forEach(match => {
+    variableMatches.forEach((match: string) => {
       const varName = match.replace(/[{}]/g, '');
       if (!variableValues[varName]) {
         errors.push(`Undefined variable '${varName}' used in startup command`);
@@ -520,7 +520,7 @@ router.post('/:id/validate', authenticateToken, asyncHandler(async (req: Request
       errors,
       warnings,
       variableCount: alt.variables.length,
-      requiredVariableCount: alt.variables.filter(v => v.rules.includes('required')).length
+      requiredVariableCount: alt.variables.filter((v: any) => v.rules.includes('required')).length
     }
   });
 }));
@@ -568,7 +568,7 @@ router.post('/:id/clone', authenticateToken, requireAdmin, asyncHandler(async (r
       forceOutgoingIp: originalAlt.forceOutgoingIp,
       ctrlId: originalAlt.ctrlId,
       variables: {
-        create: originalAlt.variables.map(variable => ({
+        create: originalAlt.variables.map((variable: any) => ({
           name: variable.name,
           description: variable.description,
           envVariable: variable.envVariable,
