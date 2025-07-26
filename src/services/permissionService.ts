@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
@@ -372,7 +372,7 @@ export class PermissionService {
           userAgent,
           success,
           reason,
-          metadata,
+          metadata: metadata as Prisma.InputJsonValue,
         },
       });
     } catch (error) {

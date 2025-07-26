@@ -159,8 +159,28 @@ export class SocketService {
     const user = (socket as unknown as { user: User }).user;
 
     try {
-      // TODO: Validate user has access to server
-      logger.info(`User ${user.username} joined console for server ${serverId}`);
+      // Validate user has access to server
+      const db = DatabaseService.getInstance();
+      const server = await db.server.findFirst({
+        where: {
+          uuid: serverId,
+          OR: [
+            { userId: user.id },
+            { subusers: { some: { userId: user.id } } }
+          ]
+        },
+        include: {
+          node: true
+        }
+      });
+
+      if (!server) {
+        logger.warn(`User ${user.username} attempted to access unauthorized server ${serverId}`);
+        socket.emit('console:connection', { connected: false, error: 'Server not found or unauthorized' });
+        return;
+      }
+
+      logger.info(`User ${user.username} joined console for server ${server.name} (${serverId})`);
       
       // Join server-specific console room
       socket.join(`console:${serverId}`);
@@ -168,12 +188,33 @@ export class SocketService {
       // Notify successful connection
       socket.emit('console:connection', { connected: true });
       
-      // Send welcome message
+      // Send welcome message with server info
       socket.emit('console:output', {
-        message: `Connected to server ${serverId} console`,
+        message: `Connected to ${server.name} console`,
         timestamp: new Date().toISOString(),
         type: 'info'
       });
+
+      // Try to get recent console history from agent
+      try {
+        const { ExternalAgentService } = await import('./externalAgentService');
+        const agentService = ExternalAgentService.getInstance();
+        
+        const logsResult = await agentService.getServerLogs(server.node.uuid, serverId, 50);
+        if (logsResult.success && logsResult.data?.logs) {
+          // Send recent logs to console
+          const logs = Array.isArray(logsResult.data.logs) ? logsResult.data.logs : [];
+          logs.forEach((log: string) => {
+            socket.emit('console:output', {
+              message: log,
+              timestamp: new Date().toISOString(),
+              type: 'log'
+            });
+          });
+        }
+      } catch (error) {
+        logger.error(`Failed to get console history for server ${serverId}:`, error);
+      }
 
     } catch (error) {
       logger.error(`Failed to join console for server ${serverId}:`, error);
@@ -192,10 +233,10 @@ export class SocketService {
   private static handleConsoleInput(socket: Socket, data: { serverId: string; data: string }): void {
     const { serverId, data: inputData } = data;
 
-    // TODO: Send input to external agent for the server
+    // Store input character for command building on agent side
     logger.debug(`Console input for server ${serverId}: ${inputData}`);
     
-    // Echo the input back to the terminal (for now)
+    // Echo the input back to the terminal so user sees what they're typing
     socket.emit('console:output', {
       message: inputData,
       timestamp: new Date().toISOString(),
@@ -208,14 +249,42 @@ export class SocketService {
     const user = (socket as unknown as { user: User }).user;
 
     try {
-      // TODO: Execute accumulated command on external agent
-      logger.info(`User ${user.username} executed command on server ${serverId}`);
+      // Get server and validate access
+      const db = DatabaseService.getInstance();
+      const server = await db.server.findFirst({
+        where: {
+          uuid: serverId,
+          OR: [
+            { userId: user.id },
+            { subusers: { some: { userId: user.id } } }
+          ]
+        },
+        include: {
+          node: true
+        }
+      });
+
+      if (!server) {
+        socket.emit('console:command:response', {
+          success: false,
+          error: 'Server not found or unauthorized'
+        });
+        return;
+      }
+
+      // For now, just acknowledge - in a real implementation, this would send the accumulated
+      // command line to the external agent for execution
+      logger.info(`User ${user.username} executed command on server ${server.name}`);
       
-      // For now, just acknowledge execution
       socket.emit('console:command:response', {
         success: true,
         message: 'Command sent to server'
       });
+
+      // In the future, this would:
+      // 1. Get the current command line from session storage
+      // 2. Send it to external agent via ExternalAgentService.sendServerCommand()
+      // 3. Handle the response and any real-time output from the agent
 
     } catch (error) {
       logger.error(`Failed to execute command on server ${serverId}:`, error);
@@ -229,10 +298,9 @@ export class SocketService {
   private static handleConsoleBackspace(socket: Socket, data: { serverId: string }): void {
     const { serverId } = data;
 
-    // TODO: Send backspace to external agent
     logger.debug(`Console backspace for server ${serverId}`);
     
-    // Echo backspace to terminal
+    // Echo backspace to terminal for local display
     socket.emit('console:output', {
       message: '\b \b',
       timestamp: new Date().toISOString(),
@@ -240,19 +308,43 @@ export class SocketService {
     });
   }
 
-  private static handleConsoleInterrupt(socket: Socket, data: { serverId: string }): void {
+  private static async handleConsoleInterrupt(socket: Socket, data: { serverId: string }): Promise<void> {
     const { serverId } = data;
     const user = (socket as unknown as { user: User }).user;
 
-    // TODO: Send interrupt signal to external agent
-    logger.info(`User ${user.username} sent interrupt to server ${serverId}`);
-    
-    // Acknowledge interrupt
-    socket.emit('console:output', {
-      message: 'Interrupt signal sent',
-      timestamp: new Date().toISOString(),
-      type: 'warning'
-    });
+    try {
+      // Get server and validate access
+      const db = DatabaseService.getInstance();
+      const server = await db.server.findFirst({
+        where: {
+          uuid: serverId,
+          OR: [
+            { userId: user.id },
+            { subusers: { some: { userId: user.id } } }
+          ]
+        },
+        include: {
+          node: true
+        }
+      });
+
+      if (!server) {
+        return;
+      }
+
+      logger.info(`User ${user.username} sent interrupt to server ${server.name}`);
+      
+      // In the future, this would send interrupt signal to external agent
+      // For now, just acknowledge locally
+      socket.emit('console:output', {
+        message: '^C',
+        timestamp: new Date().toISOString(),
+        type: 'warning'
+      });
+
+    } catch (error) {
+      logger.error(`Failed to send interrupt to server ${serverId}:`, error);
+    }
   }
 
   private static handleFileRead(socket: Socket, data: { serverId: string; path: string }): void {

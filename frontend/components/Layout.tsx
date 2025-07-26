@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import React, { ReactNode, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,6 +14,7 @@ import {
   Bars3Icon,
   XMarkIcon,
   UserIcon,
+  ChartPieIcon,
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -24,7 +25,7 @@ interface LayoutProps {
 interface NavItem {
   name: string;
   href: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
 }
 
@@ -33,9 +34,10 @@ const navigation: NavItem[] = [
   { name: 'Servers', href: '/servers', icon: ServerIcon },
   { name: 'Console', href: '/console', icon: CommandLineIcon },
   { name: 'Files', href: '/files', icon: FolderIcon },
+  { name: 'Monitoring', href: '/monitoring', icon: ChartBarIcon },
+  { name: 'Analytics', href: '/analytics', icon: ChartPieIcon },
   { name: 'Configurations', href: '/ctrls', icon: CogIcon, adminOnly: true },
   { name: 'Agents', href: '/agents', icon: ServerIcon, adminOnly: true },
-  { name: 'Monitoring', href: '/monitoring', icon: ChartBarIcon },
   { name: 'Profile', href: '/profile', icon: UserIcon },
   { name: 'User Management', href: '/admin/users', icon: UserGroupIcon, adminOnly: true },
   { name: 'Settings', href: '/settings', icon: CogIcon },

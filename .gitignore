@@ -214,3 +214,4 @@ frontend/.swc/
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+# Trigger new CI/CD run

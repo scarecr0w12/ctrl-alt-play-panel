@@ -562,6 +562,72 @@ export class ExternalAgentService {
   }
 
   /**
+   * Copy file or directory via external agent
+   */
+  public async copyFile(nodeUuid: string, serverId: string, sourcePath: string, destinationPath: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'copy_file',
+      serverId,
+      payload: { sourcePath, destinationPath }
+    });
+  }
+
+  /**
+   * Move file or directory via external agent
+   */
+  public async moveFile(nodeUuid: string, serverId: string, sourcePath: string, destinationPath: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'move_file',
+      serverId,
+      payload: { sourcePath, destinationPath }
+    });
+  }
+
+  /**
+   * Get file permissions via external agent
+   */
+  public async getFilePermissions(nodeUuid: string, serverId: string, filePath: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'get_file_permissions',
+      serverId,
+      payload: { path: filePath }
+    });
+  }
+
+  /**
+   * Set file permissions via external agent
+   */
+  public async setFilePermissions(nodeUuid: string, serverId: string, filePath: string, mode: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'set_file_permissions',
+      serverId,
+      payload: { path: filePath, mode }
+    });
+  }
+
+  /**
+   * Create archive via external agent
+   */
+  public async createArchive(nodeUuid: string, serverId: string, files: string[], archivePath: string, format: string = 'zip'): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'create_archive',
+      serverId,
+      payload: { files, archivePath, format }
+    });
+  }
+
+  /**
+   * Extract archive via external agent
+   */
+  public async extractArchive(nodeUuid: string, serverId: string, archivePath: string, extractPath: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'extract_archive',
+      serverId,
+      payload: { archivePath, extractPath }
+    });
+  }
+
+  /**
    * Health check for all registered agents
    */
   public async healthCheckAll(): Promise<Map<string, AgentStatus>> {
