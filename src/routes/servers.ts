@@ -264,8 +264,8 @@ router.post('/', authenticateToken, requirePermission('servers.create'), async (
         startup: alt.startup,
         environment: environment || {},
         userId: user.id,
-        nodeId: nodeId,
-        altId: altId,
+        nodeId,
+        altId,
         databaseLimit: 0,
         allocationLimit: 1,
         backupLimit: 0
@@ -334,8 +334,8 @@ router.post('/', authenticateToken, requirePermission('servers.create'), async (
         serverId: server.id,
         serverUuid: server.uuid,
         userId: user.id,
-        nodeId: nodeId,
-        altId: altId
+        nodeId,
+        altId
       });
 
       return res.status(201).json({

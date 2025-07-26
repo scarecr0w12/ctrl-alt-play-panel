@@ -22,7 +22,7 @@ A modern, secure game server management panel built with **Panel+Agent distribut
 - **Discovery**: Automatic agent discovery and health monitoring
 - **Scalability**: Agents run independently and can be deployed on any node
 
-### 🔗 External Agent Integration (v1.0.3)
+### 🔗 External Agent Integration (v1.1.3)
 
 The panel now communicates with external agent processes instead of embedded agent code:
 
@@ -58,7 +58,7 @@ The panel now communicates with external agent processes instead of embedded age
 - **Live resource monitoring** (CPU, Memory, Disk, Network)
 - **Steam Workshop integration**
 - **Docker container isolation**
-- **Egg-based configuration system**
+- **Ctrl-Alt configuration system**
 
 ### 💻 Modern Interface
 

@@ -1,14 +1,14 @@
 import React from 'react';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { UserManagement } from '@/components/admin';
+import { NodeManagement } from '@/components/admin';
 
-export default function UserManagementPage() {
+export default function NodeManagementPage() {
   return (
     <ProtectedRoute>
-      <Layout title="User Management">
+      <Layout title="Node Management">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <UserManagement />
+          <NodeManagement />
         </div>
       </Layout>
     </ProtectedRoute>

@@ -1,4 +1,5 @@
-import axios from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
+import toast from 'react-hot-toast';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? 'https://dev-panel.thecgn.net/api'
@@ -12,6 +13,82 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Request interceptor for auth token
+api.interceptors.request.use(
+  (config) => {
+    // Get token from localStorage if available
+    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for error handling
+api.interceptors.response.use(
+  (response: AxiosResponse) => {
+    return response;
+  },
+  (error: AxiosError) => {
+    const status = error.response?.status;
+    const message = (error.response?.data as { message?: string })?.message || error.message;
+
+    // Handle specific error codes
+    switch (status) {
+      case 401:
+        // Unauthorized - redirect to login
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('authToken');
+          window.location.href = '/login';
+        }
+        toast.error('Session expired. Please log in again.');
+        break;
+      case 403:
+        toast.error('You do not have permission to perform this action.');
+        break;
+      case 404:
+        toast.error('Resource not found.');
+        break;
+      case 500:
+        toast.error('Server error. Please try again later.');
+        break;
+      default:
+        if (status && status >= 400) {
+          toast.error(message || 'An error occurred.');
+        }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// Enhanced response types
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data: T;
+  message?: string;
+  meta?: {
+    pagination?: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+    counts?: Record<string, number>;
+  };
+}
+
+export interface ApiError {
+  success: false;
+  error: string;
+  message: string;
+  details?: any;
+}
 
 // Types for external agent integration
 export interface AgentStatus {
@@ -60,6 +137,64 @@ export const usersApi = {
   update: (id: string, userData: any) => api.put(`/users/${id}`, userData),
   delete: (id: string) => api.delete(`/users/${id}`),
   updatePassword: (id: string, passwordData: any) => api.put(`/users/${id}/password`, passwordData),
+};
+
+// User Profile API
+export const userProfileApi = {
+  getProfile: () => api.get('/user-profile/profile'),
+  updateProfile: (profileData: {
+    firstName: string;
+    lastName: string;
+    language?: string;
+    gravatar?: boolean;
+  }) => api.put('/user-profile/profile', profileData),
+  changePassword: (passwordData: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }) => api.put('/user-profile/change-password', passwordData),
+  changeEmail: (emailData: {
+    newEmail: string;
+    password: string;
+  }) => api.put('/user-profile/change-email', emailData),
+  getActivity: (page?: number, limit?: number) => 
+    api.get(`/user-profile/activity?page=${page || 1}&limit=${limit || 10}`),
+};
+
+// Ctrls API (Server Categories)
+export const ctrlsApi = {
+  getAll: () => api.get('/ctrls'),
+  getById: (id: string) => api.get(`/ctrls/${id}`),
+  create: (ctrlData: {
+    name: string;
+    description?: string;
+    author?: string;
+    version?: string;
+    tags?: string[];
+  }) => api.post('/ctrls', ctrlData),
+  update: (id: string, ctrlData: any) => api.put(`/ctrls/${id}`, ctrlData),
+  delete: (id: string) => api.delete(`/ctrls/${id}`),
+  import: (importData: any) => api.post('/ctrls/import', importData),
+  export: (id: string) => api.get(`/ctrls/${id}/export`),
+};
+
+// Alts API (Server Templates)
+export const altsApi = {
+  getAll: (ctrlId?: string) => 
+    api.get(`/alts${ctrlId ? `?ctrlId=${ctrlId}` : ''}`),
+  getById: (id: string) => api.get(`/alts/${id}`),
+  create: (altData: {
+    name: string;
+    description?: string;
+    ctrlId: string;
+    dockerImage: string;
+    startupCommand: string;
+    configFiles?: any[];
+    variables?: any[];
+  }) => api.post('/alts', altData),
+  update: (id: string, altData: any) => api.put(`/alts/${id}`, altData),
+  delete: (id: string) => api.delete(`/alts/${id}`),
+  clone: (id: string, name: string) => api.post(`/alts/${id}/clone`, { name }),
 };
 
 // Servers API
@@ -126,25 +261,38 @@ export const nodesApi = {
 // Files API
 export const filesApi = {
   getFiles: (serverId: string, path: string = '/') => 
-    api.get(`/files/${serverId}?path=${encodeURIComponent(path)}`),
+    api.get(`/files/list?serverId=${serverId}&path=${encodeURIComponent(path)}`),
   getContent: (serverId: string, filePath: string) => 
-    api.get(`/files/${serverId}/content?path=${encodeURIComponent(filePath)}`),
+    api.get(`/files/read?serverId=${serverId}&path=${encodeURIComponent(filePath)}`),
   updateContent: (serverId: string, filePath: string, content: string) => 
-    api.put(`/files/${serverId}/content?path=${encodeURIComponent(filePath)}`, { content }),
-  create: (serverId: string, path: string, type: 'file' | 'directory', content?: string) => 
-    api.post(`/files/${serverId}`, { path, type, content }),
+    api.post(`/files/write`, { serverId, path: filePath, content }),
+  create: (serverId: string, path: string, type: 'file' | 'directory', content?: string) => {
+    if (type === 'directory') {
+      return api.post('/files/mkdir', { serverId, path });
+    } else {
+      return api.post('/files/write', { serverId, path, content: content || '' });
+    }
+  },
   delete: (serverId: string, path: string) => 
-    api.delete(`/files/${serverId}?path=${encodeURIComponent(path)}`),
+    api.delete(`/files/delete?serverId=${serverId}&path=${encodeURIComponent(path)}`),
   rename: (serverId: string, oldPath: string, newPath: string) => 
-    api.put(`/files/${serverId}/rename`, { oldPath, newPath }),
+    api.post('/files/rename', { serverId, oldPath, newPath }),
   upload: (serverId: string, path: string, file: File) => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('serverId', serverId);
     formData.append('path', path);
-    return api.post(`/files/${serverId}/upload`, formData, {
+    return api.post('/files/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  download: (serverId: string, filePath: string) => 
+    api.get(`/files/download?serverId=${serverId}&path=${encodeURIComponent(filePath)}`, {
+      responseType: 'blob'
+    }),
+  getInfo: (serverId: string, filePath: string) => 
+    api.get(`/files/info?serverId=${serverId}&path=${encodeURIComponent(filePath)}`),
+  getHealth: () => api.get('/files/health'),
 };
 
 // Steam Workshop API

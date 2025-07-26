@@ -27,6 +27,7 @@ import { SocketService } from './services/socket';
 import { ExternalAgentService } from './services/externalAgentService';
 import { AgentDiscoveryService } from './services/agentDiscoveryService';
 import { MonitoringService } from './services/monitoringService';
+import { DatabaseService } from './services/database';
 
 // Load environment variables
 dotenv.config();
@@ -77,8 +78,8 @@ class GamePanelApp {
         status: 'OK',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        version: '1.0.0',
-        features: ['monitoring', 'steam-workshop']
+        version: '1.1.3',
+        features: ['monitoring', 'steam-workshop', 'user-profiles', 'notifications', 'external-agents', 'ctrl-alt-system']
       });
     });
 
@@ -287,6 +288,10 @@ class GamePanelApp {
   }
 
   public async start(): Promise<void> {
+    // Initialize database first
+    await DatabaseService.initialize();
+    logger.info('📄 Database initialized successfully');
+
     // Create HTTP server
     this.server = createServer(this.app);
 

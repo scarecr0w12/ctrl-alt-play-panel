@@ -17,7 +17,7 @@ async function validateServerAndGetAgent(serverId: string): Promise<{ valid: boo
     return { valid: false, error: 'Server ID is required' };
   }
 
-  const validation = mappingService.validateServerAgent(serverId);
+  const validation = await mappingService.validateServerAgent(serverId);
   if (!validation.valid) {
     return validation;
   }

@@ -8,18 +8,40 @@ memory-bank/
 .github/chatmodes/
 .github/copilot-instructions.md
 
+# Agent Compatibility Analysis (Local Development Only)
+AGENT_COMPATIBILITY_ANALYSIS.md
+
 # Internal Development Documents (Local Development Only)
-COMPREHENSIVE_PROJECT_REPORT.md
+COMPREHENSIVE_PROJECT_REPORT*.md
+DEPLOYMENT_COMPLETE*.md
+SYSTEM_COMPLETION_REPORT*.md
+STEPS_*_COMPLETION_SUMMARY.md
+CTRL_ALT_IMPLEMENTATION*.md
+ADVANCED_PERMISSIONS_IMPLEMENTATION*.md
+PERMISSION_SYSTEM_COMPLETE*.md
+NEXT_STEPS_PLAN*.md
+RELEASE_NOTES_*.md
 EXTERNAL_AGENT_INTEGRATION.md
 PROJECT_STATUS.md
 ROUTE_INTEGRATION_COMPLETE.md
+
+# Development Scripts and Test Files
 setup-*.sh
 test-*.sh
 test-*.js
+cleanup-*.sh
+integrate-*.sh
+check-db.js
+mock-agent.js
+seed-permissions-standalone.js
+test-integration.js
 test-monitoring.js
 test-permission-integration.js
 test-permissions.js
-test-user-management.jsg.log*
+test-user-management.js
+
+# Log Files
+*.log
 yarn-error.log*
 pnpm-debug.log*
 
@@ -44,6 +66,7 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
+panel.log
 
 # Runtime data
 pids/
@@ -63,6 +86,22 @@ coverage/
 *.swp
 *.swo
 *~
+.editorconfig
+.kilocodemodes
+
+# Development artifacts
+*.bak
+*.backup
+*.tmp
+*.temp
+*~
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # AI Development & Memory Files (Local Development Only)
 memory-bank/
@@ -95,14 +134,7 @@ test-*.sh
 setup.sh
 vps-setup.sh
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+
 
 # Uploads and temporary files
 uploads/

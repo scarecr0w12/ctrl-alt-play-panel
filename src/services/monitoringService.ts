@@ -64,7 +64,7 @@ export class MonitoringService {
         memory: metrics.memory,
         disk: metrics.disk,
         players: metrics.players,
-        serverId: serverId,
+        serverId,
         nodeId: server.nodeId
       });
 

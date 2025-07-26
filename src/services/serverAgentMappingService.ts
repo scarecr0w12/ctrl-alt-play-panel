@@ -140,33 +140,81 @@ export class ServerAgentMappingService {
   /**
    * Validate that a server can be operated on (has active agent)
    */
-  public validateServerAgent(serverId: string): { valid: boolean; nodeUuid?: string; error?: string } {
-    const mapping = this.mappings.get(serverId);
-    
-    if (!mapping) {
+  public async validateServerAgent(serverId: string): Promise<{ valid: boolean; nodeUuid?: string; error?: string }> {
+    try {
+      // First check in-memory mapping
+      const mapping = this.mappings.get(serverId);
+      
+      if (mapping && mapping.isActive) {
+        return {
+          valid: true,
+          nodeUuid: mapping.nodeUuid
+        };
+      }
+
+      // If not found in memory, check database
+      const db = DatabaseService.getInstance();
+      const server = await db.server.findUnique({
+        where: { id: serverId },
+        include: {
+          node: {
+            select: {
+              uuid: true,
+              isMaintenanceMode: true
+            }
+          }
+        }
+      });
+
+      if (!server) {
+        return {
+          valid: false,
+          error: `Server ${serverId} not found`
+        };
+      }
+
+      if (!server.node) {
+        return {
+          valid: false,
+          error: `Server ${serverId} has no associated node`
+        };
+      }
+
+      if (server.node.isMaintenanceMode) {
+        return {
+          valid: false,
+          error: `Server ${serverId} node is in maintenance mode`
+        };
+      }
+
+      // Update mapping in memory
+      this.addMapping({
+        serverId: server.id,
+        nodeUuid: server.node.uuid,
+        serverName: server.name,
+        isActive: server.status !== 'OFFLINE',
+        createdAt: server.createdAt,
+        updatedAt: server.updatedAt
+      });
+
+      return {
+        valid: true,
+        nodeUuid: server.node.uuid
+      };
+
+    } catch (error) {
+      logger.error('Error validating server-agent mapping:', error);
       return {
         valid: false,
-        error: `No agent mapping found for server ${serverId}`
+        error: 'Failed to validate server-agent mapping'
       };
     }
-
-    if (!mapping.isActive) {
-      return {
-        valid: false,
-        error: `Server ${serverId} has inactive agent mapping`
-      };
-    }
-
-    return {
-      valid: true,
-      nodeUuid: mapping.nodeUuid
-    };
   }
 
   /**
    * Bulk load mappings from database result
    */
-  public loadMappings(servers: any[]): void {
+  public loadMappings(servers: { id: string; nodeId?: string; node?: { uuid: string }; name: string; status: string; createdAt: Date; updatedAt: Date }[]): void {
     for (const server of servers) {
       if (server.nodeId) {
         this.addMapping({

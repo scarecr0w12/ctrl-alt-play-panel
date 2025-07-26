@@ -184,7 +184,7 @@ export class AgentDiscoveryService {
       const agent: ExternalAgent = {
         id: `agent-${nodeUuid}`,
         nodeId: node.id,
-        nodeUuid: nodeUuid,
+        nodeUuid,
         baseUrl,
         apiKey: apiKey || node.daemonToken,
         isOnline: false,

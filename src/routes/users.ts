@@ -106,8 +106,8 @@ router.post('/', authenticateToken, requirePermission('users.create'), asyncHand
   const existingUser = await prisma.user.findFirst({
     where: {
       OR: [
-        { email: email },
-        { username: username }
+        { email },
+        { username }
       ]
     }
   });

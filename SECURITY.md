@@ -6,8 +6,9 @@ We actively support the following versions of Ctrl-Alt-Play Panel with security 
 
 | Version | Supported          | Status |
 | ------- | ------------------ | ------ |
-| 1.0.x   | :white_check_mark: | Active |
-| < 1.0   | :x:                | Legacy |
+| 1.1.x   | :white_check_mark: | Active |
+| 1.0.x   | :warning:          | Legacy |
+| < 1.0   | :x:                | EOL    |
 
 ## Reporting a Vulnerability
 
