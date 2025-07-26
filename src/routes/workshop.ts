@@ -20,9 +20,7 @@ router.get('/search', authenticateToken, async (req, res) => {
     const result = await workshopService.searchWorkshopItems(
       gameId as string,
       query as string,
-      type as string,
-      parseInt(page as string),
-      parseInt(limit as string)
+      type as string
     );
 
     return res.json({

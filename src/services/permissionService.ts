@@ -243,7 +243,7 @@ export class PermissionService {
         },
       });
       
-      rolePermissions.forEach(rp => {
+      rolePermissions.forEach((rp: any) => {
         permissions.add(rp.permission.name);
       });
       
@@ -262,7 +262,7 @@ export class PermissionService {
         },
       });
       
-      userPermissions.forEach(up => {
+      userPermissions.forEach((up: any) => {
         if (up.granted) {
           permissions.add(up.permission.name);
         }
