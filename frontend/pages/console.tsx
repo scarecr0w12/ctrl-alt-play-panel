@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 import Layout from '../components/Layout';
-import { XTermConsole } from '../components/Console';
 import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
@@ -15,6 +15,16 @@ import {
   XMarkIcon,
   PlusIcon
 } from '@heroicons/react/24/outline';
+
+// Dynamic import for XTermConsole to avoid SSR issues
+const XTermConsole = dynamic(() => import('../components/Console').then(mod => mod.XTermConsole), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full bg-black rounded-lg">
+      <div className="text-white">Loading console...</div>
+    </div>
+  )
+});
 
 interface Server {
   id: string;
@@ -174,6 +184,123 @@ export default function ConsolePage() {
         <div className="flex items-center justify-center h-96">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
           <span className="ml-2">Loading servers...</span>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Demo: Show the console UI with mock data for screenshot
+  const showDemo = process.env.NODE_ENV === 'development' && servers.length === 0;
+  if (showDemo) {
+    return (
+      <Layout>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <ComputerDesktopIcon className="h-8 w-8 text-blue-600" />
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Server Console</h1>
+                  <p className="text-gray-600">Real-time server console access and management</p>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => setShowServerSelection(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Open Console
+              </button>
+            </div>
+          </div>
+
+          {/* Demo Console */}
+          <div className="bg-white shadow rounded-lg">
+            {/* Tab Headers */}
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8 px-6">
+                <button className="group inline-flex items-center py-4 px-1 border-b-2 border-blue-500 text-blue-600 font-medium text-sm">
+                  <ServerIcon className="h-4 w-4 mr-2" />
+                  Minecraft Server
+                  <div className="ml-2 w-2 h-2 rounded-full bg-green-400" />
+                  <button className="ml-2 text-gray-400 hover:text-gray-600">
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                </button>
+                <button className="group inline-flex items-center py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm">
+                  <ServerIcon className="h-4 w-4 mr-2" />
+                  Valheim Server
+                  <div className="ml-2 w-2 h-2 rounded-full bg-green-400" />
+                  <button className="ml-2 text-gray-400 hover:text-gray-600">
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                </button>
+              </nav>
+            </div>
+
+            {/* Console Content */}
+            <div className="p-6">
+              {/* Console Controls */}
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full bg-green-400" />
+                  <span className="text-sm text-gray-600">Socket Connected</span>
+                  <span className="text-gray-400">|</span>
+                  <span className="text-sm text-gray-600">Minecraft Server</span>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <button className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700">
+                    <PlayIcon className="h-3 w-3 mr-1" />
+                    Start
+                  </button>
+                  <button className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700">
+                    <StopIcon className="h-3 w-3 mr-1" />
+                    Stop
+                  </button>
+                  <button className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-white bg-yellow-600 hover:bg-yellow-700">
+                    <ArrowPathIcon className="h-3 w-3 mr-1" />
+                    Restart
+                  </button>
+                </div>
+              </div>
+
+              {/* Terminal Console */}
+              <div className="bg-black rounded-lg p-4 text-green-400 font-mono text-sm" style={{ height: '600px' }}>
+                <div className="space-y-1">
+                  <div className="text-green-400">╔═══════════════════════════════════════════════════════════════════════════════╗</div>
+                  <div className="text-green-400">║                          CTRL+ALT+PLAY Server Console                        ║</div>
+                  <div className="text-green-400">╚═══════════════════════════════════════════════════════════════════════════════╝</div>
+                  <div></div>
+                  <div className="text-cyan-400">[12:00:01] Connected to Minecraft Server console</div>
+                  <div className="text-gray-400">[12:00:02] Server startup complete. Ready for connections.</div>
+                  <div className="text-gray-400">[12:00:03] Player1 joined the game</div>
+                  <div className="text-gray-400">[12:00:04] &lt;Player1&gt; Hello world!</div>
+                  <div className="text-yellow-400">[12:00:05] AutoSave completed in 2.1s</div>
+                  <div className="text-cyan-400">[12:00:06] Server running on version 1.20.1</div>
+                  <div className="text-gray-400">[12:00:07] Memory usage: 2.1GB / 4.0GB</div>
+                  <div className="text-gray-400">[12:00:08] Players online: 1/20</div>
+                  <div></div>
+                  <div className="flex">
+                    <span className="text-green-400">$ </span>
+                    <span className="bg-green-400 text-black w-2 h-5 animate-pulse ml-1"></span>
+                  </div>
+                </div>
+                
+                {/* Console controls overlay */}
+                <div className="absolute top-2 right-2 flex space-x-2">
+                  <button className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors">
+                    Clear
+                  </button>
+                  <button className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors">
+                    Fit
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </Layout>
     );
