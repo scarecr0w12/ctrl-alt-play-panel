@@ -54,6 +54,10 @@ interface Alt {
   _count?: {
     servers: number;
   };
+  // Configuration Templates feature fields
+  version?: string;
+  changelog?: string;
+  isTemplate?: boolean;
 }
 
 interface AltVariable {
@@ -201,20 +205,6 @@ export default function CtrlsPage() {
     } catch (error) {
       console.error('Failed to export Alt:', error);
       alert('Failed to export Alt.');
-    }
-  };
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${altName.toLowerCase().replace(/\s+/g, '-')}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Failed to export Alt:', error);
     }
   };
 
