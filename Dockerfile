@@ -17,14 +17,13 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 
 # Install frontend dependencies (including dev dependencies for build)
-RUN npm ci --verbose
+RUN npm ci
 
 # Copy frontend source
 COPY frontend/ ./
 
-# Debug: List contents to verify
-RUN ls -la
-RUN cat package.json
+# Clear npm cache and reinstall to ensure all dependencies are available
+RUN npm cache clean --force && npm install
 
 # Build frontend
 RUN npm run build
