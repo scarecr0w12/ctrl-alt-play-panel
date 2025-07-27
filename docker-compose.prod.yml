@@ -5,6 +5,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
+      - FRONTEND_URL=http://dev-panel.thecgn.net
     env_file:
       - .env
     volumes:

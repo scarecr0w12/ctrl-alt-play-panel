@@ -130,30 +130,32 @@ class GamePanelApp {
 
     // Safe redirect routes
     console.log('Adding redirect routes...');
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    
     this.app.get('/console', (req, res) => {
-      res.redirect('http://localhost:3001/console');
+      res.redirect(`${frontendUrl}/console`);
     });
 
     this.app.get('/', (req, res) => {
-      res.redirect('http://localhost:3001/');
+      res.redirect(`${frontendUrl}/`);
     });
     console.log('Added redirect routes successfully');
 
     // HTML redirect routes
     this.app.get('/dashboard.html', (req, res) => {
-      res.redirect('http://localhost:3001/dashboard');
+      res.redirect(`${frontendUrl}/dashboard`);
     });
 
     this.app.get('/login.html', (req, res) => {
-      res.redirect('http://localhost:3001/login');
+      res.redirect(`${frontendUrl}/login`);
     });
 
     this.app.get('/register.html', (req, res) => {
-      res.redirect('http://localhost:3001/register');
+      res.redirect(`${frontendUrl}/register`);
     });
 
     this.app.get('/files.html', (req, res) => {
-      res.redirect('http://localhost:3001/files');
+      res.redirect(`${frontendUrl}/files`);
     });
 
     this.app.get('/console.html', (req, res) => {

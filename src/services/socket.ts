@@ -524,10 +524,19 @@ export class SocketService {
   }
 
   public static broadcastMonitoring(event: string, data: unknown): void {
+    // Check if WebSocket server is initialized
+    if (!this.io) {
+      logger.warn('WebSocket server not initialized, skipping broadcast:', event);
+      return;
+    }
     this.io.to('monitoring').emit(event, data);
   }
 
   public static emitMetricsUpdate(metrics: Record<string, unknown>): void {
+    // Check if WebSocket server is initialized
+    if (!this.io) {
+      return; // Silently skip if not initialized
+    }
     this.broadcastMonitoring('metrics:update', {
       ...metrics,
       timestamp: new Date().toISOString()
@@ -535,6 +544,10 @@ export class SocketService {
   }
 
   public static emitServerStatusUpdate(statusData: unknown): void {
+    // Check if WebSocket server is initialized
+    if (!this.io) {
+      return; // Silently skip if not initialized
+    }
     this.broadcastMonitoring('server:status', statusData);
   }
 }
