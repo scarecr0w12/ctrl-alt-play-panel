@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
+// import '@testing-library/jest-dom'; // Disabled to prevent TypeScript issues
 import { AuthProvider } from '@/contexts/AuthContext';
 import CtrlsPage from '@/pages/ctrls';
 import { nodesApi, serversApi } from '@/lib/api';

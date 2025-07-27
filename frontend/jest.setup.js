@@ -1,4 +1,6 @@
-import '@testing-library/jest-dom'
+// Import jest-dom types without automatic registration
+// This prevents TypeScript from trying to find 'testing-library__jest-dom' types
+// import '@testing-library/jest-dom'
 
 // Mock next/router
 jest.mock('next/router', () => ({

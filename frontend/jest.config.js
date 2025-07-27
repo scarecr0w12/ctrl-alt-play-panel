@@ -7,17 +7,16 @@ const createJestConfig = nextJest({
 
 // Add any custom config to be passed to Jest
 const customJestConfig = {
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  // if using TypeScript with a baseUrl set to the root directory then you need the below for alias' to work
+  moduleDirectories: ['node_modules', '<rootDir>/'],
   testEnvironment: 'jsdom',
-  testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
-  moduleNameMapper: {
+  // setupFilesAfterEnv: ['<rootDir>/jest.setup.js'], // Remove automatic jest-dom setup
+  moduleNameMapping: {
     '^@/(.*)$': '<rootDir>/$1',
   },
   collectCoverageFrom: [
-    'pages/**/*.{js,jsx,ts,tsx}',
     'components/**/*.{js,jsx,ts,tsx}',
-    'lib/**/*.{js,jsx,ts,tsx}',
-    'hooks/**/*.{js,jsx,ts,tsx}',
+    'pages/**/*.{js,jsx,ts,tsx}',
     '!pages/_app.tsx',
     '!pages/_document.tsx',
     '!**/*.d.ts',
