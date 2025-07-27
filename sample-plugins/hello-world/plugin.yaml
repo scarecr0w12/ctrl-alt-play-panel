@@ -1,0 +1,46 @@
+name: hello-world
+version: 1.0.0
+author: Ctrl+Alt+Play Team
+description: A simple hello world plugin demonstrating the plugin system capabilities
+repository: https://github.com/scarecr0w12/ctrl-alt-play-panel
+license: MIT
+
+# Plugin configuration
+main: backend/index.js
+frontend: frontend/index.js
+
+# Required permissions
+permissions:
+  routes: true
+  database: false
+  filesystem: false
+  network: false
+
+# API endpoints this plugin provides
+api:
+  routes:
+    - path: /hello
+      method: GET
+      handler: getHello
+      description: Returns a hello message from the plugin
+    - path: /hello
+      method: POST
+      handler: postHello
+      description: Returns a personalized hello message
+
+# Dependencies
+dependencies:
+  node: ">=14.0.0"
+  
+# Plugin metadata
+tags:
+  - example
+  - demo
+  - hello-world
+  
+# Plugin lifecycle hooks
+hooks:
+  install: true
+  enable: true
+  disable: true
+  uninstall: true
