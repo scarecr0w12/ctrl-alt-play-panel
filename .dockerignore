@@ -1,0 +1,157 @@
+# Version control
+.git
+.gitignore
+*.md
+README*
+
+# Dependencies (will be installed in container)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build artifacts (will be built in container)
+dist/
+build/
+out/
+frontend/.next/
+frontend/out/
+
+# Environment files (secrets should be passed via Docker secrets)
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage and test artifacts
+coverage/
+test-results/
+.jest/
+*.lcov
+.nyc_output/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# AI Development & Memory Files (Local Development Only)
+memory-bank/
+.copilot/
+.github/chatmodes/
+.github/copilot-instructions.md
+shared-context.md
+development-context.md
+DEVELOPMENT_CONTEXT.md
+
+# Internal Development Documents (Local Only)
+ACTION_PLAN.md
+BACKEND_REVIEW_COMPLETE.md
+DEVELOPMENT_COMPLETE.md
+FEATURES.md
+GITHUB_SETUP.md
+INTEGRATION_TEST_RESULTS.md
+PANEL_AGENT_INTEGRATION.md
+PROJECT_PLAN.md
+PROJECT_SUMMARY.md
+REFACTORING_SUMMARY.md
+STATUS_REPORT.md
+TERMINOLOGY_UPDATE_SUMMARY.md
+VPS_DEPLOYMENT_GUIDE.md
+PANEL_AGENT_API_SPEC.md
+README-old.md
+
+# Test and Build Scripts (Local Development)
+test-*.sh
+setup.sh
+vps-setup.sh
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Development and temporary files
+uploads/
+temp/
+tmp/
+
+# Docker related files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Development scripts
+scripts/
+docs/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# ESLint and other tool caches
+.eslintcache
+.stylelintcache
+
+# Optional npm cache directory
+.npm
+
+# Yarn cache and state files
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Vercel deployment files
+.vercel
+
+# Turbo cache
+.turbo
+
+# Jest cache
+.jest
+
+# Database files (should use external DB in production)
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.backup
+*.bak
+*.old
+*.orig
+
+# Archive files
+*.tar
+*.tar.gz
+*.zip
+*.rar
+
+# Public uploads (should be in volumes)
+public/uploads/
+
+# SSL certificates (should be mounted as secrets)
+*.pem
+*.key
+*.crt
+*.csr
+
+# Development certificates
+nginx/ssl/

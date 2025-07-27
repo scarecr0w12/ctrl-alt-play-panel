@@ -1,56 +1,281 @@
-# 🎮 Ctrl-Alt-Play Panel
+# Ctrl-Alt-Play Panel
 
-A modern, comprehensive game server management panel with **advanced marketplace integration**. Features real-time server control, plugin publishing workflow, analytics dashboard, and enterprise-grade security.
+<div align="center">
+  <h3>🎮 Advanced Game Server Management Platform</h3>
+  <p><em>Complete marketplace integration • Plugin ecosystem • Production-ready infrastructure</em></p>
+  
+  ![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)
+  ![License](https://img.shields.io/badge/license-MIT-green.svg)
+  ![Node](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen.svg)
+  ![TypeScript](https://img.shields.io/badge/typescript-ready-blue.svg)
+</div>
 
-![Version](https://img.shields.io/github/v/tag/scarecr0w12/ctrl-alt-play-panel?label=version&color=blue)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Node](https://img.shields.io/badge/node-18+-green.svg)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)
-![React](https://img.shields.io/badge/React-18+-blue.svg)
-![Architecture](https://img.shields.io/badge/Architecture-Panel%2BAgent-orange.svg)
-![CI/CD](https://github.com/scarecr0w12/ctrl-alt-play-panel/workflows/CI%2FCD%20Pipeline/badge.svg)
-![Security](https://img.shields.io/github/workflow/status/scarecr0w12/ctrl-alt-play-panel/Security%20Audit?label=security&logo=github)
-![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)
+---
 
-## 🚀 Latest Release - v1.5.0: Advanced Marketplace Integration
+## 🚀 Quick Start
 
-**Phase 3 Week 3-4 Complete** - Advanced plugin publishing workflow, comprehensive analytics system, and production-ready dashboard infrastructure.
+Get up and running in minutes with our automated installer:
 
-### 🎯 New in v1.5.0
+```bash
+# Clone the repository
+git clone <repository-url>
+cd ctrl-alt-play-panel
 
-- **� Advanced Plugin Publishing Workflow**: Complete lifecycle management from validation to marketplace publication
-- **📊 Comprehensive Analytics System**: Real-time tracking with performance metrics and user behavior analytics  
-- **📈 Advanced Dashboard Infrastructure**: Business intelligence with specialized views and trend analysis
-- **🔗 Production-Ready API**: 15+ new secure endpoints with JWT authentication and role-based access
+# Run the easy setup script
+chmod +x easy-setup.sh
+./easy-setup.sh
+```
 
-**[View Complete Changelog →](CHANGELOG.md)**
+The installer will guide you through:
 
-## �🏗️ Architecture Overview
+- ✅ Dependency installation
+- ✅ Environment configuration  
+- ✅ Database setup
+- ✅ SSL configuration
+- ✅ Service deployment
 
-**Distributed Panel+Agent System** with marketplace integration:
+## 📋 Features
 
-- **Panel**: Web interface, user management, API backend (Node.js/TypeScript)
-- **External Agents**: Separate projects running on nodes for container management
-- **Communication**: HTTP REST API + WebSocket for real-time events
-- **Discovery**: Automatic agent discovery and health monitoring
-- **Scalability**: Agents run independently and can be deployed on any node
+### 🎯 Core System
 
-### 🔗 External Agent Integration (v1.1.3)
+- **Game Server Management**: Complete lifecycle management for game servers
+- **Plugin System**: Advanced plugin architecture with CLI development tools
+- **User Management**: JWT-based authentication with role-based authorization
+- **Real-time Dashboard**: Live server statistics and management interface
 
-The panel now communicates with external agent processes instead of embedded agent code:
+### 🏪 Marketplace Integration
 
-- **Auto-Discovery**: Automatically finds and registers agents on known nodes
-- **Health Monitoring**: Continuous health checks and status tracking
-- **Command Routing**: All server operations route through external agents
-- **API Management**: REST endpoints for manual agent registration and control
-- **Fault Tolerance**: Graceful handling of agent disconnections and failures
+- **Plugin Publishing**: Complete workflow for plugin distribution
+- **Analytics System**: Comprehensive usage tracking and reporting
+- **Plugin Discovery**: Advanced search and categorization
+- **Version Management**: Automated versioning and update system
 
-**Benefits:**
-- ✅ **Separation of Concerns**: Panel and agents are independent projects
-- ✅ **Scalability**: Deploy multiple agents across different infrastructure
-- ✅ **Reliability**: Agents can restart without affecting the panel
-- ✅ **Security**: Authenticated communication using node daemon tokens
-- ✅ **Flexibility**: Support for various agent implementations
+### 🔧 Developer Tools
+
+- **CLI Tools**: Complete development toolkit for plugin creation
+- **API Documentation**: Comprehensive REST API with OpenAPI specification
+- **Testing Framework**: Full test suite with integration testing
+- **Development Environment**: Hot-reload development setup
+
+### 🏗️ Infrastructure
+
+- **Docker Support**: Full containerization with production configurations
+- **Database Management**: PostgreSQL with Prisma ORM and migrations
+- **Caching Layer**: Redis integration for performance optimization
+- **Security**: Comprehensive security middleware and monitoring
+
+## 🏗️ Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Backend API   │    │   Database      │
+│   (Next.js)     │◄──►│   (Express)     │◄──►│  (PostgreSQL)   │
+│                 │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   WebSocket     │    │   Redis Cache   │    │   File Storage  │
+│   (Socket.IO)   │    │   (Sessions)    │    │   (Uploads)     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+## � Documentation
+
+### Getting Started
+
+- [📥 Installation Guide](./docs/INSTALLATION.md)
+- [⚙️ Configuration](./docs/CONFIGURATION.md)
+- [🚀 Quick Start](./docs/QUICK_START.md)
+
+### Development
+
+- [🛠️ Development Setup](./docs/development/DEVELOPMENT.md)
+- [🔌 Plugin Development](./docs/development/PLUGIN_DEVELOPMENT.md)
+- [📝 API Reference](./API_DOCUMENTATION.md)
+- [🧪 Testing Guide](./docs/TESTING.md)
+
+### Deployment
+
+- [🐳 Docker Deployment](./docs/deployment/DOCKER.md)
+- [☁️ Cloud Deployment](./docs/deployment/CLOUD.md)
+- [🔒 Security Guide](./SECURITY.md)
+
+### Project Information
+
+- [📈 Project Status](./PROJECT_STATUS_CURRENT.md)
+- [🔄 Changelog](./CHANGELOG.md)
+- [🗺️ Next Steps](./docs/NEXT_STEPS.md)
+
+## 🛠️ Technology Stack
+
+### Backend
+
+- **Runtime**: Node.js 16+ with TypeScript
+- **Framework**: Express.js with middleware architecture
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: JWT with bcrypt hashing
+- **Cache**: Redis for session management
+- **Real-time**: WebSocket with Socket.IO
+
+### Frontend
+
+- **Framework**: React 18 with Next.js 13+
+- **Styling**: Tailwind CSS with component library
+- **State Management**: React Context with hooks
+- **Type Safety**: TypeScript with strict configuration
+
+### Infrastructure
+
+- **Containerization**: Docker with multi-stage builds
+- **Reverse Proxy**: Nginx with SSL termination
+- **Process Management**: PM2 for production deployment
+- **Monitoring**: Custom health checks and logging
+
+## 🏃‍♂️ Development
+
+### Prerequisites
+
+- Node.js 16+ and npm
+- PostgreSQL 12+
+- Redis 6+
+- Docker & Docker Compose (optional)
+
+### Manual Setup
+
+```bash
+# Install dependencies
+npm install
+cd frontend && npm install && cd ..
+
+# Setup environment
+cp .env.example .env
+# Edit .env with your configuration
+
+# Database setup
+npm run db:push
+npm run db:seed
+
+# Start development servers
+npm run dev              # Backend with hot-reload
+npm run dev:frontend     # Frontend development server
+```
+
+### Available Scripts
+
+```bash
+npm run build           # Build for production
+npm run start           # Start production server
+npm run dev             # Development with hot-reload
+npm run test            # Run test suite
+npm run db:push         # Push database schema
+npm run db:seed         # Seed database with sample data
+npm run lint            # Lint TypeScript code
+npm run type-check      # TypeScript type checking
+```
+
+## 🧪 Testing
+
+Comprehensive test suite covering:
+
+- Unit tests for all services
+- Integration tests for API endpoints
+- End-to-end testing for critical workflows
+
+```bash
+# Run all tests
+npm test
+
+# Run with coverage
+npm run test:coverage
+
+# Run integration tests
+npm run test:integration
+```
+
+## 📦 Deployment
+
+### Docker Deployment (Recommended)
+
+```bash
+# Production deployment
+docker-compose -f docker-compose.prod.yml up -d
+
+# Development environment
+docker-compose up -d
+```
+
+### Manual Deployment
+
+```bash
+# Build the application
+npm run build
+
+# Start with PM2
+npm run start:prod
+```
+
+## 🔒 Security
+
+- **Authentication**: JWT tokens with refresh mechanism
+- **Authorization**: Role-based access control (RBAC)
+- **Input Validation**: Comprehensive request validation
+- **Rate Limiting**: API rate limiting and DDoS protection
+- **HTTPS**: SSL/TLS encryption for all communications
+- **Security Headers**: Comprehensive security middleware
+
+See [SECURITY.md](./SECURITY.md) for detailed security information.
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+
+## 🆘 Support
+
+- **Documentation**: Comprehensive guides and API references
+- **Issues**: [GitHub Issues](../../issues) for bug reports and feature requests
+- **Discussions**: [GitHub Discussions](../../discussions) for community support
+
+## 🗺️ Roadmap
+
+### Phase 3 Completion (Current - v1.5.0)
+
+- ✅ Advanced marketplace integration
+- ✅ Plugin publishing workflow
+- ✅ Analytics and dashboard system
+- ✅ Production deployment infrastructure
+
+### Phase 4 (v1.6.0 - Q2 2025)
+
+- 🔄 Enhanced frontend marketplace interface
+- 🔄 Advanced plugin features and management
+- 🔄 Enterprise user management
+- 🔄 Enhanced monitoring and analytics
+
+### Long-term (v2.0.0+)
+
+- 🔮 Multi-game support expansion
+- 🔮 Cloud-native deployment options
+- 🔮 Advanced marketplace features
+- 🔮 Mobile application support
+
+---
+
+<div align="center">
+  <p><strong>Built with ❤️ for the gaming community</strong></p>
+  <p><em>Ready for production • Scalable • Secure</em></p>
+</div>
 
 ## ✨ Key Features
 

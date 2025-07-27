@@ -1,62 +1,24 @@
 # Dependencies
 node_modules/
 npm-debug.log*
-yarn
-# AI Development Files (Local Development Only)
-memory-bank/
-.copilot/
-.github/chatmodes/
-.github/copilot-instructions.md
-
-# Agent Compatibility Analysis (Local Development Only)
-AGENT_COMPATIBILITY_ANALYSIS.md
-
-# Internal Development Documents (Local Development Only)
-COMPREHENSIVE_PROJECT_REPORT*.md
-DEPLOYMENT_COMPLETE*.md
-SYSTEM_COMPLETION_REPORT*.md
-STEPS_*_COMPLETION_SUMMARY.md
-CTRL_ALT_IMPLEMENTATION*.md
-ADVANCED_PERMISSIONS_IMPLEMENTATION*.md
-PERMISSION_SYSTEM_COMPLETE*.md
-NEXT_STEPS_PLAN*.md
-RELEASE_NOTES_*.md
-EXTERNAL_AGENT_INTEGRATION.md
-PROJECT_STATUS.md
-ROUTE_INTEGRATION_COMPLETE.md
-
-# Development Scripts and Test Files
-setup-*.sh
-test-*.sh
-test-*.js
-cleanup-*.sh
-integrate-*.sh
-check-db.js
-mock-agent.js
-seed-permissions-standalone.js
-test-integration.js
-test-monitoring.js
-test-permission-integration.js
-test-permissions.js
-test-user-management.js
-
-# Log Files
-*.log
+yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
+package-lock.json
+yarn.lock
 
-# Build output
+# Build outputs
 dist/
 build/
+.next/
 out/
+*.tsbuildinfo
 
-# Environment files
+# Environment variables
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-.env.*.local
 
 # Logs
 logs/
@@ -65,8 +27,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
-.pnpm-debug.log*
-panel.log
 
 # Runtime data
 pids/
@@ -77,105 +37,11 @@ pids/
 # Coverage directory used by tools like istanbul
 coverage/
 *.lcov
-.nyc_output/
+.nyc_output
 
-# IDE and Editor files
-.kilocode/
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.editorconfig
-.kilocodemodes
-
-# Development artifacts
-*.bak
-*.backup
-*.tmp
-*.temp
-*~
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# AI Development & Memory Files (Local Development Only)
-memory-bank/
-.copilot/
-.github/chatmodes/
-.github/copilot-instructions.md
-shared-context.md
-development-context.md
-DEVELOPMENT_CONTEXT.md
-
-# Internal Development Documents (Local Only)
-ACTION_PLAN.md
-BACKEND_REVIEW_COMPLETE.md
-DEVELOPMENT_COMPLETE.md
-FEATURES.md
-GITHUB_SETUP.md
-INTEGRATION_TEST_RESULTS.md
-PANEL_AGENT_INTEGRATION.md
-PROJECT_PLAN.md
-PROJECT_SUMMARY.md
-REFACTORING_SUMMARY.md
-STATUS_REPORT.md
-TERMINOLOGY_UPDATE_SUMMARY.md
-VPS_DEPLOYMENT_GUIDE.md
-PANEL_AGENT_API_SPEC.md
-README-old.md
-
-# Test and Build Scripts (Local Development)
-test-*.sh
-setup.sh
-vps-setup.sh
-
-
-
-# Uploads and temporary files
-uploads/
-temp/
-tmp/
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# Docker
-.dockerignore
-
-# Test
-test-results/
-.jest/
-
-# TypeScript
-*.tsbuildinfo
-
-# Prisma
-prisma/migrations/*
-!prisma/migrations/migration_lock.toml
-
-# Next.js
-frontend/.next/
-frontend/out/
-frontend/.swc/
-
-# Vercel
-.vercel
-
-# Turbo
-.turbo
-
-# ESLint
-.eslintcache
-
-# Stylelint
-.stylelintcache
+# Dependency directories
+node_modules/
+jspm_packages/
 
 # Optional npm cache directory
 .npm
@@ -198,20 +64,73 @@ frontend/.swc/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variables file
-.env.test
-
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
 
-# Stores VSCode versions used for testing VSCode extensions
-.vscode-test
+# Next.js build output
+.next
 
-# yarn v2
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
-.pnp.*
-# Trigger new CI/CD run
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+*.tmp
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Upload directories
+uploads/*
+!uploads/.gitkeep
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.docker/
+
+# SSL certificates
+*.pem
+*.crt
+*.key
+
+# Development artifacts
+*-old.*
+*-backup.*
+*-previous.*
+*_COMPLETION_*
+*_IMPLEMENTATION_*
+*_REPORT_*
+PROJECT_STATUS_*
+DEVELOPMENT_STATUS_*
+
+# Memory bank temporary files
+memory-bank/*copy*
+memory-bank/PROJECT_STATUS.md
