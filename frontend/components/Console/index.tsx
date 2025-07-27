@@ -1,5 +1,4 @@
 import dynamic from 'next/dynamic';
-import React from 'react';
 
 // Dynamic import to avoid SSR issues with xterm
 export const XTermConsole = dynamic(() => import('./XTermConsole'), {
