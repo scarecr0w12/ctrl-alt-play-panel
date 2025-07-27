@@ -180,3 +180,8 @@ database/test/
 data/dev/
 data/test/
 data/backups/
+
+# Temporary development files
+test-external-access.sh
+nginx/*.backup*
+nginx/nginx.conf.backup*
