@@ -17,6 +17,8 @@ import ctrlsRoutes from './routes/ctrls';
 import altsRoutes from './routes/alts';
 import consoleRoutes from './routes/console';
 import pluginsRoutes from './routes/plugins';
+import marketplaceRoutes from './routes/marketplace';
+import { dashboardRoutes } from './routes/dashboard';
 
 // Import middleware
 import { errorHandler } from './middlewares/errorHandler';
@@ -92,6 +94,8 @@ export function createApp(): express.Application {
   app.use('/api/files', filesRoutes);
   // app.use('/api', pluginsRoutes);  // Temporarily disabled
   app.use('/api/plugins', pluginsRoutes);
+  app.use('/api/integration', marketplaceRoutes);
+  app.use('/api/dashboard', dashboardRoutes);
 
   // Error handling middleware (must be last)
   app.use(errorHandler);

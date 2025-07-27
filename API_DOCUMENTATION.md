@@ -334,10 +334,189 @@ All security events are logged:
 
 ---
 
+## 🧩 Plugin System API
+
+### Plugin Management Routes
+
+#### GET /api/plugins
+
+**Description**: Get list of installed plugins  
+**Permission**: `plugins.view`  
+**Response**:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "name": "minecraft-plugin",
+      "version": "1.0.0",
+      "author": "Plugin Author",
+      "description": "Minecraft server management plugin",
+      "status": "active",
+      "permissions": ["servers.create", "servers.manage"]
+    }
+  ]
+}
+```
+
+#### POST /api/plugins/install
+
+**Description**: Install a plugin from file upload  
+**Permission**: `plugins.install`  
+**Content-Type**: `multipart/form-data`  
+**Body**: Plugin zip file  
+**Response**:
+
+```json
+{
+  "success": true,
+  "message": "Plugin installed successfully",
+  "data": {
+    "name": "new-plugin",
+    "version": "1.0.0",
+    "status": "installed"
+  }
+}
+```
+
+#### POST /api/plugins/:name/enable
+
+**Description**: Enable a plugin  
+**Permission**: `plugins.manage`
+
+#### POST /api/plugins/:name/disable
+
+**Description**: Disable a plugin  
+**Permission**: `plugins.manage`
+
+#### DELETE /api/plugins/:name
+
+**Description**: Uninstall a plugin  
+**Permission**: `plugins.uninstall`
+
+#### GET /api/plugins/:name/config
+
+**Description**: Get plugin configuration  
+**Permission**: `plugins.configure`
+
+#### PUT /api/plugins/:name/config
+
+**Description**: Update plugin configuration  
+**Permission**: `plugins.configure`  
+**Body**: Plugin-specific configuration object
+
+### Plugin CLI Tool
+
+The plugin CLI tool helps developers create, validate, and test plugins:
+
+```bash
+# Create a new plugin
+npx plugin-cli create my-plugin --template basic
+
+# Create with specific template
+npx plugin-cli create game-server --template game-template
+npx plugin-cli create billing-system --template billing-integration
+
+# Validate plugin structure
+npx plugin-cli validate ./my-plugin
+
+# Install plugin for testing
+npx plugin-cli install ./my-plugin
+
+# List available templates
+npx plugin-cli list
+```
+
+### Plugin Templates
+
+#### Basic Template
+
+- Simple plugin structure
+- Basic configuration files
+- README and package.json
+- Example JavaScript file
+
+#### Game Template
+
+- Complete game server setup
+- Docker configuration
+- Startup scripts
+- Server templates and variables
+- Port management
+- Environment configuration
+
+#### Billing Integration Template
+
+- Stripe webhook handlers
+- Invoice management system
+- Payment processing logic
+- API endpoints for billing operations
+- Configuration templates
+
+### Plugin Structure
+
+```text
+my-plugin/
+├── plugin.yaml           # Plugin metadata and configuration
+├── package.json          # Node.js dependencies
+├── README.md             # Plugin documentation
+├── index.js              # Main plugin entry point
+├── config/               # Configuration files
+│   └── settings.json
+├── templates/            # Server templates (game plugins)
+│   └── server.json
+├── scripts/              # Startup scripts
+│   └── start.sh
+├── webhooks/             # Webhook handlers (billing plugins)
+│   └── stripe.js
+└── docker/               # Docker configuration
+    └── Dockerfile
+```
+
+### Plugin Development API
+
+Plugins can access the panel's API through the plugin interface:
+
+```javascript
+// Example plugin implementation
+class MyPlugin {
+  constructor(panel) {
+    this.panel = panel;
+  }
+  
+  async onInstall() {
+    // Plugin installation logic
+    console.log('Plugin installed');
+  }
+  
+  async onEnable() {
+    // Plugin activation logic
+    this.panel.registerRoute('/my-plugin', this.handleRequest.bind(this));
+  }
+  
+  async handleRequest(req, res) {
+    // Handle plugin-specific requests
+    res.json({ status: 'Plugin endpoint working' });
+  }
+  
+  async onDisable() {
+    // Plugin deactivation logic
+    this.panel.unregisterRoute('/my-plugin');
+  }
+}
+
+module.exports = MyPlugin;
+```
+
+---
+
 ## 🔧 Development Notes
 
 ### Testing Permissions
+
 Use the permission test endpoints to verify user permissions:
+
 ```bash
 # Check user permissions
 GET /api/users/:id/permissions
@@ -346,16 +525,31 @@ GET /api/users/:id/permissions
 GET /api/permissions/check?permission=servers.view&userId=:id
 ```
 
+### Plugin Development
+
+1. Use the CLI tool to create plugin scaffolding
+2. Test plugins locally before deployment
+3. Follow the plugin structure conventions
+4. Validate plugin.yaml configuration
+5. Implement proper error handling
+
 ### Security Best Practices
+
 1. Always validate user permissions before resource access
 2. Use resource ownership checks for user-specific data
 3. Log all administrative actions for audit trails
 4. Implement proper rate limiting on sensitive endpoints
 5. Validate all input data before processing
+6. Sanitize plugin uploads and validate plugin signatures
 
 ### Permission Debugging
+
 Check the application logs for permission denial events:
+
 ```bash
 # View security logs
 tail -f logs/security.log | grep PERMISSION_DENIED
+
+# View plugin logs
+tail -f logs/plugins.log
 ```

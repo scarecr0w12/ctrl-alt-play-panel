@@ -5,9 +5,13 @@
  * Entry point for the plugin development CLI tool
  */
 
-require('ts-node/register');
-const { PluginCLI } = require('../src/cli/plugin-cli');
+const PluginCLI = require('../dist/cli/plugin-cli').default;
 
-// Create and run CLI
-const cli = new PluginCLI();
-cli.run();
+if (PluginCLI) {
+  // Create and run CLI
+  const cli = new PluginCLI();
+  cli.run();
+} else {
+  console.error('Failed to load PluginCLI. Make sure to run "npm run build" first.');
+  process.exit(1);
+}

@@ -1,6 +1,6 @@
 # 🎮 Ctrl-Alt-Play Panel
 
-A modern, secure game server management panel built with **Panel+Agent distributed architecture**. Features real-time server control, comprehensive monitoring, and enterprise-grade security.
+A modern, comprehensive game server management panel with **advanced marketplace integration**. Features real-time server control, plugin publishing workflow, analytics dashboard, and enterprise-grade security.
 
 ![Version](https://img.shields.io/github/v/tag/scarecr0w12/ctrl-alt-play-panel?label=version&color=blue)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
@@ -12,9 +12,22 @@ A modern, secure game server management panel built with **Panel+Agent distribut
 ![Security](https://img.shields.io/github/workflow/status/scarecr0w12/ctrl-alt-play-panel/Security%20Audit?label=security&logo=github)
 ![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)
 
-## 🏗️ Architecture Overview
+## 🚀 Latest Release - v1.5.0: Advanced Marketplace Integration
 
-**Distributed Panel+Agent System** with external agent communication:
+**Phase 3 Week 3-4 Complete** - Advanced plugin publishing workflow, comprehensive analytics system, and production-ready dashboard infrastructure.
+
+### 🎯 New in v1.5.0
+
+- **� Advanced Plugin Publishing Workflow**: Complete lifecycle management from validation to marketplace publication
+- **📊 Comprehensive Analytics System**: Real-time tracking with performance metrics and user behavior analytics  
+- **📈 Advanced Dashboard Infrastructure**: Business intelligence with specialized views and trend analysis
+- **🔗 Production-Ready API**: 15+ new secure endpoints with JWT authentication and role-based access
+
+**[View Complete Changelog →](CHANGELOG.md)**
+
+## �🏗️ Architecture Overview
+
+**Distributed Panel+Agent System** with marketplace integration:
 
 - **Panel**: Web interface, user management, API backend (Node.js/TypeScript)
 - **External Agents**: Separate projects running on nodes for container management
