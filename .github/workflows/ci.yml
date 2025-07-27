@@ -89,7 +89,7 @@ jobs:
           cd frontend && npm run build && cd ..
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           file: ./coverage/lcov.info
           flags: unittests
@@ -120,12 +120,12 @@ jobs:
           cd frontend && npm audit --audit-level=moderate && cd ..
 
       - name: Run CodeQL Analysis
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: javascript
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
 
   docker:
     name: Docker Build Test
@@ -138,7 +138,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build Panel Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
