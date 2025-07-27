@@ -107,8 +107,8 @@ RUN mkdir -p /app/logs /app/uploads /app/data && \
 # Switch to non-root user
 USER appuser
 
-# Expose ports
-EXPOSE 3000 8080
+# Expose flexible ports (defaults for documentation, actual ports set via ENV)
+EXPOSE 3000 3001 8080
 
 # Health check using node directly (cross-platform)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

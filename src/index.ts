@@ -29,19 +29,30 @@ import { logger } from './utils/logger';
 import { AgentDiscoveryService } from './services/agentDiscoveryService';
 import { MonitoringService } from './services/monitoringService';
 import { DatabaseService } from './services/database';
+import { getSafePortConfiguration, portManager } from './utils/portManager';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables with development/production awareness
+if (process.env.NODE_ENV === 'development') {
+  dotenv.config({ path: '.env.development' });
+} else {
+  dotenv.config();
+}
 
 class GamePanelApp {
   private app: express.Application;
   private server!: Server;
   private wss!: WebSocketServer;
   private port: number;
+  private frontendPort: number;
+  private agentPort: number;
+  private deploymentConfig: any;
 
   constructor() {
     this.app = express();
+    // Initialize with default ports, will be updated during start()
     this.port = parseInt(process.env.PORT || '3000');
+    this.frontendPort = parseInt(process.env.FRONTEND_PORT || '3001');
+    this.agentPort = parseInt(process.env.AGENT_PORT || '8080');
 
     this.initializeMiddlewares();
     this.initializeBasicRoutes();

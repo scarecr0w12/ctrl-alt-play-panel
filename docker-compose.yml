@@ -11,16 +11,29 @@ services:
     container_name: ctrl-alt-play
     restart: unless-stopped
     ports:
-      - "3000:3000"
-      - "8080:8080"  # Agent WebSocket port
+      - "${PORT:-3000}:${PORT:-3000}"
+      - "${AGENT_PORT:-8080}:${AGENT_PORT:-8080}"  # Agent WebSocket port
+      - "${FRONTEND_PORT:-3001}:${FRONTEND_PORT:-3001}"  # Frontend port (if separate)
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://ctrlaltplay:ctrlaltplay@postgres:5432/ctrlaltplay
+      DATABASE_URL: postgresql://ctrlaltplay:${POSTGRES_PASSWORD:-ctrlaltplay}@postgres:5432/ctrlaltplay
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this}
       AGENT_SECRET: ${AGENT_SECRET:-your-agent-secret-key-change-this}
-      PORT: 3000
-      AGENT_PORT: 8080
+      
+      # Flexible Port Configuration
+      PORT: ${PORT:-3000}
+      FRONTEND_PORT: ${FRONTEND_PORT:-3001}
+      AGENT_PORT: ${AGENT_PORT:-8080}
+      
+      # Auto-detect available ports in production
+      AUTO_PORT_DETECTION: ${AUTO_PORT_DETECTION:-true}
+      PORT_RANGE_START: ${PORT_RANGE_START:-3000}
+      PORT_RANGE_END: ${PORT_RANGE_END:-3100}
+      
+      # Deployment environment
+      DEPLOYMENT_ENV: ${DEPLOYMENT_ENV:-production}
+      HOST: ${HOST:-0.0.0.0}
     volumes:
       - ./uploads:/app/uploads:rw
       - ./logs:/app/logs:rw

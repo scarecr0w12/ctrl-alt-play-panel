@@ -73,10 +73,25 @@ VPS_DEPLOYMENT_GUIDE.md
 PANEL_AGENT_API_SPEC.md
 README-old.md
 
+# AI Research and Analysis Documents
+CTRL_ALT_PLAY_PROJECT_OVERVIEW_AND_STATUS_REPORT.md
+CTRL_ALT_SYSTEM.md
+DEPENDENCY_UPGRADE_ANALYSIS.md
+DOMAIN_INDEPENDENT_SETUP.md
+*_OVERVIEW_*.md
+*_ANALYSIS_*.md
+*_SYSTEM_*.md
+
 # Test and Build Scripts (Local Development)
 test-*.sh
+test-*.js
 setup.sh
 vps-setup.sh
+easy-setup.sh
+fix-*.sh
+fix-connection-issues.sh
+fix-frontend-redirect.sh
+fix-postgres-version.sh
 
 # OS generated files
 .DS_Store

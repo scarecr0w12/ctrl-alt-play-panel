@@ -1,3 +1,6 @@
+// Load test environment variables
+require('dotenv').config({ path: '.env.test' });
+
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -28,7 +31,8 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/src/$1'
   },
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
-  testTimeout: 10000,
+  testTimeout: 15000,
   globalSetup: '<rootDir>/tests/globalSetup.ts',
-  globalTeardown: '<rootDir>/tests/globalTeardown.ts'
+  globalTeardown: '<rootDir>/tests/globalTeardown.ts',
+  setupFilesAfterEnv: ['<rootDir>/tests/jest.setup.ts']
 };

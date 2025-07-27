@@ -1,7 +1,14 @@
 import { PrismaClient } from '@prisma/client';
 import { ExternalAgentService } from './externalAgentService';
+import axios from 'axios';
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
+
+// Steam Web API configuration
+const STEAM_API_BASE = 'https://api.steampowered.com';
+const STEAM_API_KEY = process.env.STEAM_API_KEY;
+const STEAM_API_ENABLED = process.env.STEAM_API_ENABLED === 'true' && !!STEAM_API_KEY;
 
 export interface WorkshopItemData {
   workshopId: string;
@@ -54,54 +61,177 @@ export class SteamWorkshopService {
   /**
    * Search Steam Workshop for items
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async searchWorkshopItems(
     gameId: string,
-    _query?: string,
-    _type?: string
-    // TODO: Implement pagination when Steam API is connected
-    // _page: number = 1,
-    // _limit: number = 20
+    query?: string,
+    type?: string,
+    page: number = 1,
+    limit: number = 20
   ): Promise<WorkshopSearchResult> {
-    // Acknowledge unused params for mock implementation  
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const unused = { _query, _type };
-    
     try {
-      // In a real implementation, this would use Steam Web API
-      // For now, return mock data
-      const mockItems: WorkshopItemData[] = [
-        {
-          workshopId: '12345',
-          name: 'Epic Mod Pack',
-          description: 'A collection of amazing mods',
-          type: 'mod',
-          gameId,
-          fileSize: 1024 * 1024 * 50, // 50MB
-          downloadUrl: 'steam://workshop/download/12345',
-          imageUrl: 'https://steamuserimages-a.akamaihd.net/ugc/12345/image.jpg'
-        },
-        {
-          workshopId: '67890',
-          name: 'Custom Map Collection',
-          description: 'Best custom maps for this game',
-          type: 'collection',
-          gameId,
-          fileSize: 1024 * 1024 * 25, // 25MB
-          downloadUrl: 'steam://workshop/download/67890',
-          imageUrl: 'https://steamuserimages-a.akamaihd.net/ugc/67890/image.jpg'
-        }
-      ];
-
-      return {
-        items: mockItems,
-        totalCount: mockItems.length,
-        hasMore: false
-      };
+      if (STEAM_API_ENABLED) {
+        return await this.searchSteamWorkshopItems(gameId, query, type, page, limit);
+      } else {
+        logger.warn('Steam API not configured, using fallback data');
+        return await this.getFallbackWorkshopItems(gameId, query, type, limit);
+      }
     } catch (error) {
-      console.error('Failed to search Steam Workshop:', error);
-      throw new Error('Failed to search Steam Workshop');
+      logger.error('Failed to search Steam Workshop:', error);
+      
+      // Fallback to cached data on API failure
+      try {
+        return await this.getCachedWorkshopItems(gameId, query, type, limit);
+      } catch (fallbackError) {
+        logger.error('Failed to get cached workshop items:', fallbackError);
+        throw new Error('Failed to search Steam Workshop');
+      }
     }
+  }
+
+  /**
+   * Search Steam Workshop via Steam Web API
+   */
+  private async searchSteamWorkshopItems(
+    gameId: string,
+    query?: string,
+    type?: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<WorkshopSearchResult> {
+    const params = new URLSearchParams({
+      key: STEAM_API_KEY!,
+      appid: gameId,
+      numperpage: limit.toString(),
+      page: page.toString(),
+      search_text: query || '',
+      match_all_tags: '1',
+      required_tags: type || ''
+    });
+
+    const response = await axios.get(
+      `${STEAM_API_BASE}/IPublishedFileService/QueryFiles/v1/?${params}`,
+      { timeout: 10000 }
+    );
+
+    if (!response.data?.response?.publishedfiledetails) {
+      throw new Error('Invalid Steam API response');
+    }
+
+    const items = response.data.response.publishedfiledetails.map((item: any) => ({
+      workshopId: item.publishedfileid?.toString() || '',
+      name: item.title || 'Unknown Item',
+      description: item.description || '',
+      type: this.mapSteamFileType(item.file_type),
+      gameId: gameId,
+      fileSize: item.file_size || 0,
+      downloadUrl: `steam://workshop/download/${item.publishedfileid}`,
+      imageUrl: item.preview_url || null
+    }));
+
+    const totalCount = response.data.response.total || items.length;
+
+    return {
+      items,
+      totalCount,
+      hasMore: (page * limit) < totalCount
+    };
+  }
+
+  /**
+   * Get fallback workshop items when Steam API is not available
+   */
+  private async getFallbackWorkshopItems(
+    gameId: string,
+    query?: string,
+    type?: string,
+    limit: number = 20
+  ): Promise<WorkshopSearchResult> {
+    // Try to get from database first
+    const cachedItems = await this.getCachedWorkshopItems(gameId, query, type, limit);
+    
+    if (cachedItems.items.length > 0) {
+      return cachedItems;
+    }
+
+    // Return informative mock data if no cached items
+    const mockItems: WorkshopItemData[] = [
+      {
+        workshopId: 'demo-mod-1',
+        name: 'Demo Mod Pack (Steam API Required)',
+        description: 'Configure STEAM_API_KEY to access real Workshop content',
+        type: 'mod',
+        gameId,
+        fileSize: 0,
+        downloadUrl: '',
+        imageUrl: ''
+      }
+    ];
+
+    return {
+      items: mockItems,
+      totalCount: mockItems.length,
+      hasMore: false
+    };
+  }
+
+  /**
+   * Map Steam file type to our enum
+   */
+  private mapSteamFileType(fileType: number): 'mod' | 'map' | 'collection' {
+    switch (fileType) {
+      case 0: return 'mod';
+      case 1: return 'map';
+      case 2: return 'collection';
+      default: return 'mod';
+    }
+  }
+
+  /**
+   * Get cached workshop items from database
+   */
+  private async getCachedWorkshopItems(
+    gameId: string,
+    query?: string,
+    type?: string,
+    limit: number = 20
+  ): Promise<WorkshopSearchResult> {
+    const whereClause: any = { gameId };
+    
+    if (query) {
+      whereClause.OR = [
+        { name: { contains: query, mode: 'insensitive' } },
+        { description: { contains: query, mode: 'insensitive' } }
+      ];
+    }
+    
+    if (type) {
+      whereClause.type = type;
+    }
+
+    const items = await prisma.steamWorkshopItem.findMany({
+      where: whereClause,
+      take: limit,
+      orderBy: { lastUpdated: 'desc' }
+    });
+
+    const totalCount = await prisma.steamWorkshopItem.count({
+      where: whereClause
+    });
+
+    return {
+      items: items.map(item => ({
+        workshopId: item.workshopId,
+        name: item.name,
+        description: item.description || undefined,
+        type: item.type as 'mod' | 'map' | 'collection',
+        gameId: item.gameId,
+        fileSize: item.fileSize || undefined,
+        downloadUrl: item.downloadUrl || undefined,
+        imageUrl: item.imageUrl || undefined
+      })),
+      totalCount,
+      hasMore: items.length >= limit
+    };
   }
 
   /**
@@ -335,26 +465,71 @@ export class SteamWorkshopService {
   }
 
   /**
-   * Fetch workshop item from Steam API (mock implementation)
+   * Fetch workshop item from Steam API
    */
   private async fetchWorkshopItemFromSteam(workshopId: string): Promise<WorkshopItemData | null> {
     try {
-      // In a real implementation, this would call Steam Web API
-      // For development, return mock data
+      if (!STEAM_API_ENABLED) {
+        logger.warn(`Steam API not configured, cannot fetch workshop item ${workshopId}`);
+        return this.createFallbackWorkshopItem(workshopId);
+      }
+
+      const params = new URLSearchParams({
+        key: STEAM_API_KEY!,
+        itemcount: '1',
+        'publishedfileids[0]': workshopId
+      });
+
+      const response = await axios.get(
+        `${STEAM_API_BASE}/ISteamRemoteStorage/GetPublishedFileDetails/v1/?${params}`,
+        { timeout: 10000 }
+      );
+
+      if (!response.data?.response?.publishedfiledetails?.[0]) {
+        logger.error(`No data returned for workshop item ${workshopId}`);
+        return null;
+      }
+
+      const item = response.data.response.publishedfiledetails[0];
+      
+      // Check if item was found (result = 1 means success)
+      if (item.result !== 1) {
+        logger.error(`Workshop item ${workshopId} not found or unavailable (result: ${item.result})`);
+        return null;
+      }
+
       return {
-        workshopId,
-        name: `Steam Workshop Item ${workshopId}`,
-        description: `Description for workshop item ${workshopId}`,
-        type: 'mod' as const,
-        gameId: '570', // Example: Dota 2
-        fileSize: 1024 * 1024 * 10, // 10MB
+        workshopId: item.publishedfileid?.toString() || workshopId,
+        name: item.title || `Workshop Item ${workshopId}`,
+        description: item.description || '',
+        type: this.mapSteamFileType(item.file_type || 0),
+        gameId: item.consumer_appid?.toString() || '0',
+        fileSize: item.file_size || 0,
         downloadUrl: `steam://workshop/download/${workshopId}`,
-        imageUrl: `https://steamuserimages-a.akamaihd.net/ugc/${workshopId}/image.jpg`
+        imageUrl: item.preview_url || null
       };
     } catch (error) {
-      console.error(`Failed to fetch workshop item ${workshopId} from Steam:`, error);
-      return null;
+      logger.error(`Failed to fetch workshop item ${workshopId} from Steam:`, error);
+      
+      // Return fallback item for development/testing
+      return this.createFallbackWorkshopItem(workshopId);
     }
+  }
+
+  /**
+   * Create fallback workshop item when Steam API is unavailable
+   */
+  private createFallbackWorkshopItem(workshopId: string): WorkshopItemData {
+    return {
+      workshopId,
+      name: `Workshop Item ${workshopId} (API Required)`,
+      description: 'Configure STEAM_API_KEY to fetch real item details',
+      type: 'mod',
+      gameId: '0',
+      fileSize: 0,
+      downloadUrl: `steam://workshop/download/${workshopId}`,
+      imageUrl: ''
+    };
   }
 
   /**
@@ -362,27 +537,67 @@ export class SteamWorkshopService {
    */
   async syncWorkshopItems(): Promise<void> {
     try {
+      if (!STEAM_API_ENABLED) {
+        logger.warn('Steam API not configured, skipping workshop items sync');
+        return;
+      }
+
       const items = await prisma.steamWorkshopItem.findMany({
         where: {
           lastUpdated: {
             lt: new Date(Date.now() - 24 * 60 * 60 * 1000) // Older than 24 hours
           }
-        }
+        },
+        take: 100 // Limit to avoid API rate limits
       });
 
+      let syncedCount = 0;
+      let failedCount = 0;
+
       for (const item of items) {
-        const updated = await this.fetchWorkshopItemFromSteam(item.workshopId);
-        if (updated) {
-          await prisma.steamWorkshopItem.update({
-            where: { id: item.id },
-            data: updated
-          });
+        try {
+          const updated = await this.fetchWorkshopItemFromSteam(item.workshopId);
+          if (updated && updated.name !== `Workshop Item ${item.workshopId} (API Required)`) {
+            await prisma.steamWorkshopItem.update({
+              where: { id: item.id },
+              data: {
+                ...updated,
+                lastUpdated: new Date()
+              }
+            });
+            syncedCount++;
+          } else {
+            failedCount++;
+          }
+          
+          // Rate limiting - Steam API has limits
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          logger.error(`Failed to sync workshop item ${item.workshopId}:`, error);
+          failedCount++;
         }
       }
 
-      console.log(`Synced ${items.length} workshop items`);
+      logger.info(`Workshop sync completed: ${syncedCount} synced, ${failedCount} failed, ${items.length} total`);
     } catch (error) {
-      console.error('Failed to sync workshop items:', error);
+      logger.error('Failed to sync workshop items:', error);
     }
+  }
+
+  /**
+   * Get Steam Workshop integration status
+   */
+  getIntegrationStatus(): {
+    enabled: boolean;
+    configured: boolean;
+    apiKey: boolean;
+    lastSync?: Date;
+  } {
+    return {
+      enabled: STEAM_API_ENABLED,
+      configured: !!process.env.STEAM_API_KEY,
+      apiKey: !!STEAM_API_KEY,
+      lastSync: undefined // Could track this in database
+    };
   }
 }

@@ -103,6 +103,8 @@ uploads/*
 *.swp
 *.swo
 *~
+.kilocode/
+.kilocodemodes
 
 # OS generated files
 .DS_Store
@@ -131,6 +133,50 @@ Thumbs.db
 PROJECT_STATUS_*
 DEVELOPMENT_STATUS_*
 
-# Memory bank temporary files
-memory-bank/*copy*
-memory-bank/PROJECT_STATUS.md
+# Research and AI documents (development artifacts)
+CTRL_ALT_PLAY_PROJECT_OVERVIEW_AND_STATUS_REPORT.md
+CTRL_ALT_SYSTEM.md
+DEPENDENCY_UPGRADE_ANALYSIS.md
+DOMAIN_INDEPENDENT_SETUP.md
+*_OVERVIEW_*.md
+*_ANALYSIS_*.md
+*_SYSTEM_*.md
+
+# Development scripts and fixes (not for production)
+easy-setup.sh
+fix-*.sh
+test-*.js
+*-test.js
+
+# Memory bank and AI-related files
+memory-bank/
+ai-conversations/
+research/
+reports/
+
+# Production environment files (only templates should be in repo)
+.env.production
+.env.production.example
+
+# Development documentation archives
+docs/archive/
+docs/disabled-files/
+
+# Plugin development artifacts
+plugins/test-*
+sample-plugins/
+
+# Nginx configuration (deployment specific)
+nginx/ssl/
+nginx/*.conf
+nginx/*.pem
+
+# Database development files
+database/dev/
+database/test/
+*.db-journal
+
+# Development data directories
+data/dev/
+data/test/
+data/backups/
