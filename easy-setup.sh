@@ -508,7 +508,7 @@ services:
       retries: 3
 
   postgres:
-    image: postgres:15
+    image: postgres:16-alpine
     environment:
       POSTGRES_DB: ctrl_alt_play
       POSTGRES_USER: postgres
