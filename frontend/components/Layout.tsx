@@ -15,6 +15,7 @@ import {
   XMarkIcon,
   UserIcon,
   ChartPieIcon,
+  PuzzlePieceIcon,
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -37,6 +38,7 @@ const navigation: NavItem[] = [
   { name: 'Monitoring', href: '/monitoring', icon: ChartBarIcon },
   { name: 'Analytics', href: '/analytics', icon: ChartPieIcon },
   { name: 'Configurations', href: '/ctrls', icon: CogIcon, adminOnly: true },
+  { name: 'Plugins', href: '/admin/plugins', icon: PuzzlePieceIcon, adminOnly: true },
   { name: 'Agents', href: '/agents', icon: ServerIcon, adminOnly: true },
   { name: 'Profile', href: '/profile', icon: UserIcon },
   { name: 'User Management', href: '/admin/users', icon: UserGroupIcon, adminOnly: true },

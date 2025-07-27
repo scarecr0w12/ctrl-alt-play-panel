@@ -6,12 +6,19 @@ export class DatabaseService {
 
   public static async initialize(): Promise<void> {
     try {
+      logger.info('Initializing database connection...');
       this.instance = new PrismaClient({
         log: ['query', 'info', 'warn', 'error'],
       });
 
+      logger.info('Connecting to database...');
       await this.instance.$connect();
       logger.info('Database connected successfully');
+      
+      // Test the connection with a simple query
+      logger.info('Testing database connection...');
+      await this.instance.$queryRaw`SELECT 1 as test`;
+      logger.info('Database connection test successful');
     } catch (error) {
       logger.error('Failed to connect to database:', error);
       throw error;

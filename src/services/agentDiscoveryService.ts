@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client';
 import { ExternalAgentService, ExternalAgent } from './externalAgentService';
+import DatabaseService from './database';
 import { logger } from '../utils/logger';
-
-const prisma = new PrismaClient();
 
 /**
  * Service for discovering and registering external agents
@@ -69,12 +67,10 @@ export class AgentDiscoveryService {
    */
   private async discoverAgents(): Promise<void> {
     try {
-      // Get all nodes from database
-      const nodes = await prisma.node.findMany({
-        where: {
-          isMaintenanceMode: false
-        }
-      });
+      logger.info('Starting agent discovery...');
+      
+      const db = DatabaseService.getInstance();
+      const nodes = await db.node.findMany();
 
       for (const node of nodes) {
         // Check if agent is already registered
@@ -171,7 +167,8 @@ export class AgentDiscoveryService {
   public async registerAgent(nodeUuid: string, baseUrl: string, apiKey?: string): Promise<boolean> {
     try {
       // Get node info from database
-      const node = await prisma.node.findFirst({
+      const db = DatabaseService.getInstance();
+      const node = await db.node.findFirst({
         where: { uuid: nodeUuid }
       });
 

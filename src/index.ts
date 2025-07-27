@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
-import { createServer } from 'http';
+import { createServer, Server } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
 
 // Import routes that are working
@@ -13,6 +13,7 @@ import analyticsRoutes from './routes/analytics';
 import workshopRoutes from './routes/workshop';
 import filesRoutes from './routes/files';
 import consoleRoutes from './routes/console';
+import pluginsRoutes from './routes/plugins';
 import authRoutes from './routes/auth';
 import serversRoutes from './routes/servers';
 import usersRoutes from './routes/users';
@@ -25,8 +26,6 @@ import agentsRoutes from './routes/agents';
 // Import middleware and services
 import { errorHandler } from './middlewares/errorHandler';
 import { logger } from './utils/logger';
-import { SocketService } from './services/socket';
-import { ExternalAgentService } from './services/externalAgentService';
 import { AgentDiscoveryService } from './services/agentDiscoveryService';
 import { MonitoringService } from './services/monitoringService';
 import { DatabaseService } from './services/database';
@@ -36,7 +35,7 @@ dotenv.config();
 
 class GamePanelApp {
   private app: express.Application;
-  private server: any;
+  private server!: Server;
   private wss!: WebSocketServer;
   private port: number;
 
@@ -45,7 +44,7 @@ class GamePanelApp {
     this.port = parseInt(process.env.PORT || '3000');
 
     this.initializeMiddlewares();
-    this.initializeRoutes();
+    this.initializeBasicRoutes();
     this.initializeErrorHandling();
     this.initializeWebSocket();
   }
@@ -73,7 +72,7 @@ class GamePanelApp {
     });
   }
 
-  private initializeRoutes(): void {
+  private initializeBasicRoutes(): void {
     // Health check endpoint
     this.app.get('/health', (req, res) => {
       res.status(200).json({
@@ -84,23 +83,31 @@ class GamePanelApp {
         features: ['monitoring', 'steam-workshop', 'user-profiles', 'notifications', 'external-agents', 'ctrl-alt-system']
       });
     });
+  }
 
-    // API routes
+  private initializeRoutes(): void {
+    // Essential API routes
+    console.log('Adding essential API routes...');
     this.app.use('/api/auth', authRoutes);
+    this.app.use('/api/monitoring', monitoringRoutes);
+    this.app.use('/api/analytics', analyticsRoutes);
+    this.app.use('/api/workshop', workshopRoutes);
+    this.app.use('/api/files', filesRoutes);
+    this.app.use('/api/console', consoleRoutes);
+    this.app.use('/api/plugins', pluginsRoutes);
+    
+    // Core management routes
     this.app.use('/api/servers', serversRoutes);
     this.app.use('/api/users', usersRoutes);
-    this.app.use('/api/user', userProfileRoutes); // User profile management
+    this.app.use('/api/user', userProfileRoutes);
     this.app.use('/api/nodes', nodesRoutes);
     this.app.use('/api/ctrls', ctrlsRoutes);
     this.app.use('/api/alts', altsRoutes);
-    this.app.use('/api/agents', agentsRoutes); // External agent management
-    this.app.use('/api/console', consoleRoutes); // Console management
-    this.app.use('/api/monitoring', monitoringRoutes);
-    this.app.use('/api/analytics', analyticsRoutes); // Resource analytics
-    this.app.use('/api/workshop', workshopRoutes);
-    this.app.use('/api/files', filesRoutes);
+    this.app.use('/api/agents', agentsRoutes);
+    console.log('Added essential API routes successfully');
 
     // Basic info endpoint
+    console.log('Adding /api/info route...');
     this.app.get('/api/info', (req, res) => {
       res.json({
         name: 'Ctrl-Alt-Play Panel',
@@ -114,21 +121,25 @@ class GamePanelApp {
         ]
       });
     });
+    console.log('Added /api/info route successfully');
 
     // Serve static files (frontend)
+    console.log('Adding static file serving...');
     this.app.use(express.static('public'));
+    console.log('Added static file serving successfully');
 
-    // Redirect console route to React frontend
+    // Safe redirect routes
+    console.log('Adding redirect routes...');
     this.app.get('/console', (req, res) => {
       res.redirect('http://localhost:3001/console');
     });
 
-    // Root route - redirect to React frontend
     this.app.get('/', (req, res) => {
       res.redirect('http://localhost:3001/');
     });
+    console.log('Added redirect routes successfully');
 
-    // Redirect old HTML routes to React frontend
+    // HTML redirect routes
     this.app.get('/dashboard.html', (req, res) => {
       res.redirect('http://localhost:3001/dashboard');
     });
@@ -149,21 +160,12 @@ class GamePanelApp {
       res.redirect('http://localhost:3001/console');
     });
 
-    // Catch-all route for undefined endpoints
-    this.app.get('*', (req, res) => {
+    // Simple 404 handler (avoid problematic catch-all)
+    this.app.use((req, res) => {
       res.status(404).json({
         error: 'Page not found',
-        message: 'The requested page does not exist. Please use the React frontend at http://localhost:3001',
-        reactFrontend: 'http://localhost:3001',
-        availablePages: [
-          'http://localhost:3001/',
-          'http://localhost:3001/login',
-          'http://localhost:3001/register', 
-          'http://localhost:3001/dashboard',
-          'http://localhost:3001/files',
-          'http://localhost:3001/console',
-          'http://localhost:3001/servers'
-        ]
+        message: 'The requested page does not exist. Please use the React frontend.',
+        reactFrontend: 'http://localhost:3001'
       });
     });
   }
@@ -209,13 +211,17 @@ class GamePanelApp {
     });
   }
 
-  private handleWebSocketMessage(ws: WebSocket, message: any): void {
+  private handleWebSocketMessage(ws: WebSocket, message: { type: string; command?: string; action?: string }): void {
     switch (message.type) {
       case 'command':
-        this.handleServerCommand(ws, message.command);
+        if (message.command) {
+          this.handleServerCommand(ws, message.command);
+        }
         break;
       case 'power':
-        this.handlePowerAction(ws, message.action);
+        if (message.action) {
+          this.handlePowerAction(ws, message.action);
+        }
         break;
       default:
         logger.warn('Unknown WebSocket message type:', message.type);
@@ -292,22 +298,40 @@ class GamePanelApp {
   }
 
   public async start(): Promise<void> {
-    // Initialize database first
-    await DatabaseService.initialize();
-    logger.info('📄 Database initialized successfully');
+    try {
+      console.log('Starting application...');
+      
+      // Initialize database first
+      console.log('Initializing database...');
+      await DatabaseService.initialize();
+      console.log('📄 Database initialized successfully');
+      logger.info('📄 Database initialized successfully');
 
-    // Create HTTP server
-    this.server = createServer(this.app);
+      // Initialize API routes after database is ready
+      console.log('Initializing routes...');
+      this.initializeRoutes();
+      console.log('🛣️  API routes initialized successfully');
+      logger.info('🛣️  API routes initialized successfully');
 
-    // Initialize WebSocket server
-    this.wss = new WebSocketServer({ server: this.server });
-    this.setupWebSocketHandlers();
+      // Create HTTP server
+      console.log('Creating HTTP server...');
+      this.server = createServer(this.app);
+      console.log('🌐 HTTP server created successfully');
+      logger.info('🌐 HTTP server created successfully');
 
-    // Start External Agent Discovery Service
-    const agentDiscoveryService = AgentDiscoveryService.getInstance();
-    await agentDiscoveryService.start();
+      // Initialize WebSocket server
+      console.log('Initializing WebSocket server...');
+      this.wss = new WebSocketServer({ server: this.server });
+      this.setupWebSocketHandlers();
+      console.log('🔌 WebSocket server initialized successfully');
+      logger.info('� WebSocket server initialized successfully');
 
-    this.server.listen(this.port, () => {
+      // Skip agent discovery for now to get the server running
+      console.log('Skipping agent discovery service for now...');
+      logger.info('🔍 Skipping agent discovery service for now...');
+
+      console.log('Starting HTTP server...');
+      this.server.listen(this.port, () => {
       logger.info(`🚀 Ctrl-Alt-Play Panel started successfully!`);
       logger.info(`📡 Server running on port ${this.port}`);
       logger.info(`🔌 WebSocket server ready for connections`);
@@ -321,6 +345,11 @@ class GamePanelApp {
       // Start monitoring scheduler
       this.startMonitoringScheduler();
     });
+    } catch (error) {
+      console.error('Failed to start application:', error);
+      logger.error('Failed to start application:', error);
+      process.exit(1);
+    }
   }
 
   private startMonitoringScheduler(): void {

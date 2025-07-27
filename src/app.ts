@@ -16,6 +16,7 @@ import nodesRoutes from './routes/nodes';
 import ctrlsRoutes from './routes/ctrls';
 import altsRoutes from './routes/alts';
 import consoleRoutes from './routes/console';
+import pluginsRoutes from './routes/plugins';
 
 // Import middleware
 import { errorHandler } from './middlewares/errorHandler';
@@ -89,6 +90,8 @@ export function createApp(): express.Application {
   app.use('/api/analytics', analyticsRoutes);
   app.use('/api/workshop', workshopRoutes);
   app.use('/api/files', filesRoutes);
+  // app.use('/api', pluginsRoutes);  // Temporarily disabled
+  app.use('/api/plugins', pluginsRoutes);
 
   // Error handling middleware (must be last)
   app.use(errorHandler);

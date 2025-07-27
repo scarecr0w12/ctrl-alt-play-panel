@@ -81,50 +81,56 @@ The panel now communicates with external agent processes instead of embedded age
 
 ### Prerequisites
 
-- Node.js 18+ and npm
-- Docker and Docker Compose
-- PostgreSQL 14+
-- Redis 6+
+- **Node.js 18+** and npm
+- **Docker** and Docker Compose
+- **PostgreSQL 14+** (provided via Docker)
+- **Redis 6+** (provided via Docker)
 
-### Development Setup
+### Installation
 
 1. **Clone and Install**
 
    ```bash
-   git clone https://github.com/scarecr0w12/ctrl-alt-play-panel.git
+   git clone https://github.com/yourusername/ctrl-alt-play-panel.git
    cd ctrl-alt-play-panel
-   npm install
+   ./scripts/setup.sh
    ```
 
 2. **Configure Environment**
 
    ```bash
    cp .env.example .env
-   # Edit .env with your database and secrets
+   nano .env  # Edit with your secure secrets
    ```
 
 3. **Start Services**
 
    ```bash
+   # Start database services
    docker-compose up -d postgres redis
+   
+   # Initialize database
    npm run db:push
    npm run db:seed
    ```
 
-4. **Start Development**
+4. **Start Application**
 
    ```bash
+   # Development
    npm run dev
+   
+   # Production
+   ./start.sh
    ```
 
-   **Access Points:**
-   - Frontend: <http://localhost:3001>
-   - Backend API: <http://localhost:3000>
+**Access the panel:** <http://localhost:3000>
 
-### Demo Credentials
+**Default credentials:**
+- Username: `admin`
+- Password: `admin123` (change immediately!)
 
-- **Admin**: `admin` / `admin123`
-- **User**: `user` / `user123`
+> 📖 **Need detailed instructions?** See [QUICK_START.md](QUICK_START.md) or [INSTALLATION.md](INSTALLATION.md)
 
 ## 🏗️ Panel+Agent Architecture
 
@@ -208,21 +214,26 @@ npm run db:seed      # Seed demo data
 npm run db:studio    # Open Prisma Studio
 ```
 
-### Docker
+### Docker & Scripts
 
 ```bash
-docker-compose up -d              # Start all services
-docker-compose up -d postgres     # Start database only
-docker-compose logs -f            # View logs
-docker-compose down               # Stop all services
+./start.sh                    # Start all services (production)
+./start.sh stop              # Stop all services
+./start.sh status            # Show service status
+./start.sh logs              # View logs
+./start.sh update            # Update and restart services
+
+./scripts/setup.sh           # Initial setup script
+./scripts/setup-frontend.sh  # Frontend-specific setup
+./scripts/setup-project-automation.sh  # Git hooks and automation
 ```
 
 ### Version Management
 
 ```bash
-./version.sh patch "Fix authentication bug"     # Bug fixes (1.0.0 → 1.0.1)
-./version.sh minor "Add new features"           # New features (1.0.0 → 1.1.0)
-./version.sh major "Breaking API changes"       # Breaking changes (1.0.0 → 2.0.0)
+./version.sh patch "Fix authentication bug"     # Bug fixes (1.2.0 → 1.2.1)
+./version.sh minor "Add new features"           # New features (1.2.0 → 1.3.0)
+./version.sh major "Breaking API changes"       # Breaking changes (1.2.0 → 2.0.0)
 ```
 
 The version script automatically:
@@ -233,12 +244,19 @@ The version script automatically:
 
 ## 📚 Documentation
 
+### Getting Started
+
+- **[Quick Start Guide](QUICK_START.md)** - 10-minute setup guide for new users
+- **[Installation Guide](INSTALLATION.md)** - Comprehensive installation instructions
+- **[API Documentation](API_DOCUMENTATION.md)** - Complete API reference
+
 ### For Developers
 
 - **[Panel+Agent API Specification](docs/development/PANEL_AGENT_API_SPEC.md)** - Complete WebSocket protocol
 - **[Issue #27 Implementation](docs/development/ISSUE_27_IMPLEMENTATION.md)** - Server control architecture
 - **[Development Context](docs/development/DEVELOPMENT_CONTEXT.md)** - Current project state
 - **[Feature Documentation](docs/development/FEATURES.md)** - Implemented features
+- **[Testing Guide](docs/TESTING.md)** - Testing procedures and frameworks
 
 ### For Deployment
 
@@ -249,6 +267,8 @@ The version script automatically:
 ### For Integration
 
 - **[Agent Integration Guide](docs/archive/PANEL_AGENT_INTEGRATION.md)** - Agent development requirements
+- **[CHANGELOG](CHANGELOG.md)** - Version history and release notes
+- **[Security Guide](SECURITY.md)** - Security best practices
 
 ## 🔐 Security Features
 

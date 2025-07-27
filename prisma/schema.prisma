@@ -720,3 +720,58 @@ enum VoiceServerType {
   DISCORD
   MUMBLE
 }
+
+// Plugin System Models
+
+model Plugin {
+  id             String          @id @default(cuid())
+  name           String          @unique
+  version        String
+  author         String
+  description    String?
+  permissions    Json            @default("{}")
+  autoUpdate     Boolean         @default(false)
+  versionLocked  Boolean         @default(false)
+  status         PluginStatus    @default(INACTIVE)
+  installedAt    DateTime        @default(now())
+  lastUpdated    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  pluginData     PluginData[]
+  marketplace    PluginMarketplace?
+
+  @@map("plugins")
+}
+
+model PluginData {
+  id       String @id @default(cuid())
+  pluginId String
+  key      String
+  value    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  plugin   Plugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  @@unique([pluginId, key])
+  @@map("plugin_data")
+}
+
+model PluginMarketplace {
+  id            String   @id @default(cuid())
+  pluginId      String   @unique
+  pluginName    String
+  remoteVersion String?
+  downloadUrl   String?
+  checksum      String?
+  lastChecked   DateTime @default(now())
+  plugin        Plugin   @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  @@map("plugin_marketplace")
+}
+
+enum PluginStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+  UPDATING
+}
