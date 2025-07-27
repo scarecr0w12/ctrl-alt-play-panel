@@ -71,6 +71,19 @@ export const cleanupTestDatabase = async () => {
   }
 };
 
+// Quick cleanup for individual tests
+export const quickCleanup = async () => {
+  try {
+    // Clean up most common test entities
+    await prisma.alt.deleteMany({});
+    await prisma.ctrl.deleteMany({});
+    await prisma.server.deleteMany({});
+    await prisma.user.deleteMany({});
+  } catch (error) {
+    console.error('❌ Quick cleanup failed:', error);
+  }
+};
+
 // Test configuration
 export const testConfig = {
   database: {
