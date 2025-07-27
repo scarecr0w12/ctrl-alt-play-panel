@@ -24,14 +24,7 @@
           "db:push": "prisma db push",
           "db:seed": "prisma db seed",
           "db:reset": "prisma migrate reset",
-          "test:keploy": "jest --coverage --coverageReporters=text --coverageReporters=cobertura --collectCoverageFrom='./**/*.{js,jsx,ts,tsx}'",
-          "plugin:create": "node scripts/plugin-tools/cli.js create",
-          "plugin:install": "node scripts/plugin-tools/cli.js install",
-          "plugin:list": "node scripts/plugin-tools/cli.js list",
-          "plugin:enable": "node scripts/plugin-tools/cli.js enable",
-          "plugin:disable": "node scripts/plugin-tools/cli.js disable",
-          "plugin:validate": "node scripts/plugin-tools/cli.js validate",
-          "plugin:test": "node test-plugin-system.js"
+          "test:keploy": "jest --coverage --coverageReporters=text --coverageReporters=cobertura --collectCoverageFrom='./**/*.{js,jsx,ts,tsx}'"
      },
      "keywords": [
           "game-server",
