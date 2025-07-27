@@ -60,6 +60,30 @@ generate_password() {
     openssl rand -base64 32 | tr -d "=+/" | cut -c1-25
 }
 
+# Function to detect Docker Compose version and set command
+detect_docker_compose() {
+    DOCKER_COMPOSE_CMD=""
+    
+    # Check for Docker Compose v2 (plugin)
+    if docker compose version &> /dev/null; then
+        DOCKER_COMPOSE_CMD="docker compose"
+        COMPOSE_VERSION=$(docker compose version --short 2>/dev/null || echo "2.x")
+        print_info "Found Docker Compose v2 (plugin): $COMPOSE_VERSION"
+        return 0
+    fi
+    
+    # Check for Docker Compose v1 (standalone)
+    if command -v docker-compose &> /dev/null; then
+        DOCKER_COMPOSE_CMD="docker-compose"
+        COMPOSE_VERSION=$(docker-compose version --short 2>/dev/null || echo "1.x")
+        print_info "Found Docker Compose v1 (standalone): $COMPOSE_VERSION"
+        return 0
+    fi
+    
+    print_error "Docker Compose not found"
+    return 1
+}
+
 # Function to check if running as root
 check_root() {
     if [[ $EUID -eq 0 ]]; then
@@ -116,7 +140,8 @@ check_prerequisites() {
             missing_deps+=("docker")
         fi
         
-        if ! command -v docker-compose &> /dev/null && ! command -v docker compose &> /dev/null; then
+        # Use our Docker Compose detection function
+        if ! detect_docker_compose; then
             missing_deps+=("docker-compose")
         fi
     else
@@ -172,8 +197,16 @@ install_dependencies() {
                         sudo usermod -aG docker $USER
                         ;;
                     "docker-compose")
-                        sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-                        sudo chmod +x /usr/local/bin/docker-compose
+                        # Try to install Docker Compose v2 plugin first
+                        if docker --version &> /dev/null; then
+                            print_info "Installing Docker Compose v2 plugin..."
+                            sudo apt-get install -y docker-compose-plugin
+                        else
+                            # Fallback to standalone v1 if Docker is not available yet
+                            print_info "Installing Docker Compose v1 standalone..."
+                            sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+                            sudo chmod +x /usr/local/bin/docker-compose
+                        fi
                         ;;
                     "postgresql")
                         sudo apt-get install -y postgresql postgresql-contrib
@@ -200,6 +233,18 @@ install_dependencies() {
                         sudo systemctl start docker
                         sudo systemctl enable docker
                         sudo usermod -aG docker $USER
+                        ;;
+                    "docker-compose")
+                        # Try to install Docker Compose v2 plugin first
+                        if docker --version &> /dev/null; then
+                            print_info "Installing Docker Compose v2 plugin..."
+                            sudo yum install -y docker-compose-plugin
+                        else
+                            # Fallback to standalone v1
+                            print_info "Installing Docker Compose v1 standalone..."
+                            sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+                            sudo chmod +x /usr/local/bin/docker-compose
+                        fi
                         ;;
                     *)
                         sudo yum install -y "$dep"
@@ -233,6 +278,12 @@ install_dependencies() {
                         brew install node
                         ;;
                     "docker")
+                        brew install --cask docker
+                        ;;
+                    "docker-compose")
+                        # Docker Desktop for Mac includes Docker Compose v2
+                        print_info "Docker Compose v2 is included with Docker Desktop"
+                        print_info "If Docker Desktop is not installed, installing it now..."
                         brew install --cask docker
                         ;;
                     "postgresql")
@@ -424,6 +475,12 @@ EOF
 install_docker() {
     print_step "Setting up Docker installation..."
     
+    # Detect and set Docker Compose command
+    if ! detect_docker_compose; then
+        print_error "Docker Compose is required but not found. Please install Docker Compose and try again."
+        exit 1
+    fi
+    
     # Create docker-compose.yml for production
     cat > docker-compose.prod.yml << 'EOF'
 version: '3.8'
@@ -538,10 +595,10 @@ EOF
 
     # Build and start services
     print_info "Building Docker images..."
-    docker-compose -f docker-compose.prod.yml build
+    $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml build
     
     print_info "Starting services..."
-    docker-compose -f docker-compose.prod.yml up -d
+    $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d
     
     # Wait for services to be ready
     print_info "Waiting for services to start..."
@@ -549,11 +606,11 @@ EOF
     
     # Run database migrations
     print_info "Running database migrations..."
-    docker-compose -f docker-compose.prod.yml exec app npm run db:push
+    $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml exec app npm run db:push
     
     # Create admin user
     print_info "Creating admin user..."
-    docker-compose -f docker-compose.prod.yml exec app npm run seed
+    $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml exec app npm run seed
     
     print_success "Docker installation completed"
 }
@@ -691,10 +748,10 @@ show_completion() {
     
     echo -e "${CYAN}Useful Commands:${NC}"
     if [ "$INSTALL_TYPE" = "docker" ]; then
-        echo -e "  ${WHITE}View logs: docker-compose -f docker-compose.prod.yml logs -f${NC}"
-        echo -e "  ${WHITE}Restart: docker-compose -f docker-compose.prod.yml restart${NC}"
-        echo -e "  ${WHITE}Stop: docker-compose -f docker-compose.prod.yml down${NC}"
-        echo -e "  ${WHITE}Update: git pull && docker-compose -f docker-compose.prod.yml up -d --build${NC}"
+        echo -e "  ${WHITE}View logs: $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml logs -f${NC}"
+        echo -e "  ${WHITE}Restart: $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml restart${NC}"
+        echo -e "  ${WHITE}Stop: $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml down${NC}"
+        echo -e "  ${WHITE}Update: git pull && $DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d --build${NC}"
     else
         echo -e "  ${WHITE}View logs: sudo journalctl -u ctrl-alt-play -f${NC}"
         echo -e "  ${WHITE}Restart: sudo systemctl restart ctrl-alt-play${NC}"
