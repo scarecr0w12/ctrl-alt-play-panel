@@ -775,3 +775,55 @@ enum PluginStatus {
   ERROR
   UPDATING
 }
+
+// Plugin System Additional Models
+
+model GameTemplate {
+  id           String    @id @default(cuid())
+  plugin_name  String
+  name         String
+  description  String?
+  game_type    String
+  docker_image String
+  startup_cmd  String
+  config_files Json      @default("{}")
+  variables    Json      @default("{}")
+  ports        Json      @default("[]")
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  @@unique([plugin_name, name])
+  @@map("game_templates")
+}
+
+model DockerConfig {
+  id           String   @id @default(cuid())
+  plugin_name  String
+  name         String
+  description  String?
+  image        String
+  environment  Json     @default("{}")
+  volumes      Json     @default("[]")
+  ports        Json     @default("[]")
+  networks     Json     @default("[]")
+  labels       Json     @default("{}")
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@unique([plugin_name, name])
+  @@map("docker_configs")
+}
+
+model BillingIntegration {
+  id          String   @id @default(cuid())
+  plugin_name String   @unique
+  provider    String
+  webhook_url String
+  api_key     String
+  settings    Json     @default("{}")
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("billing_integrations")
+}

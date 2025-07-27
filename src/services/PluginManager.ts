@@ -25,13 +25,31 @@ enum PluginStatus {
  * Handles basic plugin lifecycle operations
  */
 export class PluginManager {
+  private static instance: PluginManager;
   private prisma: PrismaClient;
   private pluginDirectory: string;
+  private installedPlugins: Map<string, PluginMetadata>;
 
   constructor(prisma: PrismaClient, pluginDirectory: string = './plugins') {
     this.prisma = prisma;
     this.pluginDirectory = path.resolve(pluginDirectory);
+    this.installedPlugins = new Map();
     this.ensurePluginDirectory();
+  }
+
+  /**
+   * Get singleton instance for CLI usage
+   */
+  static getInstance(prisma?: PrismaClient, pluginDirectory?: string): PluginManager {
+    if (!PluginManager.instance) {
+      if (!prisma) {
+        // For CLI usage, create a new PrismaClient
+        const { PrismaClient } = require('@prisma/client');
+        prisma = new PrismaClient();
+      }
+      PluginManager.instance = new PluginManager(prisma!, pluginDirectory);
+    }
+    return PluginManager.instance;
   }
 
   /**
@@ -51,9 +69,9 @@ export class PluginManager {
   }
 
   /**
-   * Install a plugin from a local package
+   * Install plugin with source parameter for CLI compatibility
    */
-  async installPlugin(pluginPath: string): Promise<any> {
+  async installPlugin(pluginPath: string, source: string = 'local'): Promise<{ success: boolean; plugin: PluginMetadata; message: string }> {
     logger.info(`Installing plugin from: ${pluginPath}`);
 
     try {
@@ -87,8 +105,16 @@ export class PluginManager {
         }
       });
 
+      // Add to installed plugins map
+      this.installedPlugins.set(metadata.name, metadata);
+
       logger.info(`Plugin "${metadata.name}" installed successfully`);
-      return plugin;
+      
+      return {
+        success: true,
+        plugin: metadata,
+        message: 'Plugin installed successfully'
+      };
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -260,6 +286,51 @@ export class PluginManager {
 
     await copyRecursive(sourcePath, targetPath);
   }
+
+  // Additional methods needed by CLI
+
+  /**
+   * Validate a plugin configuration
+   */
+  async validatePlugin(config: any): Promise<{ valid: boolean; errors?: string[] }> {
+    const errors: string[] = [];
+
+    if (!config.name) errors.push('Plugin name is required');
+    if (!config.version) errors.push('Plugin version is required');
+    if (!config.author) errors.push('Plugin author is required');
+
+    return {
+      valid: errors.length === 0,
+      errors: errors.length > 0 ? errors : undefined
+    };
+  }
+
+  /**
+   * Get list of plugins
+   */
+  async getPlugins(type?: string): Promise<PluginMetadata[]> {
+    const plugins: PluginMetadata[] = [];
+    
+    if (fs.existsSync(this.pluginDirectory)) {
+      const pluginDirs = fs.readdirSync(this.pluginDirectory);
+      
+      for (const dir of pluginDirs) {
+        try {
+          const pluginPath = path.join(this.pluginDirectory, dir);
+          if (fs.statSync(pluginPath).isDirectory()) {
+            const metadata = await this.validatePluginStructure(pluginPath);
+            plugins.push(metadata);
+          }
+        } catch (error) {
+          // Skip invalid plugins
+          continue;
+        }
+      }
+    }
+    
+    return plugins;
+  }
+
 }
 
 export default PluginManager;
