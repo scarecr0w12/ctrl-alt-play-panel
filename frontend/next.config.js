@@ -5,7 +5,13 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: true, // Temporarily enable to test build
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  experimental: {
+    typedRoutes: false, // Disable to avoid route type conflicts
   },
   async headers() {
     return [
