@@ -156,7 +156,7 @@ export default function FilePreviewModal({
       className="fixed inset-0 z-50 overflow-y-auto"
     >
       <div className="flex items-center justify-center min-h-screen px-4">
-        <Dialog.Overlay className="fixed inset-0 bg-black/50" />
+        <div className="fixed inset-0 bg-black/50" onClick={onClose} />
         
         <div className="relative bg-panel-surface rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
           {/* Header */}

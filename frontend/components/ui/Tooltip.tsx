@@ -24,7 +24,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [calculatedPosition, setCalculatedPosition] = useState(position);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const triggerRef = useRef<HTMLElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
@@ -150,7 +150,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
 
   const clonedChildren = React.cloneElement(children, {
     ...triggerProps,
-    className: cn(children.props.className, 'cursor-pointer'),
+    className: cn((children.props as any).className, 'cursor-pointer'),
   });
 
   return (
