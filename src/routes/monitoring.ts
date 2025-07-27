@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { MonitoringService } from '../services/monitoringService';
+import DatabaseService from '../services/database';
 import { 
   authenticateToken, 
   requirePermission, 
@@ -160,22 +161,65 @@ router.post('/collect', authenticateToken, requirePermission('monitoring.view'),
  */
 router.get('/alerts', authenticateToken, requirePermission('monitoring.view'), async (req, res) => {
   try {
-    // Future implementation will use these query parameters for filtering
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { acknowledged = 'false', severity } = req.query;
+    
+    const db = DatabaseService.getInstance();
+    
+    // Build filter conditions
+    const where: {
+      acknowledged?: boolean;
+      severity?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    } = {};
+    
+    if (acknowledged === 'false') {
+      where.acknowledged = false;
+    } else if (acknowledged === 'true') {
+      where.acknowledged = true;
+    }
+    
+    if (severity && typeof severity === 'string') {
+      const upperSeverity = severity.toUpperCase();
+      if (['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(upperSeverity)) {
+        where.severity = upperSeverity as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+      }
+    }
 
-    const alerts = await monitoringService.getAlerts({
-      acknowledged: acknowledged === 'true',
-      severity: severity as string,
+    // Fetch alerts from database
+    const alerts = await db.alert.findMany({
+      where,
+      include: {
+        server: {
+          select: {
+            id: true,
+            name: true,
+            uuid: true
+          }
+        },
+        node: {
+          select: {
+            id: true,
+            name: true,
+            uuid: true
+          }
+        }
+      },
+      orderBy: [
+        { severity: 'desc' },
+        { createdAt: 'desc' }
+      ]
     });
 
-    return res.json({
+    res.json({
       success: true,
-      data: alerts
+      data: alerts,
+      total: alerts.length
     });
   } catch (error) {
-    console.error('Failed to get alerts:', error);
-    return res.status(500).json({ error: 'Failed to retrieve alerts' });
+    console.error('Error fetching alerts:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch alerts'
+    });
   }
 });
 
@@ -186,17 +230,49 @@ router.get('/alerts', authenticateToken, requirePermission('monitoring.view'), a
 router.post('/alerts/:id/acknowledge', authenticateToken, requirePermission('monitoring.view'), async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).user.id;
+    const userId = (req as unknown as { user: { id: string } }).user.id;
 
-    await monitoringService.acknowledgeAlert(id, userId);
+    const db = DatabaseService.getInstance();
 
-    return res.json({
+    // Update alert to acknowledged
+    const updatedAlert = await db.alert.update({
+      where: { id },
+      data: {
+        acknowledged: true,
+        acknowledgedAt: new Date(),
+        acknowledgedBy: userId
+      },
+      include: {
+        server: {
+          select: {
+            id: true,
+            name: true,
+            uuid: true
+          }
+        },
+        node: {
+          select: {
+            id: true,
+            name: true,
+            uuid: true
+          }
+        }
+      }
+    });
+
+    console.log(`Alert ${id} acknowledged by user ${userId}`);
+
+    res.json({
       success: true,
-      message: `Alert ${id} acknowledged`
+      data: updatedAlert,
+      message: 'Alert acknowledged successfully'
     });
   } catch (error) {
-    console.error('Failed to acknowledge alert:', error);
-    return res.status(500).json({ error: 'Failed to acknowledge alert' });
+    console.error('Error acknowledging alert:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to acknowledge alert'
+    });
   }
 });
 
@@ -208,27 +284,32 @@ router.get('/export', authenticateToken, requirePermission('monitoring.view'), a
   try {
     const { timeRange = '24h', format = 'json' } = req.query;
 
-    const exportData = await monitoringService.exportData(
-      timeRange as string,
-      format as 'json' | 'csv'
-    );
+    // TODO: Implement data export functionality
+    const exportData = {
+      message: 'Export functionality coming soon',
+      timeRange,
+      format,
+      timestamp: new Date().toISOString()
+    };
 
     if (format === 'csv') {
       res.set({
         'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="monitoring-data-${new Date().toISOString().split('T')[0]}.csv"`,
+        'Content-Disposition': `attachment; filename=monitoring-data-${Date.now()}.csv`
       });
-      return res.send(exportData);
-    } else {
-      res.set({
-        'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="monitoring-data-${new Date().toISOString().split('T')[0]}.json"`,
-      });
-      return res.json(exportData);
+      return res.send('timestamp,server_id,cpu,memory,disk\n'); // Empty CSV header
     }
+
+    return res.json({
+      success: true,
+      data: exportData
+    });
   } catch (error) {
-    console.error('Failed to export data:', error);
-    return res.status(500).json({ error: 'Failed to export data' });
+    console.error('Error exporting monitoring data:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to export monitoring data'
+    });
   }
 });
 
@@ -244,19 +325,25 @@ router.post('/compare', authenticateToken, requirePermission('monitoring.view'),
       return res.status(400).json({ error: 'Server IDs array is required' });
     }
 
-    const comparisonData = await monitoringService.compareServers(
+    // TODO: Implement server comparison functionality
+    const comparisonData = {
+      message: 'Server comparison functionality coming soon',
       serverIds,
-      timeRange as string,
-      metric as string
-    );
+      timeRange,
+      metric,
+      timestamp: new Date().toISOString()
+    };
 
     return res.json({
       success: true,
       data: comparisonData
     });
   } catch (error) {
-    console.error('Failed to get comparison data:', error);
-    return res.status(500).json({ error: 'Failed to get comparison data' });
+    console.error('Error comparing servers:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to compare servers'
+    });
   }
 });
 

@@ -18,7 +18,7 @@ export default function FilesPage() {
   const { user } = useAuth();
   const router = useRouter();
   const { serverId } = router.query;
-  const { addNotification } = useNotification();
+  const { success, info } = useNotification();
   
   const {
     files,
@@ -79,7 +79,7 @@ export default function FilesPage() {
           break;
         case 'copy':
           // TODO: Implement copy to clipboard functionality
-          addNotification('info', 'Copy functionality will be implemented');
+          info('Copy functionality will be implemented');
           break;
         case 'rename':
           const newName = prompt('Enter new name:', file.name);
@@ -122,12 +122,12 @@ export default function FilesPage() {
         case 'copy':
         case 'move':
           if (selectedFiles.length === 0) return;
-          addNotification('info', `${action} operation will be implemented`);
+          info(`${action} operation will be implemented`);
           break;
 
         case 'archive':
           if (selectedFiles.length === 0) return;
-          addNotification('info', `Archive creation (${data?.format}) will be implemented`);
+          info(`Archive creation (${data?.format}) will be implemented`);
           break;
 
         case 'upload':
@@ -136,11 +136,11 @@ export default function FilesPage() {
 
         case 'refresh':
           await refetch();
-          addNotification('success', 'File list refreshed');
+          success('File list refreshed');
           break;
 
         default:
-          addNotification('info', `${action} operation will be implemented`);
+          info(`${action} operation will be implemented`);
       }
     } catch (error) {
       console.error(`Failed to perform batch ${action}:`, error);
@@ -327,7 +327,7 @@ export default function FilesPage() {
             onUploadComplete={() => {
               setShowUploadModal(false);
               refetch();
-              addNotification('success', 'Files uploaded successfully');
+              success('Files uploaded successfully');
             }}
           />
 
@@ -342,7 +342,7 @@ export default function FilesPage() {
             }}
             onPermissionsUpdated={() => {
               refetch();
-              addNotification('success', 'File permissions updated');
+              success('File permissions updated');
             }}
           />
         </div>

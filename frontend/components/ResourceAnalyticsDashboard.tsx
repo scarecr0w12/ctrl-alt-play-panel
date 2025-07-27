@@ -13,7 +13,7 @@ import {
   ClockIcon,
   BuildingLibraryIcon,
   ChartPieIcon,
-  TrendingUpIcon,
+  ArrowTrendingUpIcon,
   BellAlertIcon,
 } from '@heroicons/react/24/outline';
 import { Line, Doughnut } from 'react-chartjs-2';
@@ -340,7 +340,7 @@ export default function ResourceAnalyticsDashboard({ className = '' }: ResourceA
 
   const tabs = [
     { id: 'overview', name: 'Overview', icon: ChartBarIcon },
-    { id: 'trends', name: 'Trends', icon: TrendingUpIcon },
+    { id: 'trends', name: 'Trends', icon: ArrowTrendingUpIcon },
     { id: 'comparison', name: 'Comparison', icon: BuildingLibraryIcon },
     { id: 'alerts', name: 'Alerts', icon: BellAlertIcon },
     { id: 'planning', name: 'Planning', icon: ChartPieIcon },

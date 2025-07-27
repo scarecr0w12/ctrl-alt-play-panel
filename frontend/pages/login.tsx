@@ -2,17 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { sanitizeInput, validateEmail, RateLimiter } from '@/lib/security';
 import {
   ServerIcon,
   EyeIcon,
   EyeSlashIcon,
 } from '@heroicons/react/24/outline';
 
+// Rate limiter for login attempts
+const loginRateLimiter = new RateLimiter(5, 15 * 60 * 1000); // 5 attempts per 15 minutes
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [isBlocked, setIsBlocked] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const router = useRouter();
 
@@ -25,15 +31,45 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    
+    // Sanitize inputs
+    const sanitizedEmail = sanitizeInput(email);
+    const sanitizedPassword = sanitizeInput(password);
+    
+    // Validate inputs
+    if (!validateEmail(sanitizedEmail)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    
+    if (!sanitizedPassword || sanitizedPassword.length < 1) {
+      setError('Please enter your password');
+      return;
+    }
+    
+    // Check rate limiting
+    const clientIP = 'client'; // In production, this would be the actual IP
+    if (!loginRateLimiter.isAllowed(clientIP)) {
+      setIsBlocked(true);
+      setError('Too many login attempts. Please try again in 15 minutes.');
+      return;
+    }
+    
     setLoading(true);
 
     try {
-      const success = await login(email, password);
+      const success = await login(sanitizedEmail, sanitizedPassword);
       if (success) {
+        // Reset rate limiter on successful login
+        loginRateLimiter.reset(clientIP);
         router.push('/dashboard');
+      } else {
+        setError('Invalid email or password');
       }
     } catch (error) {
       console.error('Login failed:', error);
+      setError('Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -70,6 +106,18 @@ export default function LoginPage() {
           <h2 className="text-2xl font-bold text-center mb-6 text-white">
             Welcome Back
           </h2>
+          
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
+              <p className="text-red-400 text-sm text-center">{error}</p>
+              {isBlocked && (
+                <p className="text-red-300 text-xs text-center mt-1">
+                  For security reasons, please wait before trying again.
+                </p>
+              )}
+            </div>
+          )}
           
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>

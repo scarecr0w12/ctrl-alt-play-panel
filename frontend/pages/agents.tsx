@@ -3,7 +3,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
 import { PermissionGuard } from '@/components/PermissionGuard';
 import { useAgents } from '@/hooks/useAgents';
+import { useRealTimeAgents } from '@/hooks/useRealTimeAgents';
 import { ExternalAgent, agentsApi } from '@/lib/api';
+import AgentPerformanceDashboard from '@/components/agents/AgentPerformanceDashboard';
+import AgentDiscovery from '@/components/agents/AgentDiscovery';
+import AgentServerManagement from '@/components/agents/AgentServerManagement';
 import {
   ServerIcon,
   CheckCircleIcon,
@@ -21,6 +25,8 @@ import {
   CloudIcon,
   SignalIcon,
   CpuChipIcon,
+  WifiIcon,
+  BeakerIcon,
 } from '@heroicons/react/24/outline';
 
 interface RegisterAgentModalProps {
@@ -265,44 +271,15 @@ function ConfigureAgentModal({ isOpen, onClose, agent, onSave }: ConfigureAgentM
 }
 
 function AgentServersModal({ isOpen, onClose, agent }: AgentServersModalProps) {
-  const [servers, setServers] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  React.useEffect(() => {
-    if (isOpen && agent) {
-      loadServers();
-    }
-  }, [isOpen, agent]);
-
-  const loadServers = async () => {
-    if (!agent) return;
-    
-    setLoading(true);
-    setError('');
-    try {
-      const response = await agentsApi.getServers(agent.nodeUuid);
-      if (response.data.success) {
-        setServers(response.data.data);
-      } else {
-        setError('Failed to load servers');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load servers');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (!isOpen || !agent) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="glass-card rounded-xl p-6 w-full max-w-4xl mx-4 max-h-[80vh] overflow-hidden">
-        <div className="flex items-center justify-between mb-4">
+      <div className="glass-card rounded-xl p-6 w-full max-w-7xl mx-4 max-h-[90vh] overflow-hidden">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-lg font-semibold text-white">Agent Servers</h3>
-            <p className="text-sm text-gray-400">Servers running on {agent.nodeUuid}</p>
+            <h3 className="text-lg font-semibold text-white">Agent Server Management</h3>
+            <p className="text-sm text-gray-400">Managing servers on {agent.nodeUuid}</p>
           </div>
           <button
             onClick={onClose}
@@ -312,50 +289,12 @@ function AgentServersModal({ isOpen, onClose, agent }: AgentServersModalProps) {
           </button>
         </div>
         
-        {error && (
-          <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 mb-4 flex items-center space-x-2">
-            <ExclamationTriangleIcon className="w-5 h-5 text-red-400 flex-shrink-0" />
-            <span className="text-red-400 text-sm">{error}</span>
-          </div>
-        )}
-        
-        <div className="overflow-y-auto max-h-[60vh]">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
-            </div>
-          ) : servers.length === 0 ? (
-            <div className="text-center py-8">
-              <ComputerDesktopIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-400">No servers found on this agent</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {servers.map((server: any) => (
-                <div key={server.id} className="bg-white/5 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-3 h-3 rounded-full ${
-                        server.status === 'RUNNING' ? 'bg-green-400' :
-                        server.status === 'STOPPED' ? 'bg-red-400' :
-                        'bg-yellow-400'
-                      }`}></div>
-                      <div>
-                        <h4 className="text-white font-medium">{server.name}</h4>
-                        <p className="text-sm text-gray-400">{server.ctrlName} • {server.altName}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-white">{server.status}</p>
-                      <p className="text-xs text-gray-400">
-                        {server.memory}MB • {server.disk}MB • {server.cpu}%
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="overflow-y-auto max-h-[75vh]">
+          <AgentServerManagement
+            nodeUuid={agent.nodeUuid}
+            agentName={agent.nodeUuid}
+            isOnline={agent.isOnline}
+          />
         </div>
       </div>
     </div>
@@ -610,13 +549,23 @@ export default function AgentsPage() {
     unregisterAgent,
   } = useAgents();
 
+  const {
+    connectionStatus,
+    lastUpdate,
+    isRealTimeEnabled,
+    toggleRealTime,
+    metricsData,
+  } = useRealTimeAgents();
+
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showServersModal, setShowServersModal] = useState(false);
   const [showDiagnosticsModal, setShowDiagnosticsModal] = useState(false);
   const [showMetricsModal, setShowMetricsModal] = useState(false);
+  const [showDiscoveryPanel, setShowDiscoveryPanel] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<ExternalAgent | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'discovery' | 'performance'>('overview');
 
   const handleUnregister = async (nodeUuid: string) => {
     if (typeof window !== 'undefined' && !window.confirm('Are you sure you want to unregister this agent?')) return;
@@ -725,6 +674,25 @@ export default function AgentsPage() {
             </div>
             
             <div className="flex items-center space-x-3">
+              {/* Real-time Toggle */}
+              <button
+                onClick={toggleRealTime}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                  isRealTimeEnabled 
+                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                    : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
+                }`}
+                title={isRealTimeEnabled ? 'Disable Real-time Updates' : 'Enable Real-time Updates'}
+              >
+                <WifiIcon className="w-4 h-4" />
+                <span className="text-sm">Real-time</span>
+                <div className={`w-2 h-2 rounded-full ${
+                  connectionStatus === 'connected' ? 'bg-green-400' :
+                  connectionStatus === 'reconnecting' ? 'bg-yellow-400 animate-pulse' :
+                  'bg-red-400'
+                }`}></div>
+              </button>
+
               <button
                 onClick={handleForceDiscovery}
                 disabled={actionLoading === 'discovery'}
@@ -746,217 +714,321 @@ export default function AgentsPage() {
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                  <ServerIcon className="w-6 h-6 text-blue-400" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-400">Total Agents</p>
-                  <p className="text-2xl font-bold text-white">{agents.length}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
-                  <CheckCircleIcon className="w-6 h-6 text-green-400" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-400">Online</p>
-                  <p className="text-2xl font-bold text-white">
-                    {Array.from(healthStatuses.values()).filter(h => h.status.online).length}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center">
-                  <XCircleIcon className="w-6 h-6 text-red-400" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-400">Offline</p>
-                  <p className="text-2xl font-bold text-white">
-                    {agents.length - Array.from(healthStatuses.values()).filter(h => h.status.online).length}
-                  </p>
-                </div>
-              </div>
-            </div>
+          {/* Tab Navigation */}
+          <div className="flex space-x-1 bg-white/5 rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors ${
+                activeTab === 'overview'
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <ServerIcon className="w-4 h-4" />
+              <span>Overview</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('discovery')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors ${
+                activeTab === 'discovery'
+                  ? 'bg-purple-500/20 text-purple-400'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <MagnifyingGlassIcon className="w-4 h-4" />
+              <span>Discovery</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('performance')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors ${
+                activeTab === 'performance'
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <ChartBarIcon className="w-4 h-4" />
+              <span>Performance</span>
+            </button>
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="glass-card rounded-xl p-4 border-l-4 border-red-500">
-              <div className="flex items-center">
-                <ExclamationTriangleIcon className="w-5 h-5 text-red-400 mr-2" />
-                <span className="text-red-400">{error}</span>
-                <button
-                  onClick={refreshAgents}
-                  className="ml-auto text-red-400 hover:text-red-300"
-                >
-                  <ArrowPathIcon className="w-4 h-4" />
-                </button>
+          {/* Real-time Status */}
+          {isRealTimeEnabled && lastUpdate && (
+            <div className="glass-card rounded-xl p-3">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    connectionStatus === 'connected' ? 'bg-green-400' :
+                    connectionStatus === 'reconnecting' ? 'bg-yellow-400 animate-pulse' :
+                    'bg-red-400'
+                  }`}></div>
+                  <span className="text-gray-400">Real-time updates {connectionStatus}</span>
+                </div>
+                <span className="text-gray-500">
+                  Last update: {lastUpdate.toLocaleTimeString()}
+                </span>
               </div>
             </div>
           )}
 
-          {/* Agents List */}
-          <div className="glass-card rounded-xl overflow-hidden">
-            {loading ? (
-              <div className="p-6">
-                <div className="space-y-4">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="animate-pulse">
-                      <div className="flex items-center space-x-4 p-4 border-b border-white/10">
-                        <div className="w-12 h-12 bg-white/10 rounded-lg"></div>
-                        <div className="flex-1 space-y-2">
-                          <div className="h-4 bg-white/10 rounded w-48"></div>
-                          <div className="h-3 bg-white/5 rounded w-32"></div>
-                        </div>
-                      </div>
+          {/* Tab Content */}
+          {activeTab === 'overview' && (
+            <>
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="glass-card rounded-xl p-6">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                      <ServerIcon className="w-6 h-6 text-blue-400" />
                     </div>
-                  ))}
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-400">Total Agents</p>
+                      <p className="text-2xl font-bold text-white">{agents.length}</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ) : agents.length === 0 ? (
-              <div className="p-12 text-center">
-                <ServerIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">No Agents Found</h3>
-                <p className="text-gray-400 mb-6">
-                  No external agents are currently registered. Agents help manage servers on remote nodes.
-                </p>
-                <div className="flex justify-center space-x-3">
-                  <button
-                    onClick={handleForceDiscovery}
-                    className="btn-secondary"
-                    disabled={actionLoading === 'discovery'}
-                  >
-                    {actionLoading === 'discovery' ? 'Discovering...' : 'Discover Agents'}
-                  </button>
-                  {isAdmin && (
-                    <button
-                      onClick={() => setShowRegisterModal(true)}
-                      className="btn-primary"
-                    >
-                      Register Agent
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="divide-y divide-white/5">
-                {agents.map((agent) => {
-                  const status = getAgentStatus(agent);
-                  const health = healthStatuses.get(agent.nodeUuid);
-                  const StatusIcon = status.icon;
 
-                  return (
-                    <div key={agent.nodeUuid} className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className={`w-12 h-12 ${status.bgColor} rounded-lg flex items-center justify-center`}>
-                            <StatusIcon className={`w-6 h-6 ${status.color}`} />
-                          </div>
-                          
-                          <div>
-                            <h3 className="text-lg font-semibold text-white">
-                              {agent.nodeUuid}
-                            </h3>
-                            <p className="text-sm text-gray-400">
-                              {agent.baseUrl}
-                            </p>
-                            <div className="flex items-center space-x-4 mt-1">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}>
-                                {status.label}
-                              </span>
-                              {health?.status.version && (
-                                <span className="text-xs text-gray-500">
-                                  v{health.status.version}
-                                </span>
-                              )}
-                              {health?.status.responseTime && (
-                                <span className="text-xs text-gray-500">
-                                  {health.status.responseTime}ms
-                                </span>
-                              )}
-                              {health?.status.serverCount !== undefined && (
-                                <span className="text-xs text-gray-500">
-                                  {health.status.serverCount} servers
-                                </span>
-                              )}
-                              <span className="text-xs text-gray-500">
-                                Last seen {formatLastSeen(agent.lastSeen || new Date())}
-                              </span>
+                <div className="glass-card rounded-xl p-6">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                      <CheckCircleIcon className="w-6 h-6 text-green-400" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-400">Online</p>
+                      <p className="text-2xl font-bold text-white">
+                        {Array.from(healthStatuses.values()).filter(h => h.status.online).length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="glass-card rounded-xl p-6">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center">
+                      <XCircleIcon className="w-6 h-6 text-red-400" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-400">Offline</p>
+                      <p className="text-2xl font-bold text-white">
+                        {agents.length - Array.from(healthStatuses.values()).filter(h => h.status.online).length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="glass-card rounded-xl p-4 border-l-4 border-red-500">
+                  <div className="flex items-center">
+                    <ExclamationTriangleIcon className="w-5 h-5 text-red-400 mr-2" />
+                    <span className="text-red-400">{error}</span>
+                    <button
+                      onClick={refreshAgents}
+                      className="ml-auto text-red-400 hover:text-red-300"
+                    >
+                      <ArrowPathIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Agents List */}
+              <div className="glass-card rounded-xl overflow-hidden">
+                {loading ? (
+                  <div className="p-6">
+                    <div className="space-y-4">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="animate-pulse">
+                          <div className="flex items-center space-x-4 p-4 border-b border-white/10">
+                            <div className="w-12 h-12 bg-white/10 rounded-lg"></div>
+                            <div className="flex-1 space-y-2">
+                              <div className="h-4 bg-white/10 rounded w-48"></div>
+                              <div className="h-3 bg-white/5 rounded w-32"></div>
                             </div>
                           </div>
                         </div>
-
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleViewServers(agent)}
-                            className="p-2 hover:bg-blue-500/10 rounded-lg transition-colors"
-                            title="View Servers"
-                          >
-                            <ComputerDesktopIcon className="w-4 h-4 text-blue-400" />
-                          </button>
-                          
-                          <button
-                            onClick={() => handleViewMetrics(agent)}
-                            className="p-2 hover:bg-green-500/10 rounded-lg transition-colors"
-                            title="View Metrics"
-                          >
-                            <ChartBarIcon className="w-4 h-4 text-green-400" />
-                          </button>
-                          
-                          <button
-                            onClick={() => handleDiagnostics(agent)}
-                            className="p-2 hover:bg-yellow-500/10 rounded-lg transition-colors"
-                            title="Run Diagnostics"
-                          >
-                            <WrenchScrewdriverIcon className="w-4 h-4 text-yellow-400" />
-                          </button>
-                          
-                          {isAdmin && (
-                            <button
-                              onClick={() => handleConfigureAgent(agent)}
-                              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                              title="Configure Agent"
-                            >
-                              <CogIcon className="w-4 h-4 text-gray-400" />
-                            </button>
-                          )}
-                          
-                          {isAdmin && (
-                            <button
-                              onClick={() => handleUnregister(agent.nodeUuid)}
-                              disabled={actionLoading === agent.nodeUuid}
-                              className="p-2 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
-                              title="Unregister Agent"
-                            >
-                              <TrashIcon className="w-4 h-4 text-red-400" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {health?.status.error && (
-                        <div className="mt-3 p-3 bg-red-500/10 rounded-lg">
-                          <p className="text-sm text-red-400">
-                            Error: {health.status.error}
-                          </p>
-                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : agents.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <ServerIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">No Agents Found</h3>
+                    <p className="text-gray-400 mb-6">
+                      No external agents are currently registered. Agents help manage servers on remote nodes.
+                    </p>
+                    <div className="flex justify-center space-x-3">
+                      <button
+                        onClick={handleForceDiscovery}
+                        className="btn-secondary"
+                        disabled={actionLoading === 'discovery'}
+                      >
+                        {actionLoading === 'discovery' ? 'Discovering...' : 'Discover Agents'}
+                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => setShowRegisterModal(true)}
+                          className="btn-primary"
+                        >
+                          Register Agent
+                        </button>
                       )}
                     </div>
-                  );
-                })}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-white/5">
+                    {agents.map((agent) => {
+                      const status = getAgentStatus(agent);
+                      const health = healthStatuses.get(agent.nodeUuid);
+                      const StatusIcon = status.icon;
+
+                      return (
+                        <div key={agent.nodeUuid} className="p-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                              <div className={`w-12 h-12 ${status.bgColor} rounded-lg flex items-center justify-center`}>
+                                <StatusIcon className={`w-6 h-6 ${status.color}`} />
+                              </div>
+                              
+                              <div>
+                                <h3 className="text-lg font-semibold text-white">
+                                  {agent.nodeUuid}
+                                </h3>
+                                <p className="text-sm text-gray-400">
+                                  {agent.baseUrl}
+                                </p>
+                                <div className="flex items-center space-x-4 mt-1">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}>
+                                    {status.label}
+                                  </span>
+                                  {health?.status.version && (
+                                    <span className="text-xs text-gray-500">
+                                      v{health.status.version}
+                                    </span>
+                                  )}
+                                  {health?.status.responseTime && (
+                                    <span className="text-xs text-gray-500">
+                                      {health.status.responseTime}ms
+                                    </span>
+                                  )}
+                                  {health?.status.serverCount !== undefined && (
+                                    <span className="text-xs text-gray-500">
+                                      {health.status.serverCount} servers
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-gray-500">
+                                    Last seen {formatLastSeen(agent.lastSeen || new Date())}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => handleViewServers(agent)}
+                                className="p-2 hover:bg-blue-500/10 rounded-lg transition-colors"
+                                title="View Servers"
+                              >
+                                <ComputerDesktopIcon className="w-4 h-4 text-blue-400" />
+                              </button>
+                              
+                              <button
+                                onClick={() => handleViewMetrics(agent)}
+                                className="p-2 hover:bg-green-500/10 rounded-lg transition-colors"
+                                title="View Metrics"
+                              >
+                                <ChartBarIcon className="w-4 h-4 text-green-400" />
+                              </button>
+                              
+                              <button
+                                onClick={() => handleDiagnostics(agent)}
+                                className="p-2 hover:bg-yellow-500/10 rounded-lg transition-colors"
+                                title="Run Diagnostics"
+                              >
+                                <WrenchScrewdriverIcon className="w-4 h-4 text-yellow-400" />
+                              </button>
+                              
+                              {isAdmin && (
+                                <button
+                                  onClick={() => handleConfigureAgent(agent)}
+                                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                                  title="Configure Agent"
+                                >
+                                  <CogIcon className="w-4 h-4 text-gray-400" />
+                                </button>
+                              )}
+                              
+                              {isAdmin && (
+                                <button
+                                  onClick={() => handleUnregister(agent.nodeUuid)}
+                                  disabled={actionLoading === agent.nodeUuid}
+                                  className="p-2 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Unregister Agent"
+                                >
+                                  <TrashIcon className="w-4 h-4 text-red-400" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {health?.status.error && (
+                            <div className="mt-3 p-3 bg-red-500/10 rounded-lg">
+                              <p className="text-sm text-red-400">
+                                Error: {health.status.error}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
+
+          {activeTab === 'discovery' && (
+            <AgentDiscovery 
+              onRegisterAgent={registerAgent}
+              className="mt-6"
+            />
+          )}
+
+          {activeTab === 'performance' && (
+            <div className="space-y-6">
+              {agents.length === 0 ? (
+                <div className="glass-card rounded-xl p-12 text-center">
+                  <BeakerIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-white mb-2">No Agents for Performance Monitoring</h3>
+                  <p className="text-gray-400">
+                    Register agents to view their performance metrics and system monitoring.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {agents.map((agent) => (
+                    <div key={agent.nodeUuid} className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-white">{agent.nodeUuid}</h3>
+                        <span className={`text-sm px-2 py-1 rounded-full ${
+                          agent.isOnline ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                        }`}>
+                          {agent.isOnline ? 'Online' : 'Offline'}
+                        </span>
+                      </div>
+                      <AgentPerformanceDashboard
+                        nodeUuid={agent.nodeUuid}
+                        metrics={metricsData.get(agent.nodeUuid)}
+                        isOnline={agent.isOnline}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Register Agent Modal */}

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger';
 import { User } from '../types';
 import DatabaseService from './database';
+import ExternalAgentService from './externalAgentService';
 
 interface JWTPayload {
   user: User;
@@ -138,20 +139,56 @@ export class SocketService {
     }
   }
 
-  private static handleServerCommand(socket: Socket, data: { serverId: string; command: string }): void {
+  private static async handleServerCommand(socket: Socket, data: { serverId: string; command: string }): Promise<void> {
     const { serverId, command } = data;
     const user = (socket as unknown as { user: User }).user;
 
-    // TODO: Validate user has access to server
-    // TODO: Send command to agent
-    logger.info(`User ${user.username} sent command to server ${serverId}: ${command}`);
+    try {
+      // Validate user has access to server
+      const db = DatabaseService.getInstance();
+      const server = await db.server.findFirst({
+        where: {
+          uuid: serverId,
+          OR: [
+            { userId: user.id },
+            { subusers: { some: { userId: user.id } } }
+          ]
+        },
+        include: {
+          node: true
+        }
+      });
 
-    // Broadcast command to server room
-    this.io.to(`server:${serverId}`).emit('server:output', {
-      type: 'command',
-      data: command,
-      timestamp: new Date()
-    });
+      if (!server) {
+        logger.warn(`User ${user.username} attempted to send command to unauthorized server ${serverId}`);
+        socket.emit('server:command:error', { error: 'Server not found or unauthorized' });
+        return;
+      }
+
+      // Validate command is not empty
+      if (!command || command.trim().length === 0) {
+        socket.emit('server:command:error', { error: 'Command cannot be empty' });
+        return;
+      }
+
+      // Send command to agent via ExternalAgentService
+      const agentService = ExternalAgentService.getInstance();
+      await agentService.sendServerCommand(server.nodeId, serverId, command);
+      
+      logger.info(`User ${user.username} sent command to server ${server.name} (${serverId}): ${command}`);
+
+      // Broadcast command to server room for real-time updates
+      this.io.to(`server:${serverId}`).emit('server:output', {
+        type: 'command',
+        data: command,
+        timestamp: new Date(),
+        user: user.username
+      });
+
+    } catch (error) {
+      logger.error(`Failed to send command to server ${serverId}:`, error);
+      socket.emit('server:command:error', { error: 'Failed to send command' });
+    }
   }
 
   private static async handleConsoleJoin(socket: Socket, data: { serverId: string }): Promise<void> {
@@ -347,22 +384,124 @@ export class SocketService {
     }
   }
 
-  private static handleFileRead(socket: Socket, data: { serverId: string; path: string }): void {
+  private static async handleFileRead(socket: Socket, data: { serverId: string; path: string }): Promise<void> {
     const { serverId, path } = data;
     const user = (socket as unknown as { user: User }).user;
 
-    // TODO: Validate user has access to server and file
-    // TODO: Read file from agent
-    logger.info(`User ${user.username} requested file read: ${path} on server ${serverId}`);
+    try {
+      // Validate user has access to server and file
+      const db = DatabaseService.getInstance();
+      const server = await db.server.findFirst({
+        where: {
+          uuid: serverId,
+          OR: [
+            { userId: user.id },
+            { subusers: { some: { userId: user.id } } }
+          ]
+        },
+        include: {
+          node: true
+        }
+      });
+
+      if (!server) {
+        logger.warn(`User ${user.username} attempted to read file from unauthorized server ${serverId}`);
+        socket.emit('file:read:error', { error: 'Server not found or unauthorized' });
+        return;
+      }
+
+      // Validate file path
+      if (!path || path.trim().length === 0) {
+        socket.emit('file:read:error', { error: 'File path cannot be empty' });
+        return;
+      }
+
+      // Additional path validation to prevent directory traversal
+      if (path.includes('..') || path.includes('//') || path.startsWith('/')) {
+        socket.emit('file:read:error', { error: 'Invalid file path' });
+        return;
+      }
+
+      // Read file from agent
+      const agentService = ExternalAgentService.getInstance();
+      const response = await agentService.readFile(server.nodeId, serverId, path);
+      
+      logger.info(`User ${user.username} read file: ${path} from server ${server.name} (${serverId})`);
+
+      // Send file content back to client
+      socket.emit('file:read:response', {
+        path,
+        content: response.data,
+        success: response.success
+      });
+
+    } catch (error) {
+      logger.error(`Failed to read file ${path} from server ${serverId}:`, error);
+      socket.emit('file:read:error', { error: 'Failed to read file' });
+    }
   }
 
-  private static handleFileWrite(socket: Socket, data: { serverId: string; path: string; content: string }): void {
+  private static async handleFileWrite(socket: Socket, data: { serverId: string; path: string; content: string }): Promise<void> {
     const { serverId, path, content } = data;
     const user = (socket as unknown as { user: User }).user;
 
-    // TODO: Validate user has access to server and file
-    // TODO: Write file via agent
-    logger.info(`User ${user.username} requested file write: ${path} on server ${serverId} (${content.length} chars)`);
+    try {
+      // Validate user has access to server and file
+      const db = DatabaseService.getInstance();
+      const server = await db.server.findFirst({
+        where: {
+          uuid: serverId,
+          OR: [
+            { userId: user.id },
+            { subusers: { some: { userId: user.id } } }
+          ]
+        },
+        include: {
+          node: true
+        }
+      });
+
+      if (!server) {
+        logger.warn(`User ${user.username} attempted to write file to unauthorized server ${serverId}`);
+        socket.emit('file:write:error', { error: 'Server not found or unauthorized' });
+        return;
+      }
+
+      // Validate file path
+      if (!path || path.trim().length === 0) {
+        socket.emit('file:write:error', { error: 'File path cannot be empty' });
+        return;
+      }
+
+      // Additional path validation to prevent directory traversal
+      if (path.includes('..') || path.includes('//') || path.startsWith('/')) {
+        socket.emit('file:write:error', { error: 'Invalid file path' });
+        return;
+      }
+
+      // Validate content size (prevent extremely large files)
+      if (content && content.length > 10 * 1024 * 1024) { // 10MB limit
+        socket.emit('file:write:error', { error: 'File content too large (max 10MB)' });
+        return;
+      }
+
+      // Write file via agent
+      const agentService = ExternalAgentService.getInstance();
+      const response = await agentService.writeFile(server.nodeId, serverId, path, content || '');
+      
+      logger.info(`User ${user.username} wrote file: ${path} to server ${server.name} (${serverId}) (${(content || '').length} chars)`);
+
+      // Send response back to client
+      socket.emit('file:write:response', {
+        path,
+        success: response.success,
+        message: response.message
+      });
+
+    } catch (error) {
+      logger.error(`Failed to write file ${path} to server ${serverId}:`, error);
+      socket.emit('file:write:error', { error: 'Failed to write file' });
+    }
   }
 
   public static emitToUser(userId: string, event: string, data: unknown): void {

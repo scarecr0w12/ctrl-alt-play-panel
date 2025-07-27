@@ -287,7 +287,7 @@ export default function MonitoringPage() {
       })
     );
 
-    let datasets = [];
+    let datasets: any[] = [];
     
     if (selectedMetric === 'cpu') {
       datasets = [{

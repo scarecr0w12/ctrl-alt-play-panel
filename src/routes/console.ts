@@ -3,6 +3,7 @@ import { ExternalAgentService } from '../services/externalAgentService';
 import { ServerAgentMappingService } from '../services/serverAgentMappingService';
 import { SocketService } from '../services/socket';
 import { logger } from '../utils/logger';
+import DatabaseService from '../services/database';
 
 const router = Router();
 
@@ -361,18 +362,37 @@ router.get('/settings', async (req: Request, res: Response) => {
       return;
     }
 
-    // Get console settings via agent (or return defaults)
+    // Get console settings from database or return defaults
+    const db = DatabaseService.getInstance();
+    const settingId = `console_settings_${serverId}`;
+    
+    let settings = {
+      bufferSize: 10000,
+      autoScroll: true,
+      showTimestamp: true,
+      filterLevel: 'all',
+      theme: 'dark',
+      fontSize: 14,
+      fontFamily: 'Consolas, "Courier New", monospace'
+    };
+
+    try {
+      const savedSetting = await db.setting.findUnique({
+        where: { id: settingId }
+      });
+
+      if (savedSetting) {
+        const parsedSettings = JSON.parse(savedSetting.value);
+        settings = { ...settings, ...parsedSettings };
+        logger.info(`Retrieved console settings from database for server ${serverId}`);
+      }
+    } catch (error) {
+      logger.warn(`Failed to retrieve console settings for server ${serverId}, using defaults:`, error);
+    }
+
     res.json({
       serverId,
-      settings: {
-        bufferSize: 10000,
-        autoScroll: true,
-        showTimestamp: true,
-        filterLevel: 'all',
-        theme: 'dark',
-        fontSize: 14,
-        fontFamily: 'Consolas, "Courier New", monospace'
-      },
+      settings,
       success: true
     });
   } catch (error) {
@@ -403,8 +423,27 @@ router.post('/settings', async (req: Request, res: Response) => {
 
     logger.info(`Updating console settings for server ${serverId}`);
 
-    // TODO: Save settings to database or agent
-    // For now, just acknowledge the update
+    // Save settings to database
+    try {
+      const db = DatabaseService.getInstance();
+      const settingId = `console_settings_${serverId}`;
+      
+      await db.setting.upsert({
+        where: { id: settingId },
+        update: { value: JSON.stringify(settings) },
+        create: { 
+          id: settingId, 
+          value: JSON.stringify(settings) 
+        }
+      });
+
+      logger.info(`Console settings saved to database for server ${serverId}`);
+    } catch (error) {
+      logger.error(`Failed to save console settings for server ${serverId}:`, error);
+      res.status(500).json({ error: 'Failed to save console settings' });
+      return;
+    }
+
     res.json({
       serverId,
       settings,

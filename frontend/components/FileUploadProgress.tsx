@@ -201,9 +201,9 @@ export default function FileUploadProgress({
 
     try {
       // Upload files sequentially to avoid overwhelming the server
-      for (const uploadFile of uploadFiles) {
-        if (uploadFile.status === 'pending') {
-          await uploadFile(uploadFile);
+      for (const fileToUpload of uploadFiles) {
+        if (fileToUpload.status === 'pending') {
+          await uploadFile(fileToUpload);
         }
       }
 

@@ -71,7 +71,7 @@ export default function FilePermissionsDialog({
       
       // Parse octal permissions into individual digits
       const octal = info.permissions || '644';
-      const digits = octal.split('').map(d => parseInt(d, 10));
+      const digits = octal.split('').map((d: string) => parseInt(d, 10));
       
       // Ensure we have 3 digits (pad with 0 if needed)
       while (digits.length < 3) {

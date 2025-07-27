@@ -13,11 +13,10 @@ import {
 
 export default function ConsolePage() {
   const { user } = useAuth();
-  const { addNotification } = useNotification();
+  const { success, warning, error: showError, info } = useNotification();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const [showServerSelector, setShowServerSelector] = useState(false);
-  const [consoleManagerRef, setConsoleManagerRef] = useState<any>(null);
 
   // Initialize socket connection
   useEffect(() => {
@@ -34,17 +33,17 @@ export default function ConsolePage() {
 
     socketInstance.on('connect', () => {
       setConnected(true);
-      addNotification('success', 'Connected to console server');
+      success('Connected to console server');
     });
 
     socketInstance.on('disconnect', () => {
       setConnected(false);
-      addNotification('warning', 'Disconnected from console server');
+      warning('Disconnected from console server');
     });
 
     socketInstance.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
-      addNotification('error', 'Failed to connect to console server');
+      showError('Failed to connect to console server');
     });
 
     setSocket(socketInstance);
@@ -52,13 +51,11 @@ export default function ConsolePage() {
     return () => {
       socketInstance.disconnect();
     };
-  }, [user, addNotification]);
+  }, [user, success, warning, showError]);
 
   const handleAddConsole = (serverId: string, serverName: string) => {
-    if (consoleManagerRef?.addConsoleTab) {
-      consoleManagerRef.addConsoleTab(serverId, serverName);
-      addNotification('info', `Opened console for ${serverName}`);
-    }
+    // Note: This functionality needs to be implemented via props or context
+    info(`Console for ${serverName} - manual implementation needed`);
   };
 
   if (!user) {
@@ -117,7 +114,6 @@ export default function ConsolePage() {
             <ConsoleManager
               socket={socket}
               className="h-full"
-              ref={setConsoleManagerRef}
             />
           </div>
 

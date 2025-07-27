@@ -137,6 +137,11 @@ export const usersApi = {
   update: (id: string, userData: any) => api.put(`/users/${id}`, userData),
   delete: (id: string) => api.delete(`/users/${id}`),
   updatePassword: (id: string, passwordData: any) => api.put(`/users/${id}/password`, passwordData),
+  bulkDelete: (userIds: string[]) => api.post('/users/bulk/delete', { userIds }),
+  bulkUpdateRole: (userIds: string[], role: string) => api.post('/users/bulk/role', { userIds, role }),
+  bulkUpdateStatus: (userIds: string[], isActive: boolean) => api.post('/users/bulk/status', { userIds, isActive }),
+  getStats: () => api.get('/users/stats'),
+  getActivity: (page: number = 1, limit: number = 10) => api.get(`/users/activity?page=${page}&limit=${limit}`),
 };
 
 // User Profile API
@@ -195,6 +200,8 @@ export const altsApi = {
   update: (id: string, altData: any) => api.put(`/alts/${id}`, altData),
   delete: (id: string) => api.delete(`/alts/${id}`),
   clone: (id: string, name: string) => api.post(`/alts/${id}/clone`, { name }),
+  import: (ctrlId: string, eggData: any) => api.post(`/alts/import`, { ctrlId, eggData }),
+  export: (altId: string) => api.get(`/alts/${altId}/export`),
 };
 
 // Servers API
@@ -245,6 +252,10 @@ export const agentsApi = {
   healthCheck: () => api.get('/agents/health'),
   healthCheckAll: () => api.get('/agents/health-all'),
   discover: () => api.post('/agents/discover'),
+  getServers: (nodeUuid: string) => api.get(`/agents/${nodeUuid}/servers`),
+  testConnection: (nodeUuid: string) => api.get(`/agents/${nodeUuid}/test`),
+  getMetrics: (nodeUuid: string) => api.get(`/agents/${nodeUuid}/metrics`),
+  updateConfig: (nodeUuid: string, config: any) => api.put(`/agents/${nodeUuid}/config`, config),
 };
 
 // Nodes API
@@ -384,6 +395,20 @@ export const steamApi = {
   getInstalled: (serverId: string) => api.get(`/steam/installed/${serverId}`),
   uninstall: (serverId: string, itemId: string) => 
     api.delete(`/steam/installed/${serverId}/${itemId}`),
+};
+
+// Analytics API
+export const analyticsApi = {
+  getResourceUsage: () => api.get('/analytics/resource-usage'),
+  getServerStats: () => api.get('/analytics/server-stats'),
+  getUserActivity: () => api.get('/analytics/user-activity'),
+  getSystemHealth: () => api.get('/analytics/system-health'),
+  getOverview: (timeRange: string) => api.get(`/analytics/overview?timeRange=${timeRange}`),
+  getThresholds: () => api.get('/analytics/thresholds'),
+  getTrends: (params: any) => api.get('/analytics/trends', { params }),
+  compareServers: (params: any) => api.post('/analytics/compare-servers', params),
+  getRecommendations: () => api.get('/analytics/recommendations'),
+  exportData: (params: any) => api.post('/analytics/export', params),
 };
 
 export default api;

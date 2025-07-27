@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { 
+  sanitizeInput, 
+  validateEmail, 
+  validateUsername, 
+  validatePassword 
+} from '@/lib/security';
 import {
   UserPlusIcon,
   EyeIcon,
@@ -20,6 +26,12 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{
+    username?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  }>({});
   
   const { register } = useAuth();
   const router = useRouter();
@@ -27,26 +39,49 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setValidationErrors({});
 
-    // Validation
-    if (!formData.username || !formData.email || !formData.password) {
-      setError('All fields are required');
-      return;
+    // Sanitize inputs
+    const sanitizedData = {
+      username: sanitizeInput(formData.username),
+      email: sanitizeInput(formData.email),
+      password: sanitizeInput(formData.password),
+      confirmPassword: sanitizeInput(formData.confirmPassword),
+    };
+
+    // Comprehensive validation
+    const errors: {
+      username?: string;
+      email?: string;
+      password?: string;
+      confirmPassword?: string;
+    } = {};
+    
+    if (!validateUsername(sanitizedData.username)) {
+      errors.username = 'Username must be 3-32 characters and contain only letters, numbers, underscores, and hyphens';
     }
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
+    
+    if (!validateEmail(sanitizedData.email)) {
+      errors.email = 'Please enter a valid email address';
     }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    
+    const passwordValidation = validatePassword(sanitizedData.password);
+    if (!passwordValidation.isValid) {
+      errors.password = passwordValidation.errors.join('. ');
+    }
+    
+    if (sanitizedData.password !== sanitizedData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
       return;
     }
 
     try {
       setLoading(true);
-      await register(formData.username, formData.email, formData.password);
+      await register(sanitizedData.username, sanitizedData.email, sanitizedData.password);
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Registration failed');
@@ -57,7 +92,11 @@ export default function RegisterPage() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    setError(''); // Clear error when user types
+    setError(''); // Clear general error when user types
+    // Clear field-specific validation error when user types
+    if (validationErrors[field as keyof typeof validationErrors]) {
+      setValidationErrors(prev => ({ ...prev, [field]: undefined }));
+    }
   };
 
   return (
@@ -91,10 +130,15 @@ export default function RegisterPage() {
                 type="text"
                 value={formData.username}
                 onChange={(e) => handleInputChange('username', e.target.value)}
-                className="w-full px-4 py-3 bg-panel-surface border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-panel-primary transition-colors"
+                className={`w-full px-4 py-3 bg-panel-surface border rounded-lg text-white placeholder-gray-400 focus:outline-none transition-colors ${
+                  validationErrors.username ? 'border-red-500 focus:border-red-400' : 'border-white/20 focus:border-panel-primary'
+                }`}
                 placeholder="Enter your username"
                 required
               />
+              {validationErrors.username && (
+                <p className="mt-1 text-sm text-red-400">{validationErrors.username}</p>
+              )}
             </div>
 
             <div>
@@ -106,10 +150,15 @@ export default function RegisterPage() {
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                className="w-full px-4 py-3 bg-panel-surface border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-panel-primary transition-colors"
+                className={`w-full px-4 py-3 bg-panel-surface border rounded-lg text-white placeholder-gray-400 focus:outline-none transition-colors ${
+                  validationErrors.email ? 'border-red-500 focus:border-red-400' : 'border-white/20 focus:border-panel-primary'
+                }`}
                 placeholder="Enter your email"
                 required
               />
+              {validationErrors.email && (
+                <p className="mt-1 text-sm text-red-400">{validationErrors.email}</p>
+              )}
             </div>
 
             <div>
@@ -122,7 +171,9 @@ export default function RegisterPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
-                  className="w-full px-4 py-3 bg-panel-surface border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-panel-primary transition-colors pr-12"
+                  className={`w-full px-4 py-3 bg-panel-surface border rounded-lg text-white placeholder-gray-400 focus:outline-none transition-colors pr-12 ${
+                    validationErrors.password ? 'border-red-500 focus:border-red-400' : 'border-white/20 focus:border-panel-primary'
+                  }`}
                   placeholder="Enter your password"
                   required
                 />
@@ -138,6 +189,9 @@ export default function RegisterPage() {
                   )}
                 </button>
               </div>
+              {validationErrors.password && (
+                <p className="mt-1 text-sm text-red-400">{validationErrors.password}</p>
+              )}
             </div>
 
             <div>
@@ -150,7 +204,9 @@ export default function RegisterPage() {
                   type={showConfirmPassword ? 'text' : 'password'}
                   value={formData.confirmPassword}
                   onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                  className="w-full px-4 py-3 bg-panel-surface border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-panel-primary transition-colors pr-12"
+                  className={`w-full px-4 py-3 bg-panel-surface border rounded-lg text-white placeholder-gray-400 focus:outline-none transition-colors pr-12 ${
+                    validationErrors.confirmPassword ? 'border-red-500 focus:border-red-400' : 'border-white/20 focus:border-panel-primary'
+                  }`}
                   placeholder="Confirm your password"
                   required
                 />
@@ -166,6 +222,9 @@ export default function RegisterPage() {
                   )}
                 </button>
               </div>
+              {validationErrors.confirmPassword && (
+                <p className="mt-1 text-sm text-red-400">{validationErrors.confirmPassword}</p>
+              )}
             </div>
 
             <button

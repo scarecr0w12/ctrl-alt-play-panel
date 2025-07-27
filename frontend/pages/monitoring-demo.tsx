@@ -149,7 +149,7 @@ export default function MonitoringDemo() {
         networkOutData.push(Math.random() * 8 + 3);
       }
 
-      let datasets = [];
+      let datasets: any[] = [];
       
       if (selectedMetric === 'cpu') {
         datasets = [{
