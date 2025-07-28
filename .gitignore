@@ -185,3 +185,5 @@ data/backups/
 test-external-access.sh
 nginx/*.backup*
 nginx/nginx.conf.backup*
+
+.github/chatmodes/
