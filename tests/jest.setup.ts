@@ -39,7 +39,20 @@ jest.mock('@prisma/client', () => ({
       deleteMany: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn(),
+      create: jest.fn().mockImplementation((data) => {
+        const ctrlData = data?.data || data;
+        return Promise.resolve({
+          id: `ctrl-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: ctrlData.name,
+          displayName: ctrlData.displayName,
+          description: ctrlData.description,
+          author: ctrlData.author,
+          dockerImage: ctrlData.dockerImage,
+          altCount: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }),
       update: jest.fn()
     },
     userSshKey: { deleteMany: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
@@ -51,7 +64,21 @@ jest.mock('@prisma/client', () => ({
       deleteMany: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn(),
+      create: jest.fn().mockImplementation((data) => {
+        const userData = data?.data || data;
+        return Promise.resolve({
+          id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          username: userData.username,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          password: userData.password,
+          role: userData.role,
+          isActive: userData.isActive,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }),
       update: jest.fn()
     },
     rolePermission: { deleteMany: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
@@ -111,7 +138,9 @@ jest.setTimeout(15000);
 // Global test environment setup
 beforeAll(async () => {
   // Ensure we're in test environment
-  process.env.NODE_ENV = 'test';
+  if (!process.env.NODE_ENV) {
+    Object.defineProperty(process.env, 'NODE_ENV', { value: 'test' });
+  }
 });
 
 afterAll(async () => {

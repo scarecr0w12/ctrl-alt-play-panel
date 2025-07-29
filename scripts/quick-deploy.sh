@@ -325,12 +325,105 @@ EOF
     fi
 }
 
-# Main deployment flow
-main() {
+# Setup method selection
+select_setup_method() {
     echo
-    log_info "🎮 Ctrl-Alt-Play Panel - Quick Deployment"
-    echo "========================================"
+    log_info "🚀 CTRL-ALT-PLAY Panel - Quick Deploy"
+    echo "=================================="
+    echo ""
+    echo "Choose your setup method:"
+    echo "1) Quick Deploy (Auto-configure with PostgreSQL)"
+    echo "2) Interactive CLI Wizard (Full customization)"
+    echo "3) Web-based Installer (GUI setup)"
+    echo "4) Database-only Setup (Choose database type)"
+    echo ""
     
+    while true; do
+        read -p "Select method [1-4]: " method
+        case $method in
+            1)
+                log_info "🔄 Starting quick deploy with PostgreSQL..."
+                quick_deploy_postgresql
+                return
+                ;;
+            2)
+                log_info "🧙 Starting interactive CLI wizard..."
+                SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+                exec bash "$SCRIPT_DIR/setup-wizard.sh"
+                ;;
+            3)
+                log_info "🌐 Starting web-based installer..."
+                SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+                exec bash "$SCRIPT_DIR/setup-web.sh"
+                ;;
+            4)
+                log_info "🗄️ Starting database selection..."
+                select_database_quick_deploy
+                return
+                ;;
+            *)
+                log_error "Invalid selection. Please choose 1-4."
+                ;;
+        esac
+    done
+}
+
+# Database selection for quick deploy
+select_database_quick_deploy() {
+    echo ""
+    log_info "🗄️ Database Selection"
+    echo "==================="
+    echo ""
+    echo "Choose your database:"
+    echo "1) PostgreSQL (Recommended for production)"
+    echo "2) MySQL"
+    echo "3) MariaDB"
+    echo "4) MongoDB"
+    echo "5) SQLite (Development only)"
+    echo ""
+    
+    while true; do
+        read -p "Select database [1-5]: " db_choice
+        case $db_choice in
+            1)
+                export DB_TYPE="postgresql"
+                log_info "Selected PostgreSQL"
+                quick_deploy_with_database
+                return
+                ;;
+            2)
+                export DB_TYPE="mysql"
+                log_info "Selected MySQL"
+                quick_deploy_with_database
+                return
+                ;;
+            3)
+                export DB_TYPE="mariadb"
+                log_info "Selected MariaDB"
+                quick_deploy_with_database
+                return
+                ;;
+            4)
+                export DB_TYPE="mongodb"
+                log_info "Selected MongoDB"
+                quick_deploy_with_database
+                return
+                ;;
+            5)
+                export DB_TYPE="sqlite"
+                log_warning "SQLite selected - recommended for development only"
+                quick_deploy_with_database
+                return
+                ;;
+            *)
+                log_error "Invalid selection. Please choose 1-5."
+                ;;
+        esac
+    done
+}
+
+# Quick deploy with specific database
+quick_deploy_with_database() {
     # Install dependencies if needed
     if ! check_node_version; then
         install_nodejs
@@ -339,21 +432,96 @@ main() {
     install_dependencies
     generate_secrets
     setup_deployment
-    configure_environment
-    setup_database
+    configure_environment_with_database
+    setup_database_for_type
     install_application
     test_deployment
     setup_service
     
+    deployment_success_message
+}
+
+# Quick deploy with PostgreSQL (original behavior)
+quick_deploy_postgresql() {
+    export DB_TYPE="postgresql"
+    quick_deploy_with_database
+}
+
+# Configure environment with database type
+configure_environment_with_database() {
+    log_info "🔧 Configuring environment for ${DB_TYPE}..."
+    
+    # Use generate-docker-compose.sh if available
+    SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+    if [[ -f "$SCRIPT_DIR/generate-docker-compose.sh" ]]; then
+        # Set environment variables for docker compose generation
+        export DB_LOCAL=true
+        export DB_NAME="ctrl_alt_play"
+        export DB_USER="ctrlaltplay"
+        export DB_PASSWORD="$(openssl rand -base64 32)"
+        export NODE_ENV="production"
+        export PORT="3000"
+        export JWT_SECRET="$(openssl rand -base64 64)"
+        export SESSION_SECRET="$(openssl rand -base64 64)"
+        
+        # Generate Docker Compose file
+        cd "$DEPLOY_DIR"
+        bash "$SCRIPT_DIR/generate-docker-compose.sh"
+        
+        log_success "Docker Compose configuration generated for ${DB_TYPE}"
+    else
+        # Fallback to basic configuration
+        configure_environment
+    fi
+}
+
+# Setup database for specific type
+setup_database_for_type() {
+    log_info "🗄️ Setting up ${DB_TYPE} database..."
+    
+    if [[ "$DB_TYPE" == "sqlite" ]]; then
+        # SQLite doesn't need Docker setup
+        mkdir -p "$DEPLOY_DIR/data"
+        log_success "SQLite database directory created"
+    else
+        # Use Docker for other databases
+        if ! command -v docker &> /dev/null; then
+            log_error "Docker is required for ${DB_TYPE} setup"
+            exit 1
+        fi
+        
+        cd "$DEPLOY_DIR"
+        if [[ -f "docker-compose.yml" ]]; then
+            log_info "Starting ${DB_TYPE} with Docker Compose..."
+            docker-compose up -d "${DB_TYPE}"
+            
+            # Wait for database to be ready
+            log_info "Waiting for ${DB_TYPE} to be ready..."
+            sleep 10
+            
+            log_success "${DB_TYPE} database started"
+        else
+            log_warning "Docker Compose file not found, using basic setup..."
+            setup_database  # Fall back to original setup
+        fi
+    fi
+}
+
+# Success message
+deployment_success_message() {
     echo
     log_success "🎉 Deployment completed successfully!"
     echo "========================================"
     log_info "📍 Deployment location: $DEPLOY_DIR"
-    log_info "🔧 Configuration file: $DEPLOY_DIR/.env.production"
+    log_info "�️ Database type: ${DB_TYPE}"
+    log_info "�🔧 Configuration file: $DEPLOY_DIR/.env.production"
     log_info "📖 Full guide: $DEPLOY_DIR/DEPLOYMENT_GUIDE.md"
     echo
     log_info "🚀 To start the application:"
     log_info "   cd $DEPLOY_DIR"
+    if [[ "$DB_TYPE" != "sqlite" ]]; then
+        log_info "   docker-compose up -d  # Start database"
+    fi
     log_info "   npm start"
     echo
     log_info "🌐 Access will be available at:"
@@ -370,6 +538,53 @@ main() {
     
     echo
     log_success "Happy gaming! 🎮"
+}
+
+# Main deployment flow
+main() {
+    # Check if any arguments passed for direct database selection
+    if [[ $# -gt 0 ]]; then
+        case "$1" in
+            --postgresql|--postgres)
+                export DB_TYPE="postgresql"
+                log_info "Direct PostgreSQL deployment requested"
+                quick_deploy_postgresql
+                return
+                ;;
+            --mysql)
+                export DB_TYPE="mysql"
+                log_info "Direct MySQL deployment requested"
+                quick_deploy_with_database
+                return
+                ;;
+            --mariadb)
+                export DB_TYPE="mariadb"
+                log_info "Direct MariaDB deployment requested"
+                quick_deploy_with_database
+                return
+                ;;
+            --mongodb)
+                export DB_TYPE="mongodb"
+                log_info "Direct MongoDB deployment requested"
+                quick_deploy_with_database
+                return
+                ;;
+            --sqlite)
+                export DB_TYPE="sqlite"
+                log_info "Direct SQLite deployment requested"
+                quick_deploy_with_database
+                return
+                ;;
+            --help|-h)
+                echo "Usage: $0 [--postgresql|--mysql|--mariadb|--mongodb|--sqlite]"
+                echo "Or run without arguments for interactive menu"
+                return
+                ;;
+        esac
+    fi
+    
+    # Show setup method selection
+    select_setup_method
 }
 
 # Run main function

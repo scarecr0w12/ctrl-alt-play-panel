@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { ExternalAgentService } from './externalAgentService';
+import ExternalAgentService from './externalAgentService';
 import axios from 'axios';
 import { logger } from '../utils/logger';
 

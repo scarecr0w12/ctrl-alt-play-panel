@@ -148,11 +148,30 @@ fix-*.sh
 test-*.js
 *-test.js
 
-# Memory bank and AI-related files
+# Development documentation and internal files
+.dev-docs/
 memory-bank/
 ai-conversations/
 research/
 reports/
+phase-reports/
+development-notes/
+
+# Development status and analysis documents (internal use only)
+CTRL_ALT_PLAY_PROJECT_OVERVIEW_AND_STATUS_REPORT.md
+CTRL_ALT_SYSTEM.md
+DEPENDENCY_UPGRADE_ANALYSIS.md
+DOMAIN_INDEPENDENT_SETUP.md
+*_OVERVIEW_*.md
+*_ANALYSIS_*.md
+*_SYSTEM_*.md
+*_STATUS_*.md
+*_COMPLETION_*.md
+*_IMPLEMENTATION_*.md
+*_REPORT_*.md
+PHASE*.md
+PROJECT_STATUS_*.md
+DEVELOPMENT_STATUS_*.md
 
 # Production environment files (only templates should be in repo)
 .env.production

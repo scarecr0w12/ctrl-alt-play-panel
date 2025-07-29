@@ -1,134 +1,138 @@
-# Docker Compose file for Ctrl-Alt-Play Panel
-# Version: 2.x compatible
+version: '3.8'
 
 services:
-  # Ctrl-Alt-Play Panel Application (Web Interface)
+  # Main application service
   ctrl-alt-play:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
-      target: production
-    container_name: ctrl-alt-play
-    restart: unless-stopped
+      target: ${NODE_ENV:-development}
     ports:
       - "${PORT:-3000}:${PORT:-3000}"
-      - "${AGENT_PORT:-8080}:${AGENT_PORT:-8080}"  # Agent WebSocket port
-      - "${FRONTEND_PORT:-3001}:${FRONTEND_PORT:-3001}"  # Frontend port (if separate)
     environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://ctrlaltplay:${POSTGRES_PASSWORD:-ctrlaltplay}@postgres:5432/ctrlaltplay
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this}
-      AGENT_SECRET: ${AGENT_SECRET:-your-agent-secret-key-change-this}
-      
-      # Flexible Port Configuration
-      PORT: ${PORT:-3000}
-      FRONTEND_PORT: ${FRONTEND_PORT:-3001}
-      AGENT_PORT: ${AGENT_PORT:-8080}
-      
-      # Auto-detect available ports in production
-      AUTO_PORT_DETECTION: ${AUTO_PORT_DETECTION:-true}
-      PORT_RANGE_START: ${PORT_RANGE_START:-3000}
-      PORT_RANGE_END: ${PORT_RANGE_END:-3100}
-      
-      # Deployment environment
-      DEPLOYMENT_ENV: ${DEPLOYMENT_ENV:-production}
-      HOST: ${HOST:-0.0.0.0}
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=${PORT:-3000}
+      - DATABASE_URL=${DATABASE_URL}
+      - DB_TYPE=${DB_TYPE:-postgresql}
+      - DB_LOCAL=${DB_LOCAL:-true}
     volumes:
-      - ./uploads:/app/uploads:rw
-      - ./logs:/app/logs:rw
-      - ./data:/app/data:rw
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - ctrl-alt-play-network
+      - redis
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "node /app/dist/health-check.js || exit 1"]
+      test: ["CMD", "node", "src/health-check.js"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 60s
 
-  # PostgreSQL Database (Panel Only)
-  postgres:
-    image: postgres:16-alpine
-    container_name: ctrl-alt-play-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ctrlaltplay
-      POSTGRES_USER: ctrlaltplay
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ctrlaltplay}
-      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data:rw
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+  # Redis cache service
+  redis:
+    image: redis:7-alpine
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    networks:
-      - ctrl-alt-play-network
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ctrlaltplay -d ctrlaltplay"]
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL database service (enabled when DB_TYPE=postgresql)
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-ctrl_alt_play}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: '--auth-host=scram-sha-256'
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-ctrl_alt_play}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
+    profiles:
+      - postgresql
 
-  # Redis Cache (Panel Only)
-  redis:
-    image: redis:7-alpine
-    container_name: ctrl-alt-play-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    volumes:
-      - redis_data:/data:rw
+  # MySQL database service (enabled when DB_TYPE=mysql)
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-ctrl_alt_play}
+      MYSQL_USER: ${DB_USER:-root}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "${REDIS_PORT:-6379}:6379"
-    networks:
-      - ctrl-alt-play-network
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
       interval: 10s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    profiles:
+      - mysql
 
-  # Nginx Reverse Proxy (Optional)
-  nginx:
-    image: nginx:alpine
-    container_name: ctrl-alt-play-nginx
-    restart: unless-stopped
+  # MariaDB database service (enabled when DB_TYPE=mariadb)
+  mariadb:
+    image: mariadb:10.11
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-ctrl_alt_play}
+      MARIADB_USER: ${DB_USER:-root}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "${HTTP_PORT:-80}:80"
-      - "${HTTPS_PORT:-443}:443"
+      - "${DB_PORT:-3306}:3306"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-    depends_on:
-      ctrl-alt-play:
-        condition: service_healthy
-    networks:
-      - ctrl-alt-play-network
+      - mariadb_data:/var/lib/mysql
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    profiles:
+      - mariadb
 
-# NOTE: Game servers are NOT managed by this docker-compose
-# They are managed by external agents running on game server hosts
-# Agents connect to this panel via WebSocket on port 8080
+  # MongoDB database service (enabled when DB_TYPE=mongodb)
+  mongodb:
+    image: mongo:7.0
+    environment:
+      MONGO_INITDB_DATABASE: ${DB_NAME:-ctrl_alt_play}
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT:-27017}:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    profiles:
+      - mongodb
 
 volumes:
-  postgres_data:
-    driver: local
   redis_data:
-    driver: local
-
-networks:
-  ctrl-alt-play-network:
-    driver: bridge
-    name: ctrl-alt-play-network
+  postgres_data:
+  mysql_data:
+  mariadb_data:
+  mongodb_data:

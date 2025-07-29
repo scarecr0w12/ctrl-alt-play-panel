@@ -1,4 +1,5 @@
-import { ExternalAgentService, ExternalAgent } from './externalAgentService';
+import ExternalAgentService from './externalAgentService';
+import { ExternalAgent } from './externalAgentService';
 import DatabaseService from './database';
 import { logger } from '../utils/logger';
 

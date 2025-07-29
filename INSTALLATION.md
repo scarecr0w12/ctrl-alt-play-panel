@@ -1,8 +1,8 @@
 # 🎮 Ctrl-Alt-Play Panel Installation Guide
 
-**Version:** 1.2.0  
+**Version:** 1.6.0  
 **Architecture:** Panel+Agent Distributed System  
-**Requirements:** Node.js 18+, Docker, PostgreSQL, Redis
+**Requirements:** Node.js 18+, Docker, Database (PostgreSQL/MySQL/MariaDB/MongoDB/SQLite)
 
 ---
 
@@ -43,8 +43,18 @@
 
 ### Database Requirements
 
-- **PostgreSQL**: 14+ (provided via Docker)
-- **Redis**: 6+ (provided via Docker)
+**Multi-Database Support** - Choose your preferred database:
+
+| Database | Version | Best For |
+|----------|---------|----------|
+| **PostgreSQL** | 12+ | Production deployments (recommended) |
+| **MySQL** | 8.0+ | High compatibility requirements |
+| **MariaDB** | 10.3+ | MySQL alternative with better performance |
+| **MongoDB** | 4.4+ | Document-based, flexible schema |
+| **SQLite** | 3+ | Development and small deployments |
+
+**Additional Services:**
+- **Redis**: 6+ (optional, for caching and session storage)
 
 ---
 

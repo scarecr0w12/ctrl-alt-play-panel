@@ -1,4 +1,4 @@
-import { ExternalAgentService } from '../../src/services/externalAgentService';
+import ExternalAgentService from '../../src/services/externalAgentService';
 import { ServerAgentMappingService } from '../../src/services/serverAgentMappingService';
 
 // Mock the external agent service for testing

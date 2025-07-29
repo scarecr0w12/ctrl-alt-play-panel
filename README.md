@@ -6,61 +6,137 @@
   
   ![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)
   ![License](https://img.shields.io/badge/license-MIT-green.svg)
-  ![Node](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen.svg)
+  ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)
   ![TypeScript](https://img.shields.io/badge/typescript-ready-blue.svg)
 </div>
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Get Running in 2 Minutes)
 
-Get up and running in minutes with our automated installer:
+Looking to get started fast? We've got you covered! **Choose your preferred setup experience:**
 
+### 🎯 Setup Methods
+
+**⚡ One-Command Auto Setup** (Fastest)
 ```bash
-# Clone the repository
-git clone <repository-url>
+git clone https://github.com/yourusername/ctrl-alt-play-panel.git
 cd ctrl-alt-play-panel
-
-# Run the easy setup script
-chmod +x easy-setup.sh
-./easy-setup.sh
+./quick-deploy.sh
 ```
 
-The installer will guide you through:
+**🧙 Interactive CLI Wizard** (Guided)
+```bash
+./quick-deploy.sh --wizard
+```
 
-- ✅ Dependency installation
-- ✅ Environment configuration  
-- ✅ Database setup
-- ✅ SSL configuration
-- ✅ Service deployment
+**🌐 Web-based Installer** (Browser)
+```bash
+./quick-deploy.sh --web
+# Opens http://localhost:8080 in your browser
+```
 
-## 📋 Features
+### ✨ What Each Method Offers
 
-### 🎯 Core System
+| Method | Best For | Features |
+|--------|----------|----------|
+| **Auto Setup** | Quick testing, development | Intelligent defaults, fastest setup |
+| **CLI Wizard** | System administrators | Step-by-step guidance, advanced options |
+| **Web Installer** | Non-technical users | Visual interface, real-time validation |
 
-- **Game Server Management**: Complete lifecycle management for game servers
-- **Plugin System**: Advanced plugin architecture with CLI development tools
-- **User Management**: JWT-based authentication with role-based authorization
-- **Real-time Dashboard**: Live server statistics and management interface
+All methods create the same robust installation - choose what feels most comfortable!
 
-### 🏪 Marketplace Integration
+### 🗄️ Database Support
 
-- **Plugin Publishing**: Complete workflow for plugin distribution
-- **Analytics System**: Comprehensive usage tracking and reporting
-- **Plugin Discovery**: Advanced search and categorization
-- **Version Management**: Automated versioning and update system
+Ctrl-Alt-Play Panel supports multiple database systems out of the box:
 
-### 🔧 Developer Tools
+- **PostgreSQL** (recommended for production)
+- **MySQL** / **MariaDB** (great compatibility)
+- **MongoDB** (document-based, flexible schema)
+- **SQLite** (perfect for development and small deployments)
 
-- **CLI Tools**: Complete development toolkit for plugin creation
-- **API Documentation**: Comprehensive REST API with OpenAPI specification
-- **Testing Framework**: Full test suite with integration testing
-- **Development Environment**: Hot-reload development setup
+During setup, you can choose your preferred database or let the system detect and use existing databases. All setup methods handle database configuration automatically.
 
-### 🏗️ Infrastructure
+**Access your panel:** <http://localhost:3000>
+
+> � **New to Docker?** No problem! The script will check if you have everything and guide you through installation.
+
+### Alternative: Manual Installation
+
+For developers who prefer step-by-step control, see our [Manual Installation Guide](docs/MANUAL_INSTALLATION.md).
+
+---
+
+## 🎮 What is Ctrl-Alt-Play Panel?
+
+A comprehensive open-source game server management panel built for modern gaming communities. Think Pterodactyl Panel, but designed specifically for gaming communities with enhanced features for community management, game automation, and player engagement.
+
+### Why Choose Ctrl-Alt-Play Panel?
+
+#### 🎯 Built for Gaming Communities
+
+- Advanced player management and analytics
+- Automated game server provisioning
+- Community features (forums, voice chat integration)
+- Real-time performance monitoring
+
+#### 🔧 Developer-Friendly
+
+- Modern TypeScript/Node.js backend
+- React/Next.js frontend
+- RESTful APIs with comprehensive documentation
+- Docker-based deployment for any environment
+
+#### 🛡️ Enterprise-Ready Security
+
+- JWT-based authentication with refresh tokens
+- Role-based access control (RBAC)
+- API rate limiting and abuse protection
+- Comprehensive audit logging
+
+#### 📊 Advanced Analytics
+
+- Real-time server performance metrics
+- Player behavior analytics
+- Resource usage optimization
+- Custom dashboard creation
+
+---
+
+## 🎯 **What You Get**
+
+### **🎮 Game Server Management**
+
+- Complete server lifecycle (create, start, stop, restart, delete)
+- Real-time console access with command execution
+- Resource monitoring (CPU, RAM, disk, network)
+- Multi-node distributed architecture
+
+### **🔐 Enterprise Security**
+
+- JWT authentication with role-based permissions
+- Real-time security monitoring and alerts
+- Comprehensive audit logging
+- Rate limiting and DDoS protection
+
+### **🏪 Plugin Marketplace**
+
+- Full plugin ecosystem with CLI development tools
+- Version management and automated updates
+- Analytics and usage tracking
+- Revenue sharing for plugin developers
+
+### **📊 Advanced Analytics**
+
+- Performance metrics and trend analysis
+- User behavior tracking
+- Resource utilization reports
+- Custom dashboard creation
+
+---
 
 - **Docker Support**: Full containerization with production configurations
-- **Database Management**: PostgreSQL with Prisma ORM and migrations
+- **Database Management**: Multi-database support (PostgreSQL, MySQL, MariaDB, MongoDB, SQLite) with Prisma ORM and migrations
 - **Caching Layer**: Redis integration for performance optimization
 - **Security**: Comprehensive security middleware and monitoring
 
@@ -114,7 +190,7 @@ The installer will guide you through:
 
 - **Runtime**: Node.js 16+ with TypeScript
 - **Framework**: Express.js with middleware architecture
-- **Database**: PostgreSQL with Prisma ORM
+- **Database**: Multi-database support (PostgreSQL, MySQL, MariaDB, MongoDB, SQLite) with Prisma ORM
 - **Authentication**: JWT with bcrypt hashing
 - **Cache**: Redis for session management
 - **Real-time**: WebSocket with Socket.IO
@@ -138,8 +214,8 @@ The installer will guide you through:
 ### Prerequisites
 
 - Node.js 16+ and npm
-- PostgreSQL 12+
-- Redis 6+
+- Database: PostgreSQL 12+, MySQL 8.0+, MariaDB 10.3+, MongoDB 4.4+, or SQLite 3+
+- Redis 6+ (optional, for caching)
 - Docker & Docker Compose (optional)
 
 ### Manual Setup
