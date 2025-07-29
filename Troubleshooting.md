@@ -332,6 +332,58 @@ npm run db:test-connection
 4. Monitor resource usage
 5. Regular security audits
 
+## Deployment Troubleshooting
+
+### PostgreSQL Connection Issues
+
+**Symptom**: Application cannot reach PostgreSQL at postgres:5432
+
+**Solutions**:
+1. Ensure PostgreSQL container is running and properly linked
+2. Check Docker network configuration to ensure containers can communicate
+3. Verify database credentials in environment configuration
+4. Check firewall settings between containers
+
+### Database Compatibility Issues
+
+**Symptom**: Previous PostgreSQL version data incompatible with current version
+
+**Solutions**:
+1. Update docker-compose.yml to use postgres:16-alpine (or matching versions)
+2. Export data from old database before upgrading
+3. Perform migration with compatible versions
+4. Validate data integrity after migration
+
+### Container Restarting Issues
+
+**Symptom**: Main application container restarting due to database connection failure
+
+**Solutions**:
+1. Fix database connectivity before application starts
+2. Implement proper container dependency management
+3. Add health checks with appropriate retry logic
+4. Check database initialization timing
+
+### Environment Configuration Issues
+
+**Symptom**: Incorrect database connection or service configuration
+
+**Solutions**:
+1. Check .env file for correct DATABASE_URL configuration
+2. Verify all required environment variables are set
+3. Ensure configuration matches deployment environment
+4. Validate service endpoint URLs
+
+### Docker Network Issues
+
+**Symptom**: Containers cannot communicate with each other
+
+**Solutions**:
+1. Ensure containers are on same Docker network for service discovery
+2. Check network configuration in docker-compose.yml
+3. Verify service names match container names
+4. Test network connectivity between containers
+
 ## Getting Additional Help
 
 If you're unable to resolve an issue using this guide:
