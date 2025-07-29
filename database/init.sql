@@ -1,8 +1,50 @@
 -- Initial database setup
 -- This file will be automatically executed when the PostgreSQL container starts
 
--- Create the main database if it doesn't exist
--- (This is handled by the POSTGRES_DB environment variable)
+-- Set the password for the user
+ALTER USER ctrlaltplay WITH PASSWORD 'cNY1n6J7sTHBTzMxIO2ztrV1afDzv9wKAbp2AmU60JM=';
+
+-- Create tables first
+CREATE TABLE IF NOT EXISTS locations (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ctrls (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS alts (
+    id TEXT PRIMARY KEY,
+    uuid TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    author TEXT,
+    "dockerImages" JSONB,
+    startup TEXT,
+    "ctrlId" TEXT REFERENCES ctrls(id),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    username TEXT UNIQUE NOT NULL,
+    first_name TEXT,
+    last_name TEXT,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 
 -- Create initial location
 INSERT INTO locations (id, name, description, created_at, updated_at)

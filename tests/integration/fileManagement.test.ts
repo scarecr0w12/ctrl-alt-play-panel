@@ -5,41 +5,52 @@ import { ServerAgentMappingService } from '../../src/services/serverAgentMapping
 jest.mock('../../src/services/externalAgentService');
 jest.mock('../../src/services/serverAgentMappingService');
 
-describe('File Management Integration Tests', () => {
-  let mockAgentService: jest.Mocked<ExternalAgentService>;
-  let mockMappingService: jest.Mocked<ServerAgentMappingService>;
+// Create mock instances at module level to ensure they're accessible in all scopes
+const mockAgentService = {
+  listFiles: jest.fn(),
+  readFile: jest.fn(),
+  writeFile: jest.fn(),
+  createDirectory: jest.fn(),
+  deleteFile: jest.fn(),
+  renameFile: jest.fn(),
+  downloadFile: jest.fn(),
+  uploadFile: jest.fn(),
+  copyFile: jest.fn(),
+  moveFile: jest.fn(),
+  getFilePermissions: jest.fn(),
+  setFilePermissions: jest.fn(),
+  createArchive: jest.fn(),
+  extractArchive: jest.fn(),
+  isAgentAvailable: jest.fn(),
+  healthCheckAll: jest.fn(),
+  getFileInfo: jest.fn(),
+} as any;
 
+const mockMappingService = {
+  validateServerAgent: jest.fn(),
+} as any;
+
+// Mock the classes themselves since they're singletons
+jest.mock('../../src/services/externalAgentService', () => {
+  return {
+    __esModule: true,
+    default: jest.fn().mockImplementation(() => mockAgentService),
+    getInstance: jest.fn().mockReturnValue(mockAgentService),
+  };
+});
+
+jest.mock('../../src/services/serverAgentMappingService', () => {
+  return {
+    __esModule: true,
+    ServerAgentMappingService: jest.fn().mockImplementation(() => mockMappingService),
+    getInstance: jest.fn().mockReturnValue(mockMappingService),
+  };
+});
+
+describe('File Management Integration Tests', () => {
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
-
-    // Create mock instances
-    mockAgentService = {
-      listFiles: jest.fn(),
-      readFile: jest.fn(),
-      writeFile: jest.fn(),
-      createDirectory: jest.fn(),
-      deleteFile: jest.fn(),
-      renameFile: jest.fn(),
-      downloadFile: jest.fn(),
-      uploadFile: jest.fn(),
-      copyFile: jest.fn(),
-      moveFile: jest.fn(),
-      getFilePermissions: jest.fn(),
-      setFilePermissions: jest.fn(),
-      createArchive: jest.fn(),
-      extractArchive: jest.fn(),
-      isAgentAvailable: jest.fn(),
-      healthCheckAll: jest.fn(),
-    } as any;
-
-    mockMappingService = {
-      validateServerAgent: jest.fn(),
-    } as any;
-
-    // Mock getInstance methods
-    jest.spyOn(ExternalAgentService, 'getInstance').mockReturnValue(mockAgentService);
-    jest.spyOn(ServerAgentMappingService, 'getInstance').mockReturnValue(mockMappingService);
   });
 
   describe('File Operations via External Agents', () => {
@@ -810,4 +821,3 @@ describe('File Management Integration Tests', () => {
       expect(mockAgentService.uploadFile).toHaveBeenCalledWith(testNodeUuid, testServerId, '/important-file-restored.txt', 'backup content');
     });
   });
-});

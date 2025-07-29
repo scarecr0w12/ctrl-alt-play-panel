@@ -109,16 +109,39 @@ jest.mock('redis', () => ({
   })),
 }));
 
+// Mock External Agent Service
+jest.mock('../src/services/externalAgentService', () => {
+  return jest.fn().mockImplementation(() => ({
+    listFiles: jest.fn().mockResolvedValue({ success: true, data: [] }),
+    readFile: jest.fn().mockResolvedValue({ success: true, data: { content: '', size: 0, modified: '' } }),
+    writeFile: jest.fn().mockResolvedValue({ success: true, data: { size: 0, modified: '' } }),
+    createDirectory: jest.fn().mockResolvedValue({ success: true }),
+    deleteFile: jest.fn().mockResolvedValue({ success: true }),
+    renameFile: jest.fn().mockResolvedValue({ success: true }),
+    downloadFile: jest.fn().mockResolvedValue({ success: true, data: { content: '', encoding: 'base64' } }),
+    uploadFile: jest.fn().mockResolvedValue({ success: true, data: { size: 0 } }),
+    copyFile: jest.fn().mockResolvedValue({ success: true }),
+    moveFile: jest.fn().mockResolvedValue({ success: true }),
+    getFilePermissions: jest.fn().mockResolvedValue({ success: true, data: { permissions: '0644' } }),
+    setFilePermissions: jest.fn().mockResolvedValue({ success: true }),
+    createArchive: jest.fn().mockResolvedValue({ success: true, data: { path: '' } }),
+    extractArchive: jest.fn().mockResolvedValue({ success: true }),
+    getAgentStatus: jest.fn().mockResolvedValue({ online: true, version: '1.0.0' }),
+    isAgentAvailable: jest.fn().mockReturnValue(true),
+    executeCommand: jest.fn().mockResolvedValue({ success: true, data: { output: '', exitCode: 0 } }),
+    validateConnection: jest.fn().mockResolvedValue({ success: true }),
+  }));
+});
+
 // Mock Steam Workshop service
 jest.mock('../src/services/steamWorkshopService', () => ({
-  SteamWorkshopService: {
-    getInstance: jest.fn(() => ({
-      searchWorkshopItems: jest.fn().mockResolvedValue({ items: [], total: 0 }),
-      getWorkshopItem: jest.fn().mockResolvedValue(null),
-      installWorkshopItem: jest.fn().mockResolvedValue(true),
-      removeWorkshopItem: jest.fn().mockResolvedValue(true),
-    })),
-  },
+  SteamWorkshopService: jest.fn().mockImplementation(() => ({
+    searchWorkshopItems: jest.fn().mockResolvedValue({ items: [], total: 0 }),
+    getWorkshopItem: jest.fn().mockResolvedValue(null),
+    installWorkshopItem: jest.fn().mockResolvedValue(true),
+    removeWorkshopItem: jest.fn().mockResolvedValue(true),
+    getServerWorkshopItems: jest.fn().mockResolvedValue([]),
+  })),
 }));
 
 // Mock Marketplace Integration

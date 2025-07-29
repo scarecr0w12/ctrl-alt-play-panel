@@ -57,6 +57,8 @@
           "bcrypt": "^6.0.0",
           "bcryptjs": "^3.0.2",
           "chalk": "^5.4.1",
+          "chart.js": "^4.5.0",
+          "chartjs-node-canvas": "^5.0.0",
           "chokidar": "^4.0.3",
           "commander": "^14.0.0",
           "compression": "^1.7.4",
@@ -85,7 +87,7 @@
           "@types/cors": "^2.8.17",
           "@types/express": "^5.0.3",
           "@types/jest": "^30.0.0",
-          "@types/jsonwebtoken": "^9.0.5",
+          "@types/jsonwebtoken": "^9.0.10",
           "@types/multer": "^2.0.0",
           "@types/node": "^24.1.0",
           "@types/node-cron": "^3.0.11",
@@ -104,7 +106,7 @@
           "typescript": "^5.3.3"
      },
      "prisma": {
-          "seed": "ts-node prisma/seed.ts"
+          "seed": "node dist/prisma/seed.js"
      },
      "engines": {
           "node": ">=18.0.0"

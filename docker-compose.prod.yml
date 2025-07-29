@@ -9,16 +9,34 @@ services:
     deploy:
       resources:
         limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
           memory: 1G
           cpus: '0.5'
-        reservations:
-          memory: 512M
-          cpus: '0.25'
 
   redis:
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
 
-  database:
+  # PostgreSQL database service (default for production)
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-ctrlaltplay}
+      POSTGRES_USER: ${DB_USER:-ctrlaltplay}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: '--auth-host=scram-sha-256'
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ctrlaltplay} -d ${DB_NAME:-ctrlaltplay}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     deploy:
       resources:
         limits:
@@ -27,4 +45,7 @@ services:
         reservations:
           memory: 512M
           cpus: '0.25'
+
+volumes:
+  postgres_data:
 

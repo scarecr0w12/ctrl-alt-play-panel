@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals
 import { MarketplaceIntegration } from '../src/services/MarketplaceIntegration';
 import { UserSyncService } from '../src/services/UserSyncService';
 import { UserEventHooks } from '../src/services/UserEventHooks';
-import axios from 'axios';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
 // Mock axios
 jest.mock('axios');
@@ -58,10 +58,16 @@ describe('Marketplace Integration', () => {
     });
 
     it('should test connection successfully', async () => {
-      const mockAxiosInstance = {
-        get: jest.fn().mockResolvedValue({
-          data: { success: true }
-        })
+      const mockResponse = {
+        data: { success: true },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {}
+      };
+
+      const mockAxiosInstance: any = {
+        get: jest.fn().mockResolvedValue(mockResponse as AxiosResponse<any>)
       };
       mockedAxios.create.mockReturnValue(mockAxiosInstance as any);
 
@@ -185,19 +191,24 @@ describe('Marketplace Integration', () => {
         jwt_secret: 'test-secret'
       });
 
-      const publishRequest = {
+      const publishRequest: any = {
         panel_item_id: 'panel-item-123',
-        metadata: {
-          name: 'Test Plugin',
+        user_id: 'user-123',
+        item_data: {
+          title: 'Test Plugin',
           description: 'A test plugin',
           version: '1.0.0',
           author: 'Test Author',
           tags: ['test'],
-          category: 'utility'
-        },
-        files: {
-          manifest: '{"name": "test-plugin"}',
-          package_url: 'https://example.com/plugin.zip'
+          category_id: 'utility',
+          files: [{
+            name: 'manifest.json',
+            size: 100,
+            type: 'application/json',
+            url: 'https://example.com/plugin.zip',
+            checksum: 'abc123'
+          }],
+          screenshots: []
         }
       };
 
@@ -221,11 +232,18 @@ describe('Marketplace Integration', () => {
     it('should sync user creation', async () => {
       // Mock the marketplace integration
       const mockSyncUser = jest.fn().mockResolvedValue({
-        user_id: 'user-123',
-        marketplace_user_id: 'mp-user-456',
-        sync_status: 'synchronized',
-        created_at: '2024-01-01T00:00:00Z'
-      });
+        data: {
+          user_id: 'user-123',
+          marketplace_user_id: 'mp-456',
+          sync_status: 'synchronized',
+          created_at: '2024-01-01T00:00:00Z'
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {},
+        request: {}
+      } as AxiosResponse<any>);
 
       // Replace the marketplace integration instance
       (userSyncService as any).marketplaceIntegration = {
@@ -287,8 +305,22 @@ describe('Marketplace Integration', () => {
     it('should batch sync users', async () => {
       // Mock the sync methods
       const mockSyncUserCreate = jest.fn()
-        .mockResolvedValueOnce({ marketplace_user_id: 'mp-1', status: 'synchronized' })
-        .mockResolvedValueOnce({ marketplace_user_id: 'mp-2', status: 'synchronized' })
+        .mockResolvedValueOnce({
+          data: { marketplace_user_id: 'mp-1', status: 'synchronized' },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {},
+          request: {}
+        } as AxiosResponse<any>)
+        .mockResolvedValueOnce({
+          data: { marketplace_user_id: 'mp-2', status: 'synchronized' },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {},
+          request: {}
+        } as AxiosResponse<any>)
         .mockRejectedValueOnce(new Error('Sync failed'));
 
       userSyncService.syncUserCreate = mockSyncUserCreate;
@@ -337,9 +369,15 @@ describe('Marketplace Integration', () => {
   describe('UserEventHooks', () => {
     it('should handle user creation event', async () => {
       const mockSyncUserCreate = jest.fn().mockResolvedValue({
-        marketplace_user_id: 'mp-user-456',
-        status: 'synchronized'
-      });
+        data: {
+          marketplace_user_id: 'mp-user-456',
+          status: 'synchronized'
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {}
+      } as AxiosResponse<any>);
 
       // Mock the userSyncService
       (UserEventHooks as any).userSyncService = {
@@ -385,7 +423,13 @@ describe('Marketplace Integration', () => {
     });
 
     it('should send analytics events', async () => {
-      const mockSendAnalyticsEvent = jest.fn().mockResolvedValue(true);
+      const mockSendAnalyticsEvent = jest.fn().mockResolvedValue({
+        data: true,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {}
+      } as AxiosResponse<any>);
 
       // Mock the marketplaceIntegration
       (UserEventHooks as any).marketplaceIntegration = {

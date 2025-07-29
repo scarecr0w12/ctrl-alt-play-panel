@@ -156,6 +156,9 @@ research/
 reports/
 phase-reports/
 development-notes/
+.windsurf/
+.windsurfignore
+
 
 # Development status and analysis documents (internal use only)
 CTRL_ALT_PLAY_PROJECT_OVERVIEW_AND_STATUS_REPORT.md

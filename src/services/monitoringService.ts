@@ -404,7 +404,7 @@ export class MonitoringService {
   }
 
   /**
-   * Generate PNG graph for metrics (simplified version)
+   * Generate PNG graph for metrics using Chart.js
    */
   async generateMetricsGraph(
     serverId: string,
@@ -413,16 +413,79 @@ export class MonitoringService {
   ): Promise<Buffer> {
     const metrics = await this.getServerMetricsHistory(serverId, timeRange);
 
-    // In a real implementation, you would use a charting library like Chart.js or D3
-    // For now, we'll return a placeholder
-    const graphData = {
-      labels: metrics.map(m => m.timestamp.toISOString()),
-      data: metrics.map(m => m[metric]),
-      metric,
-      timeRange
+    // Import charting libraries
+    const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
+    const { Chart, LinearScale, CategoryScale, LineController, PointElement, LineElement, Legend, Title, Tooltip } = require('chart.js');
+    
+    // Register Chart.js components
+    Chart.register(LinearScale, CategoryScale, LineController, PointElement, LineElement, Legend, Title, Tooltip);
+
+    // Configure chart dimensions
+    const width = 800;
+    const height = 400;
+    const backgroundColour = 'white';
+    
+    // Create chart canvas
+    const canvasRenderService = new ChartJSNodeCanvas({ width, height, backgroundColour });
+
+    // Prepare data
+    const labels = metrics.map(m => {
+      const date = new Date(m.timestamp);
+      return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+    });
+    
+    const data = metrics.map(m => m[metric]);
+    
+    // Define chart configuration
+    const configuration = {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: `${metric.toUpperCase()} Usage`,
+          data: data,
+          borderColor: metric === 'cpu' ? 'rgb(255, 99, 132)' : 
+                      metric === 'memory' ? 'rgb(54, 162, 235)' : 
+                      'rgb(75, 192, 192)',
+          backgroundColor: metric === 'cpu' ? 'rgba(255, 99, 132, 0.2)' : 
+                          metric === 'memory' ? 'rgba(54, 162, 235, 0.2)' : 
+                          'rgba(75, 192, 192, 0.2)',
+          tension: 0.1,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'top' as const,
+          },
+          title: {
+            display: true,
+            text: `${metric.toUpperCase()} Usage Over Time (${timeRange})`
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: metric === 'players' ? undefined : 100,
+            title: {
+              display: true,
+              text: metric === 'players' ? 'Players' : 'Percentage (%)'
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Time'
+            }
+          }
+        }
+      },
     };
 
-    // This would generate an actual PNG using a charting library
-    return Buffer.from(JSON.stringify(graphData));
+    // Generate chart as PNG buffer
+    const buffer = await canvasRenderService.renderToBuffer(configuration);
+    return buffer;
   }
 }

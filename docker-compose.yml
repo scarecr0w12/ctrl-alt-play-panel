@@ -19,6 +19,7 @@ services:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
     depends_on:
+      - postgres
       - redis
     restart: unless-stopped
     healthcheck:
@@ -44,10 +45,10 @@ services:
 
   # PostgreSQL database service (enabled when DB_TYPE=postgresql)
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ${DB_NAME:-ctrl_alt_play}
-      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_DB: ${DB_NAME:-ctrlaltplay}
+      POSTGRES_USER: ${DB_USER:-ctrlaltplay}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_INITDB_ARGS: '--auth-host=scram-sha-256'
     ports:
@@ -57,19 +58,17 @@ services:
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-ctrl_alt_play}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-ctrlaltplay}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
-    profiles:
-      - postgresql
 
   # MySQL database service (enabled when DB_TYPE=mysql)
   mysql:
     image: mysql:8.0
     environment:
-      MYSQL_DATABASE: ${DB_NAME:-ctrl_alt_play}
+      MYSQL_DATABASE: ${DB_NAME:-ctrlaltplay}
       MYSQL_USER: ${DB_USER:-root}
       MYSQL_PASSWORD: ${DB_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
@@ -91,7 +90,7 @@ services:
   mariadb:
     image: mariadb:10.11
     environment:
-      MARIADB_DATABASE: ${DB_NAME:-ctrl_alt_play}
+      MARIADB_DATABASE: ${DB_NAME:-ctrlaltplay}
       MARIADB_USER: ${DB_USER:-root}
       MARIADB_PASSWORD: ${DB_PASSWORD}
       MARIADB_ROOT_PASSWORD: ${DB_PASSWORD}
@@ -113,7 +112,7 @@ services:
   mongodb:
     image: mongo:7.0
     environment:
-      MONGO_INITDB_DATABASE: ${DB_NAME:-ctrl_alt_play}
+      MONGO_INITDB_DATABASE: ${DB_NAME:-ctrlaltplay}
       MONGO_INITDB_ROOT_USERNAME: ${DB_USER:-admin}
       MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD}
     ports:

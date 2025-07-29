@@ -5,10 +5,16 @@
 FROM node:18-alpine AS frontend-builder
 
 # Install system dependencies for building (cross-platform)
+# Adding dependencies needed for canvas package
 RUN apk add --no-cache \
     python3 \
     make \
     g++ \
+    build-base \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
     && ln -sf python3 /usr/bin/python
 
 WORKDIR /app/frontend
@@ -32,12 +38,18 @@ RUN npm run build
 FROM node:18-alpine AS backend-builder
 
 # Install system dependencies for building (cross-platform)
+# Adding dependencies needed for canvas package
 RUN apk add --no-cache \
     openssl \
     python3 \
     make \
     g++ \
     curl \
+    build-base \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
     && ln -sf python3 /usr/bin/python
 
 # Set working directory
@@ -62,6 +74,9 @@ COPY src ./src
 # Build the application
 RUN npm run build
 
+# Compile seed script to JavaScript
+RUN npx tsc --outDir dist/prisma --target es2020 --module commonjs prisma/seed.ts
+
 # Remove dev dependencies
 RUN npm prune --production
 
@@ -69,11 +84,17 @@ RUN npm prune --production
 FROM node:18-alpine AS production
 
 # Install runtime dependencies (Linux distribution agnostic)
+# Adding dependencies needed for canvas package
 RUN apk add --no-cache \
     openssl \
     curl \
     tini \
     ca-certificates \
+    build-base \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
     && update-ca-certificates
 
 # Set working directory
@@ -91,6 +112,9 @@ RUN npx prisma generate
 
 # Copy built application from backend builder stage
 COPY --from=backend-builder /app/dist ./dist
+
+# Copy compiled seed script
+COPY --from=backend-builder /app/dist/prisma ./dist/prisma
 
 # Copy built frontend from frontend builder stage
 COPY --from=frontend-builder /app/frontend/.next ./frontend/.next
