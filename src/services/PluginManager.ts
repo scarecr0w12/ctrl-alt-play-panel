@@ -58,6 +58,41 @@ export class PluginManager {
   /**
    * Static method to install plugin
    */
+  static async validatePlugin(pluginPath: string): Promise<{ valid: boolean; errors?: string[] }> {
+    try {
+      const metadataPath = path.join(pluginPath, 'plugin.yaml');
+      
+      if (!fs.existsSync(metadataPath)) {
+        throw new Error('Plugin metadata file (plugin.yaml) not found');
+      }
+
+      const metadataContent = fs.readFileSync(metadataPath, 'utf8');
+      const metadata = yaml.load(metadataContent) as PluginMetadata;
+
+      const errors: string[] = [];
+      if (!metadata.name) errors.push('Plugin name is required');
+      if (!metadata.version) errors.push('Plugin version is required');
+      if (!metadata.author) errors.push('Plugin author is required');
+
+      // Check if main plugin file exists
+      if (metadata.main) {
+        const mainFilePath = path.join(pluginPath, metadata.main);
+        if (!fs.existsSync(mainFilePath)) {
+          errors.push(`Main plugin file '${metadata.main}' not found`);
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(errors.join('; '));
+      }
+
+      return { valid: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Plugin validation failed: ${errorMessage}`);
+    }
+  }
+
   static async installPlugin(pluginPath: string, source: string = 'local', prismaClient?: PrismaClient): Promise<{ success: boolean; plugin: PluginMetadata; message: string }> {
     // For static methods, create a new PrismaClient if not provided
     let prisma: PrismaClient;

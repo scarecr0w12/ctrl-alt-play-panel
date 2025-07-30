@@ -14,6 +14,7 @@ export interface PluginMetadata {
   description?: string;
   author: string;
   license?: string;
+  main?: string;
   compatibility?: {
     min_panel_version?: string;
     max_panel_version?: string;

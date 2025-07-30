@@ -86,7 +86,6 @@ const createTestPlugin = (name: string, config: Record<string, any> = {}) => {
   }
   fs.writeFileSync(path.join(backendPath, "index.js"), pluginJsContent);
   fs.writeFileSync(path.join(pluginPath, "plugin.js"), "module.exports = require("./backend/index.js");");
-  fs.writeFileSync(path.join(pluginPath, "plugin.js"), "module.exports = require(\"./backend/index.js\");");
   
 
   return pluginPath;
@@ -763,3 +762,4 @@ describe('Plugin System Integration Tests', () => {
     });
   });
 });
+  fs.writeFileSync(path.join(pluginPath, "plugin.js"), "module.exports = require(\"./backend/index.js\");");

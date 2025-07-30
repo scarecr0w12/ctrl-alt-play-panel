@@ -52,9 +52,29 @@ class PluginCLI {
 
   constructor() {
     this.program = new Command();
-    // For CLI usage, create a new PrismaClient
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
+    
+    // Try to use DatabaseService if available, otherwise fall back to a new PrismaClient
+    let prisma: any;
+    try {
+      const { DatabaseService } = require('../services/database');
+      console.log('DatabaseService available');
+      if (DatabaseService.isInitialized()) {
+        prisma = DatabaseService.getInstance();
+        console.log('Using DatabaseService PrismaClient');
+      } else {
+        console.log('DatabaseService not initialized');
+        const { PrismaClient } = require('@prisma/client');
+        prisma = new PrismaClient();
+        console.log('Using new PrismaClient');
+      }
+    } catch (error) {
+      console.log('DatabaseService not available:', error);
+      // Fallback if DatabaseService is not available
+      const { PrismaClient } = require('@prisma/client');
+      prisma = new PrismaClient();
+      console.log('Using fallback PrismaClient');
+    }
+    
     this.pluginManager = new PluginManager(prisma);
     this.setupCommands();
   }
@@ -102,6 +122,12 @@ class PluginCLI {
       .description('List installed plugins')
       .option('-t, --type <type>', 'Filter by plugin type')
       .action((options) => this.listPlugins(options));
+
+    // Uninstall command
+    this.program
+      .command('uninstall <name>')
+      .description('Uninstall a plugin')
+      .action((name) => this.uninstallPlugin(name));
   }
 
   async run() {
@@ -278,6 +304,49 @@ export default class ${name} extends PluginBase {
         };
       }
       console.error(chalk.red('❌ Installation error:'), error);
+      console.log(chalk.red(`   - ${(error as Error).message || error}`));
+    }
+  }
+
+  private async uninstallPlugin(name: string) {
+    try {
+      // Ensure chalk is available
+      if (!chalk) {
+        try {
+          chalk = (await import('chalk')).default;
+        } catch (error) {
+          // Fallback if chalk fails to load
+          chalk = {
+            red: (text: string) => text,
+            green: (text: string) => text,
+            blue: (text: string) => text,
+            yellow: (text: string) => text,
+            gray: (text: string) => text
+          };
+        }
+      }
+      console.log(chalk.blue('🗑️  Uninstalling plugin...'));
+      
+      // Uninstall using PluginManager
+      const result = await this.pluginManager.uninstallPlugin(name);
+      
+      if ((result as any)?.success) {
+        console.log(chalk.green(`✅ Plugin "${name}" uninstalled successfully!`));
+      } else {
+        console.log(chalk.red(`❌ Failed to uninstall plugin: ${(result as any)?.message || 'Unknown error'}`));
+      }
+    } catch (error) {
+      // Ensure chalk is available for error messages
+      if (!chalk) {
+        chalk = {
+          red: (text: string) => text,
+          green: (text: string) => text,
+          blue: (text: string) => text,
+          yellow: (text: string) => text,
+          gray: (text: string) => text
+        };
+      }
+      console.error(chalk.red('❌ Uninstallation error:'), error);
       console.log(chalk.red(`   - ${(error as Error).message || error}`));
     }
   }

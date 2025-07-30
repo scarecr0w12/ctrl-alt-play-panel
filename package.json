@@ -33,6 +33,7 @@
           "plugin:list": "node scripts/plugin-tools/cli.js list",
           "plugin:enable": "node scripts/plugin-tools/cli.js enable",
           "plugin:disable": "node scripts/plugin-tools/cli.js disable",
+          "plugin:uninstall": "node scripts/plugin-tools/cli.js uninstall",
           "plugin:validate": "node scripts/plugin-tools/cli.js validate",
           "plugin:test": "node test-plugin-system.js"
      },

@@ -336,6 +336,35 @@ npm run plugin:validate ${pluginName}
     }
   }
 
+  // Uninstall a plugin from the system
+  async uninstall(pluginName) {
+    console.log(`🗑️  Uninstalling plugin: ${pluginName}`);
+    
+    try {
+      // Check if plugin exists
+      const existingPlugin = await this.prisma.plugin.findUnique({
+        where: { name: pluginName }
+      });
+
+      if (!existingPlugin) {
+        console.error(`❌ Plugin ${pluginName} not found`);
+        return false;
+      }
+
+      // Delete plugin record
+      await this.prisma.plugin.delete({
+        where: { name: pluginName }
+      });
+
+      console.log(`✅ Plugin ${pluginName} uninstalled successfully`);
+      return true;
+
+    } catch (error) {
+      console.error(`❌ Failed to uninstall plugin: ${error.message}`);
+      return false;
+    }
+  }
+
   // Validate plugin structure
   validate(pluginPath) {
     console.log(`🔍 Validating plugin: ${pluginPath}`);
@@ -462,6 +491,14 @@ async function main() {
         await cli.disable(args[1]);
         break;
 
+      case 'uninstall':
+        if (!args[1]) {
+          console.error('❌ Plugin name required: npm run plugin:uninstall <name>');
+          process.exit(1);
+        }
+        await cli.uninstall(args[1]);
+        break;
+
       case 'validate':
         if (!args[1]) {
           console.error('❌ Plugin path required: npm run plugin:validate <path>');
@@ -474,16 +511,18 @@ async function main() {
         console.log(`🔌 Plugin Development CLI
 
 Usage:
-  npm run plugin:create <name>     Create a new plugin
-  npm run plugin:install <path>    Install a plugin
-  npm run plugin:list              List all plugins
-  npm run plugin:enable <name>     Enable a plugin
-  npm run plugin:disable <name>    Disable a plugin
-  npm run plugin:validate <path>   Validate plugin structure
+  npm run plugin:create <name>        Create a new plugin
+  npm run plugin:install <path>       Install a plugin
+  npm run plugin:list                 List all plugins
+  npm run plugin:enable <name>        Enable a plugin
+  npm run plugin:disable <name>       Disable a plugin
+  npm run plugin:uninstall <name>     Uninstall a plugin
+  npm run plugin:validate <path>      Validate plugin structure
 
 Examples:
   npm run plugin:create my-awesome-plugin
   npm run plugin:install ./plugins/my-plugin
+  npm run plugin:uninstall my-plugin
   npm run plugin:validate ./sample-plugins/hello-world`);
     }
   } catch (error) {

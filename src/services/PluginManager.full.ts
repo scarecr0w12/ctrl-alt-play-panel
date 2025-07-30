@@ -44,6 +44,191 @@ export class PluginManager {
   /**
    * Initialize the plugin manager and load all active plugins
    */
+  static async validatePlugin(pluginPath: string): Promise<{ valid: boolean; errors?: string[] }> {
+    try {
+      const metadataPath = path.join(pluginPath, 'plugin.yaml');
+      
+      if (!fs.existsSync(metadataPath)) {
+        throw new Error('Plugin metadata file (plugin.yaml) not found');
+      }
+
+      const metadataContent = fs.readFileSync(metadataPath, 'utf8');
+      const metadata = yaml.load(metadataContent) as PluginMetadata;
+
+      const errors: string[] = [];
+      if (!metadata.name) errors.push('Plugin name is required');
+      if (!metadata.version) errors.push('Plugin version is required');
+      if (!metadata.author) errors.push('Plugin author is required');
+
+      // Check if main plugin file exists
+      if (metadata.main) {
+        const mainFilePath = path.join(pluginPath, metadata.main);
+        if (!fs.existsSync(mainFilePath)) {
+          errors.push(`Main plugin file '${metadata.main}' not found`);
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(errors.join('; '));
+      }
+
+      return { valid: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Plugin validation failed: ${errorMessage}`);
+    }
+  }
+
+  static async installPlugin(pluginPath: string, source: string = 'local', prismaClient?: PrismaClient): Promise<{ success: boolean; plugin: any; message: string }> {
+    // For static methods, create a new PrismaClient if not provided
+    let prisma: PrismaClient;
+    if (prismaClient) {
+      prisma = prismaClient;
+    } else {
+      // Try to use DatabaseService if available
+      try {
+        const { DatabaseService } = require('./database');
+        if (DatabaseService.isInitialized()) {
+          prisma = DatabaseService.getInstance();
+        } else {
+          const { PrismaClient } = require('@prisma/client');
+          prisma = new PrismaClient();
+          await prisma.$connect();
+        }
+      } catch (error) {
+        // Fallback if DatabaseService is not available
+        const { PrismaClient } = require('@prisma/client');
+        prisma = new PrismaClient();
+        await prisma.$connect();
+      }
+    }
+    const instance = new PluginManager(prisma);
+    try {
+      const plugin = await instance.installPlugin(pluginPath);
+      return {
+        success: true,
+        plugin: {
+          name: plugin.name,
+          version: plugin.version,
+          author: plugin.author,
+          description: plugin.description
+        },
+        message: 'Plugin installed successfully'
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(errorMessage);
+    }
+  }
+
+  static async enablePlugin(pluginName: string, prismaClient?: PrismaClient): Promise<{ success: boolean; message: string }> {
+    // For static methods, create a new PrismaClient if not provided
+    let prisma: PrismaClient;
+    if (prismaClient) {
+      prisma = prismaClient;
+    } else {
+      // Try to use DatabaseService if available
+      try {
+        const { DatabaseService } = require('./database');
+        if (DatabaseService.isInitialized()) {
+          prisma = DatabaseService.getInstance();
+        } else {
+          const { PrismaClient } = require('@prisma/client');
+          prisma = new PrismaClient();
+          await prisma.$connect();
+        }
+      } catch (error) {
+        // Fallback if DatabaseService is not available
+        const { PrismaClient } = require('@prisma/client');
+        prisma = new PrismaClient();
+        await prisma.$connect();
+      }
+    }
+    const instance = new PluginManager(prisma);
+    try {
+      await instance.enablePlugin(pluginName);
+      return {
+        success: true,
+        message: 'Plugin enabled successfully'
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(errorMessage);
+    }
+  }
+
+  static async disablePlugin(pluginName: string, prismaClient?: PrismaClient): Promise<{ success: boolean; message: string }> {
+    // For static methods, create a new PrismaClient if not provided
+    let prisma: PrismaClient;
+    if (prismaClient) {
+      prisma = prismaClient;
+    } else {
+      // Try to use DatabaseService if available
+      try {
+        const { DatabaseService } = require('./database');
+        if (DatabaseService.isInitialized()) {
+          prisma = DatabaseService.getInstance();
+        } else {
+          const { PrismaClient } = require('@prisma/client');
+          prisma = new PrismaClient();
+          await prisma.$connect();
+        }
+      } catch (error) {
+        // Fallback if DatabaseService is not available
+        const { PrismaClient } = require('@prisma/client');
+        prisma = new PrismaClient();
+        await prisma.$connect();
+      }
+    }
+    const instance = new PluginManager(prisma);
+    try {
+      await instance.disablePlugin(pluginName);
+      return {
+        success: true,
+        message: 'Plugin disabled successfully'
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(errorMessage);
+    }
+  }
+
+  static async uninstallPlugin(pluginName: string, prismaClient?: PrismaClient): Promise<{ success: boolean; message: string }> {
+    // For static methods, create a new PrismaClient if not provided
+    let prisma: PrismaClient;
+    if (prismaClient) {
+      prisma = prismaClient;
+    } else {
+      // Try to use DatabaseService if available
+      try {
+        const { DatabaseService } = require('./database');
+        if (DatabaseService.isInitialized()) {
+          prisma = DatabaseService.getInstance();
+        } else {
+          const { PrismaClient } = require('@prisma/client');
+          prisma = new PrismaClient();
+          await prisma.$connect();
+        }
+      } catch (error) {
+        // Fallback if DatabaseService is not available
+        const { PrismaClient } = require('@prisma/client');
+        prisma = new PrismaClient();
+        await prisma.$connect();
+      }
+    }
+    const instance = new PluginManager(prisma);
+    try {
+      await instance.uninstallPlugin(pluginName);
+      return {
+        success: true,
+        message: 'Plugin uninstalled successfully'
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(errorMessage);
+    }
+  }
+
   async initialize(): Promise<void> {
     logger.info('Initializing Plugin Manager...');
     

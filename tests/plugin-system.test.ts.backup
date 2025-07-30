@@ -7,12 +7,12 @@ import { createApp } from '../src/app';
 
 // Test constants
 const TEST_PLUGIN_NAME = 'test-plugin-system';
-const TEST_PLUGIN_PATH = path.join(__dirname, `../plugins/${TEST_PLUGIN_NAME}`);
+const TEST_PLUGIN_PATH = path.join(__dirname, `../sample-plugins/${TEST_PLUGIN_NAME}`);
 const CLI_SCRIPT = path.join(__dirname, '../scripts/plugin-tools/cli.js');
 
 // Helper functions for test setup
 const createTestPlugin = (name: string, config: Record<string, any> = {}) => {
-  const pluginPath = path.join(__dirname, '../plugins/' + name);
+  const pluginPath = path.join(__dirname, '../sample-plugins/' + name);
   
   if (!fs.existsSync(pluginPath)) {
     fs.mkdirSync(pluginPath, { recursive: true });
@@ -48,7 +48,7 @@ const createTestPlugin = (name: string, config: Record<string, any> = {}) => {
   fs.writeFileSync(path.join(pluginPath, 'plugin.yaml'), yamlContent);
 
   // Create plugin.js content with proper escaping
-  const pluginJsContent = 'const { PluginBase } = require(\'../../src/types/plugin/PluginBase\');\n' +
+  const pluginJsContent = 'const { PluginBase } = require(\'../../sdk/PluginBase\');\n' +
     '\n' +
     'class TestPlugin extends PluginBase {\n' +
     '  constructor(context) {\n' +
@@ -57,22 +57,22 @@ const createTestPlugin = (name: string, config: Record<string, any> = {}) => {
     '    this.version = \'' + pluginConfig.version + '\';\n' +
     '  }\n' +
     '\n' +
-    '  async onInstall() {\n' +
+    '  async install() {\n' +
     '    this.log(\'Installing ' + name + '...\');\n' +
     '    return { success: true };\n' +
     '  }\n' +
     '\n' +
-    '  async onEnable() {\n' +
+    '  async enable() {\n' +
     '    this.log(\'Enabling ' + name + '...\');\n' +
     '    return { success: true };\n' +
     '  }\n' +
     '\n' +
-    '  async onDisable() {\n' +
+    '  async disable() {\n' +
     '    this.log(\'Disabling ' + name + '...\');\n' +
     '    return { success: true };\n' +
     '  }\n' +
     '\n' +
-    '  async onUninstall() {\n' +
+    '  async uninstall() {\n' +
     '    this.log(\'Uninstalling ' + name + '...\');\n' +
     '    return { success: true };\n' +
     '  }\n' +
@@ -80,14 +80,18 @@ const createTestPlugin = (name: string, config: Record<string, any> = {}) => {
     '\n' +
     'module.exports = TestPlugin;';
   
-  const backendPath = path.join(pluginPath, "backend");
+  fs.writeFileSync(path.join(pluginPath, 'plugin.js'), pluginJsContent);
+  
+  // Create backend directory and index.js
+  const backendPath = path.join(pluginPath, 'backend');
   if (!fs.existsSync(backendPath)) {
     fs.mkdirSync(backendPath, { recursive: true });
   }
-  fs.writeFileSync(path.join(backendPath, "index.js"), pluginJsContent);
-  fs.writeFileSync(path.join(pluginPath, "plugin.js"), "module.exports = require("./backend/index.js");");
-  fs.writeFileSync(path.join(pluginPath, "plugin.js"), "module.exports = require(\"./backend/index.js\");");
   
+  fs.writeFileSync(path.join(backendPath, 'index.js'), `
+// Test plugin backend
+console.log('Test plugin backend loaded');
+  `);
 
   return pluginPath;
 }
@@ -453,7 +457,7 @@ describe('Plugin System Integration Tests', () => {
 
     test('should handle missing plugin.yaml', async () => {
       // Create plugin directory without plugin.yaml
-      const pluginPath = path.join(__dirname, '../plugins/invalid-plugin');
+      const pluginPath = path.join(__dirname, '../sample-plugins/invalid-plugin');
       if (!fs.existsSync(pluginPath)) {
         fs.mkdirSync(pluginPath, { recursive: true });
       }
@@ -679,7 +683,7 @@ describe('Plugin System Integration Tests', () => {
       
       // Install all plugins concurrently
       const installPromises = pluginNames.map(name => 
-        PluginManager.installPlugin(path.join(__dirname, '../plugins/' + name))
+        PluginManager.installPlugin(path.join(__dirname, '../sample-plugins/' + name))
       );
       
       const installResults = await Promise.all(installPromises);
