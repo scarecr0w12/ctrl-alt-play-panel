@@ -1,10 +1,26 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import chalk from 'chalk';
 import * as fs from 'fs';
 import * as path from 'path';
-import PluginManager from '../services/PluginManager';
+import PluginManager from '../services/PluginManager.full';
+
+// Dynamic import for chalk to avoid ESM issues
+let chalk: any;
+(async () => {
+  try {
+    chalk = (await import('chalk')).default;
+  } catch (error) {
+    // Fallback if chalk fails to load
+    chalk = {
+      red: (text: string) => text,
+      green: (text: string) => text,
+      blue: (text: string) => text,
+      yellow: (text: string) => text,
+      gray: (text: string) => text
+    };
+  }
+})();
 
 interface CommandOptions {
   template?: string;
@@ -36,7 +52,10 @@ class PluginCLI {
 
   constructor() {
     this.program = new Command();
-    this.pluginManager = PluginManager.getInstance();
+    // For CLI usage, create a new PrismaClient
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+    this.pluginManager = new PluginManager(prisma);
     this.setupCommands();
   }
 
@@ -65,6 +84,18 @@ class PluginCLI {
       .description('Install a plugin locally')
       .action((pluginPath) => this.installPlugin(pluginPath));
 
+    // Enable command
+    this.program
+      .command('enable <name>')
+      .description('Enable a plugin')
+      .action((name) => this.enablePlugin(name));
+
+    // Disable command
+    this.program
+      .command('disable <name>')
+      .description('Disable a plugin')
+      .action((name) => this.disablePlugin(name));
+
     // List command
     this.program
       .command('list')
@@ -77,113 +108,309 @@ class PluginCLI {
     await this.program.parseAsync(process.argv);
   }
 
-  private async createPlugin(name: string, options: CommandOptions) {
+  private async createPlugin(name: string, options: { template?: string; output?: string }) {
     try {
-      console.log(chalk.blue(`🚀 Creating plugin: ${name}`));
-      
-      const template = this.getTemplate(options.template || 'basic');
-      const pluginDir = path.join(process.cwd(), name);
-
-      if (fs.existsSync(pluginDir) && !options.force) {
-        console.log(chalk.red(`❌ Directory ${name} already exists. Use --force to overwrite.`));
-        return;
+      // Ensure chalk is available
+      if (!chalk) {
+        try {
+          chalk = (await import('chalk')).default;
+        } catch (error) {
+          // Fallback if chalk fails to load
+          chalk = {
+            red: (text: string) => text,
+            green: (text: string) => text,
+            blue: (text: string) => text,
+            yellow: (text: string) => text,
+            gray: (text: string) => text
+          };
+        }
       }
-
+      console.log(chalk.blue(`✨ Creating plugin "${name}"...`));
+      
+      const outputPath = options.output || path.join(process.cwd(), name);
+      
       // Create plugin directory
-      fs.mkdirSync(pluginDir, { recursive: true });
-
-      // Create files from template
-      for (const [fileName, content] of Object.entries(template.files)) {
-        const filePath = path.join(pluginDir, fileName);
-        const fileDir = path.dirname(filePath);
-        
-        fs.mkdirSync(fileDir, { recursive: true });
-        fs.writeFileSync(filePath, content.replace(/{{name}}/g, name));
+      if (!fs.existsSync(outputPath)) {
+        fs.mkdirSync(outputPath, { recursive: true });
       }
-
-      console.log(chalk.green(`✅ Plugin ${name} created successfully!`));
-      console.log(chalk.blue(`📁 Location: ${pluginDir}`));
       
+      // Create plugin.yaml
+      const pluginYaml = `name: ${name}
+version: 1.0.0
+author: Your Name
+description: A new plugin
+`;
+      fs.writeFileSync(path.join(outputPath, 'plugin.yaml'), pluginYaml);
+      
+      // Create index.ts
+      const indexTs = `import { PluginBase } from '../types/plugin/PluginBase';
+
+export default class ${name} extends PluginBase {
+  async onLoad(): Promise<void> {
+    console.log('Plugin ${name} loaded!');
+  }
+
+  async onUnload(): Promise<void> {
+    console.log('Plugin ${name} unloaded!');
+  }
+}
+`;
+      fs.writeFileSync(path.join(outputPath, 'index.ts'), indexTs);
+      
+      console.log(chalk.green(`✅ Plugin "${name}" created successfully at ${outputPath}`));
+      console.log(chalk.gray('Next steps:'));
+      console.log(chalk.gray(`  1. cd ${outputPath}`));
+      console.log(chalk.gray('  2. npm install # if you have dependencies')); 
+      console.log(chalk.gray('  3. npm run build # if you have build steps'));
     } catch (error) {
-      console.error(chalk.red('❌ Creation error:'), error);
+      // Ensure chalk is available for error messages
+      if (!chalk) {
+        chalk = {
+          red: (text: string) => text,
+          green: (text: string) => text,
+          blue: (text: string) => text,
+          yellow: (text: string) => text,
+          gray: (text: string) => text
+        };
+      }
+      console.error(chalk.red('❌ Failed to create plugin:'), error);
     }
   }
 
   private async validatePlugin(pluginPath: string) {
     try {
+      // Ensure chalk is available
+      if (!chalk) {
+        try {
+          chalk = (await import('chalk')).default;
+        } catch (error) {
+          // Fallback if chalk fails to load
+          chalk = {
+            red: (text: string) => text,
+            green: (text: string) => text,
+            blue: (text: string) => text,
+            yellow: (text: string) => text,
+            gray: (text: string) => text
+          };
+        }
+      }
       console.log(chalk.blue('🔍 Validating plugin...'));
       
-      const configPath = path.join(pluginPath, 'plugin.yaml');
+      const fullPath = path.resolve(pluginPath);
+      
+      // Check if plugin.yaml exists
+      const configPath = path.join(fullPath, 'plugin.yaml');
       if (!fs.existsSync(configPath)) {
         console.log(chalk.red('❌ Plugin configuration (plugin.yaml) not found!'));
         return;
       }
-
-      // Read and parse the plugin config
-      const yaml = require('js-yaml');
-      const configContent = fs.readFileSync(configPath, 'utf8');
-      const config = yaml.load(configContent);
-
-      const validation = await this.pluginManager.validatePlugin(config);
-
-      if (validation.valid) {
+      
+      // Validate using PluginManager
+      const result = await this.pluginManager.validatePluginStructure(fullPath);
+      
+      if (result) {
         console.log(chalk.green('✅ Plugin validation passed!'));
       } else {
         console.log(chalk.red('❌ Plugin validation failed!'));
-        if (validation.errors?.length) {
-          console.log(chalk.red('Errors:'));
-          validation.errors.forEach((error: string) => {
-            console.log(chalk.red(`   - ${error}`));
-          });
-        }
       }
-
     } catch (error) {
+      // Ensure chalk is available for error messages
+      if (!chalk) {
+        chalk = {
+          red: (text: string) => text,
+          green: (text: string) => text,
+          blue: (text: string) => text,
+          yellow: (text: string) => text,
+          gray: (text: string) => text
+        };
+      }
       console.error(chalk.red('❌ Validation error:'), error);
+      console.log(chalk.red('Errors:'));
+      console.log(chalk.red(`   - ${(error as Error).message || error}`));
     }
   }
 
   private async installPlugin(pluginPath: string) {
     try {
+      // Ensure chalk is available
+      if (!chalk) {
+        try {
+          chalk = (await import('chalk')).default;
+        } catch (error) {
+          // Fallback if chalk fails to load
+          chalk = {
+            red: (text: string) => text,
+            green: (text: string) => text,
+            blue: (text: string) => text,
+            yellow: (text: string) => text,
+            gray: (text: string) => text
+          };
+        }
+      }
       console.log(chalk.blue('📦 Installing plugin...'));
       
-      const result = await this.pluginManager.installPlugin(pluginPath, 'local');
-
-      if (result.success) {
-        console.log(chalk.green(`✅ Plugin "${result.plugin.name}" installed successfully!`));
-      } else {
-        console.log(chalk.red('❌ Installation failed!'));
-        console.log(chalk.red(result.message || 'Unknown error'));
+      const fullPath = path.resolve(pluginPath);
+      
+      // Validate first
+      try {
+        await this.pluginManager.validatePluginStructure(fullPath);
+      } catch (error) {
+        console.log(chalk.red('❌ Plugin validation failed:'));
+        console.log(chalk.red(`   - ${(error as Error).message || error}`));
+        return;
       }
-
+      
+      // Install using PluginManager
+      const plugin = await this.pluginManager.installPlugin(fullPath);
+      
+      if (plugin) {
+        console.log(chalk.green(`✅ Plugin "${plugin.name}" installed successfully!`));
+      }
     } catch (error) {
+      // Ensure chalk is available for error messages
+      if (!chalk) {
+        chalk = {
+          red: (text: string) => text,
+          green: (text: string) => text,
+          blue: (text: string) => text,
+          yellow: (text: string) => text,
+          gray: (text: string) => text
+        };
+      }
       console.error(chalk.red('❌ Installation error:'), error);
+      console.log(chalk.red(`   - ${(error as Error).message || error}`));
     }
   }
 
-  private async listPlugins(options: CommandOptions) {
+  private async listPlugins(options: { json: boolean }) {
     try {
-      console.log(chalk.blue('📋 Listing plugins...'));
+      // Ensure chalk is available
+      if (!chalk) {
+        try {
+          chalk = (await import('chalk')).default;
+        } catch (error) {
+          // Fallback if chalk fails to load
+          chalk = {
+            red: (text: string) => text,
+            green: (text: string) => text,
+            blue: (text: string) => text,
+            yellow: (text: string) => text,
+            gray: (text: string) => text,
+            bold: (text: string) => text
+          };
+        }
+      }
       
-      const plugins = await this.pluginManager.getPlugins(options.type);
-
-      if (plugins.length === 0) {
-        console.log(chalk.yellow('📭 No plugins found.'));
+      const plugins = await this.pluginManager.getInstalledPlugins();
+      
+      if (options.json) {
+        console.log(JSON.stringify(plugins, null, 2));
         return;
       }
-
-      console.log(chalk.green(`Found ${plugins.length} plugin(s):`));
-      console.log();
-
-      plugins.forEach((plugin: PluginMetadata) => {
-        console.log(chalk.green(`${plugin.name} v${plugin.version}`));
-        console.log(chalk.gray(`   ${plugin.description || 'No description'}`));
-        console.log(chalk.blue(`   Author: ${plugin.author}`));
+      
+      console.log(chalk.blue('🔌 Installed Plugins:'));
+      if (plugins.length === 0) {
+        console.log(chalk.yellow('No plugins installed'));
+        return;
+      }
+      
+      plugins.forEach(plugin => {
+        const status = plugin.status === 'ACTIVE' ? chalk.green('✓ Active') : chalk.gray('○ Inactive');
+        console.log(`  ${chalk.bold(plugin.name)} (${plugin.version}) ${status}`);
+        if (plugin.description) {
+          console.log(`    ${chalk.gray(plugin.description)}`);
+        }
+        console.log(`    Author: ${plugin.author}`);
+        console.log(`    Installed: ${new Date(plugin.installedAt).toLocaleDateString()}`);
         console.log();
       });
-
     } catch (error) {
+      // Ensure chalk is available for error messages
+      if (!chalk) {
+        chalk = {
+          red: (text: string) => text,
+          green: (text: string) => text,
+          blue: (text: string) => text,
+          yellow: (text: string) => text,
+          gray: (text: string) => text,
+          bold: (text: string) => text
+        };
+      }
       console.error(chalk.red('❌ Failed to list plugins:'), error);
+    }
+  }
+
+  private async enablePlugin(name: string) {
+    try {
+      // Ensure chalk is available
+      if (!chalk) {
+        try {
+          chalk = (await import('chalk')).default;
+        } catch (error) {
+          // Fallback if chalk fails to load
+          chalk = {
+            red: (text: string) => text,
+            green: (text: string) => text,
+            blue: (text: string) => text,
+            yellow: (text: string) => text,
+            gray: (text: string) => text
+          };
+        }
+      }
+      
+      console.log(chalk.blue(`🔌 Enabling plugin "${name}"...`));
+      await this.pluginManager.enablePlugin(name);
+      console.log(chalk.green(`✅ Plugin "${name}" enabled successfully!`));
+    } catch (error) {
+      // Ensure chalk is available for error messages
+      if (!chalk) {
+        chalk = {
+          red: (text: string) => text,
+          green: (text: string) => text,
+          blue: (text: string) => text,
+          yellow: (text: string) => text,
+          gray: (text: string) => text
+        };
+      }
+      console.error(chalk.red('❌ Failed to enable plugin:'), error);
+      console.log(chalk.red(`   - ${(error as Error).message || error}`));
+    }
+  }
+
+  private async disablePlugin(name: string) {
+    try {
+      // Ensure chalk is available
+      if (!chalk) {
+        try {
+          chalk = (await import('chalk')).default;
+        } catch (error) {
+          // Fallback if chalk fails to load
+          chalk = {
+            red: (text: string) => text,
+            green: (text: string) => text,
+            blue: (text: string) => text,
+            yellow: (text: string) => text,
+            gray: (text: string) => text
+          };
+        }
+      }
+      
+      console.log(chalk.blue(`🔌 Disabling plugin "${name}"...`));
+      await this.pluginManager.disablePlugin(name);
+      console.log(chalk.green(`✅ Plugin "${name}" disabled successfully!`));
+    } catch (error) {
+      // Ensure chalk is available for error messages
+      if (!chalk) {
+        chalk = {
+          red: (text: string) => text,
+          green: (text: string) => text,
+          blue: (text: string) => text,
+          yellow: (text: string) => text,
+          gray: (text: string) => text
+        };
+      }
+      console.error(chalk.red('❌ Failed to disable plugin:'), error);
+      console.log(chalk.red(`   - ${(error as Error).message || error}`));
     }
   }
 

@@ -2,7 +2,7 @@
 # Uses Alpine Linux for smaller image size but maintains compatibility
 
 # Frontend build stage
-FROM node:18-alpine AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 
 # Install system dependencies for building (cross-platform)
 # Adding dependencies needed for canvas package
@@ -35,7 +35,7 @@ RUN npm cache clean --force && npm install
 RUN npm run build
 
 # Backend build stage  
-FROM node:18-alpine AS backend-builder
+FROM node:20-alpine AS backend-builder
 
 # Install system dependencies for building (cross-platform)
 # Adding dependencies needed for canvas package
@@ -81,7 +81,7 @@ RUN npx tsc --outDir dist/prisma --target es2020 --module commonjs prisma/seed.t
 RUN npm prune --production
 
 # Production stage
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 
 # Install runtime dependencies (Linux distribution agnostic)
 # Adding dependencies needed for canvas package
@@ -112,7 +112,9 @@ RUN npx prisma generate
 
 # Copy built application from backend builder stage
 COPY --from=backend-builder /app/dist ./dist
-
+# Copy health check script
+COPY --from=backend-builder /app/src/health-check.js ./dist/health-check.js
+# Copy health check script
 # Copy compiled seed script
 COPY --from=backend-builder /app/dist/prisma ./dist/prisma
 

@@ -23,6 +23,32 @@ interface ConsoleProps {
   className?: string;
 }
 
+// Common commands for auto-completion
+const COMMON_COMMANDS = [
+  // Server management commands
+  'start', 'stop', 'restart', 'status', 'kill',
+  // File management commands
+  'ls', 'cd', 'pwd', 'mkdir', 'rmdir', 'rm', 'cp', 'mv', 'touch', 'cat', 'less', 'more', 'head', 'tail',
+  // Process management commands
+  'ps', 'top', 'htop', 'kill', 'killall', 'pkill', 'bg', 'fg', 'jobs',
+  // System information commands
+  'df', 'du', 'free', 'uptime', 'whoami', 'id', 'date', 'cal', 'history',
+  // Network commands
+  'ping', 'wget', 'curl', 'ssh', 'scp', 'netstat', 'ifconfig', 'ip',
+  // Package management commands
+  'apt', 'apt-get', 'yum', 'dnf', 'pacman', 'brew',
+  // Text processing commands
+  'grep', 'find', 'sed', 'awk', 'sort', 'uniq', 'wc', 'cut', 'paste',
+  // Compression commands
+  'tar', 'gzip', 'zip', 'unzip', '7z',
+  // Permission commands
+  'chmod', 'chown', 'chgrp',
+  // Navigation commands
+  'cd', 'pwd', 'pushd', 'popd', 'dirs',
+  // Help commands
+  'help', 'man', 'info', 'which', 'whereis', 'type'
+];
+
 export type { ConsoleMessage, ConsoleProps };
 
 export const Console: React.FC<ConsoleProps> = ({ 
@@ -36,6 +62,8 @@ export const Console: React.FC<ConsoleProps> = ({
   const [serverStatus, setServerStatus] = useState<'online' | 'offline' | 'starting' | 'stopping'>('offline');
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [resourceUsage, setResourceUsage] = useState({
     memory: 0,
     cpu: 0,
@@ -55,6 +83,36 @@ export const Console: React.FC<ConsoleProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Handle command auto-completion
+  const handleAutoComplete = useCallback(() => {
+    if (!command.trim()) {
+      // Show all commands if input is empty
+      setSuggestions(COMMON_COMMANDS.slice(0, 10));
+      setShowSuggestions(true);
+      return;
+    }
+
+    // Find commands that start with the current input
+    const matchingCommands = COMMON_COMMANDS.filter(cmd => 
+      cmd.startsWith(command.trim().toLowerCase())
+    ).slice(0, 10); // Limit to 10 suggestions
+
+    if (matchingCommands.length === 1) {
+      // If only one match, complete the command
+      setCommand(matchingCommands[0] + ' ');
+      setSuggestions([]);
+      setShowSuggestions(false);
+    } else if (matchingCommands.length > 1) {
+      // Show multiple suggestions
+      setSuggestions(matchingCommands);
+      setShowSuggestions(true);
+    } else {
+      // No matches found
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, [command]);
 
   // WebSocket connection management
   useEffect(() => {
@@ -205,7 +263,7 @@ export const Console: React.FC<ConsoleProps> = ({
 
       case 'Tab':
         e.preventDefault();
-        // TODO: Implement command auto-completion
+        handleAutoComplete();
         break;
     }
   };
@@ -380,7 +438,7 @@ export const Console: React.FC<ConsoleProps> = ({
       </div>
 
       {/* Command Input */}
-      <div className="border-t border-gray-700 p-4">
+      <div className="border-t border-gray-700 p-4 relative">
         <div className="flex items-center space-x-2">
           <span className="text-blue-400 font-mono">$</span>
           <input
@@ -403,6 +461,25 @@ export const Console: React.FC<ConsoleProps> = ({
             </button>
           )}
         </div>
+        
+        {/* Auto-completion Suggestions */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-800 border border-gray-700 rounded shadow-lg z-10 max-h-40 overflow-y-auto">
+            {suggestions.map((suggestion, index) => (
+              <div
+                key={index}
+                className="px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 cursor-pointer font-mono"
+                onClick={() => {
+                  setCommand(suggestion + ' ');
+                  setShowSuggestions(false);
+                  inputRef.current?.focus();
+                }}
+              >
+                {suggestion}
+              </div>
+            ))}
+          </div>
+        )}
         
         <div className="mt-2 text-xs text-gray-500">
           Use ↑↓ arrows to navigate command history • Tab for auto-completion • Enter to execute

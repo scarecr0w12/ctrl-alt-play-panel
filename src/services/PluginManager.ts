@@ -26,30 +26,118 @@ enum PluginStatus {
  */
 export class PluginManager {
   private static instance: PluginManager;
-  private prisma: PrismaClient;
+  public prisma: PrismaClient;
   private pluginDirectory: string;
   private installedPlugins: Map<string, PluginMetadata>;
 
-  constructor(prisma: PrismaClient, pluginDirectory: string = './plugins') {
+  constructor(prisma: PrismaClient, pluginDirectory?: string) {
     this.prisma = prisma;
-    this.pluginDirectory = path.resolve(pluginDirectory);
+    this.pluginDirectory = pluginDirectory || path.join(__dirname, '../../plugins');
     this.installedPlugins = new Map();
     this.ensurePluginDirectory();
+    // Ensure prisma client is connected
+    this.prisma.$connect().catch(error => {
+      logger.error('Failed to connect Prisma client in PluginManager:', error);
+    });
   }
 
   /**
    * Get singleton instance for CLI usage
    */
-  static getInstance(prisma?: PrismaClient, pluginDirectory?: string): PluginManager {
+  static getInstance(prisma: PrismaClient, pluginDirectory?: string): PluginManager {
     if (!PluginManager.instance) {
-      if (!prisma) {
-        // For CLI usage, create a new PrismaClient
-        const { PrismaClient } = require('@prisma/client');
-        prisma = new PrismaClient();
-      }
-      PluginManager.instance = new PluginManager(prisma!, pluginDirectory);
+      PluginManager.instance = new PluginManager(prisma, pluginDirectory);
+    } else {
+      // Always update the prisma client if a new one is provided
+      PluginManager.instance.prisma = prisma;
     }
+    // Always return the existing instance
     return PluginManager.instance;
+  }
+
+  /**
+   * Static method to install plugin
+   */
+  static async installPlugin(pluginPath: string, source: string = 'local', prismaClient?: PrismaClient): Promise<{ success: boolean; plugin: PluginMetadata; message: string }> {
+    // For static methods, create a new PrismaClient if not provided
+    let prisma: PrismaClient;
+    if (prismaClient) {
+      prisma = prismaClient;
+    } else {
+      const { PrismaClient } = require('@prisma/client');
+      prisma = new PrismaClient();
+      await prisma.$connect();
+    }
+    const instance = PluginManager.getInstance(prisma);
+    return await instance.installPlugin(pluginPath, source);
+  }
+
+  /**
+   * Static method to enable plugin
+   */
+  static async enablePlugin(pluginName: string, prismaClient?: PrismaClient): Promise<{ success: boolean; message: string }> {
+    // For static methods, create a new PrismaClient if not provided
+    let prisma: PrismaClient;
+    if (prismaClient) {
+      prisma = prismaClient;
+    } else {
+      const { PrismaClient } = require('@prisma/client');
+      prisma = new PrismaClient();
+      await prisma.$connect();
+    }
+    const instance = PluginManager.getInstance(prisma);
+    return await instance.enablePlugin(pluginName);
+  }
+
+  /**
+   * Static method to disable plugin
+   */
+  static async disablePlugin(pluginName: string, prismaClient?: PrismaClient): Promise<{ success: boolean; message: string }> {
+    // For static methods, create a new PrismaClient if not provided
+    let prisma: PrismaClient;
+    if (prismaClient) {
+      prisma = prismaClient;
+    } else {
+      const { PrismaClient } = require('@prisma/client');
+      prisma = new PrismaClient();
+      await prisma.$connect();
+    }
+    const instance = PluginManager.getInstance(prisma);
+    return await instance.disablePlugin(pluginName);
+  }
+
+  /**
+   * Static method to uninstall plugin
+   */
+  static async uninstallPlugin(pluginName: string, prismaClient?: PrismaClient): Promise<{ success: boolean; message: string }> {
+    // For static methods, create a new PrismaClient if not provided
+    let prisma: PrismaClient;
+    if (prismaClient) {
+      prisma = prismaClient;
+    } else {
+      const { PrismaClient } = require('@prisma/client');
+      prisma = new PrismaClient();
+      await prisma.$connect();
+    }
+    const instance = PluginManager.getInstance(prisma);
+    return await instance.uninstallPlugin(pluginName);
+  }
+
+  /**
+   * Static method to list plugins
+   */
+  static async getInstalledPlugins(prismaClient?: PrismaClient): Promise<any[]> {
+    // For static methods, create a new PrismaClient if not provided
+    let prisma: PrismaClient;
+    if (prismaClient) {
+      prisma = prismaClient;
+    } else {
+      const { PrismaClient } = require('@prisma/client');
+      prisma = new PrismaClient();
+      await prisma.$connect();
+    }
+    const instance = PluginManager.getInstance(prisma);
+    return await instance.getInstalledPlugins();
   }
 
   /**
@@ -73,6 +161,11 @@ export class PluginManager {
    */
   async installPlugin(pluginPath: string, source: string = 'local'): Promise<{ success: boolean; plugin: PluginMetadata; message: string }> {
     logger.info(`Installing plugin from: ${pluginPath}`);
+
+    // Check if prisma is defined
+    if (!this.prisma) {
+      throw new Error('Prisma client is not defined');
+    }
 
     try {
       // Validate plugin structure
@@ -127,6 +220,11 @@ export class PluginManager {
    * Get all installed plugins
    */
   async getInstalledPlugins(): Promise<any[]> {
+    // Check if prisma is defined
+    if (!this.prisma) {
+      throw new Error('Prisma client is not defined');
+    }
+
     return await (this.prisma as any).plugin.findMany({
       orderBy: { name: 'asc' }
     });
@@ -135,8 +233,13 @@ export class PluginManager {
   /**
    * Enable a plugin
    */
-  async enablePlugin(pluginName: string): Promise<void> {
+  async enablePlugin(pluginName: string): Promise<{ success: boolean; message: string }> {
     logger.info(`Enabling plugin: ${pluginName}`);
+
+    // Check if prisma is defined
+    if (!this.prisma) {
+      throw new Error('Prisma client is not defined');
+    }
 
     try {
       const plugin = await (this.prisma as any).plugin.findUnique({
@@ -158,19 +261,24 @@ export class PluginManager {
       });
 
       logger.info(`Plugin "${pluginName}" enabled successfully`);
-
+      return { success: true, message: `Plugin "${pluginName}" enabled successfully` };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error(`Failed to enable plugin "${pluginName}": ${errorMessage}`);
-      throw error;
+      return { success: false, message: `Failed to enable plugin: ${errorMessage}` };
     }
   }
 
   /**
    * Disable a plugin
    */
-  async disablePlugin(pluginName: string): Promise<void> {
+  async disablePlugin(pluginName: string): Promise<{ success: boolean; message: string }> {
     logger.info(`Disabling plugin: ${pluginName}`);
+
+    // Check if prisma is defined
+    if (!this.prisma) {
+      throw new Error('Prisma client is not defined');
+    }
 
     try {
       const plugin = await (this.prisma as any).plugin.findUnique({
@@ -192,19 +300,24 @@ export class PluginManager {
       });
 
       logger.info(`Plugin "${pluginName}" disabled successfully`);
-
+      return { success: true, message: `Plugin "${pluginName}" disabled successfully` };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error(`Failed to disable plugin "${pluginName}": ${errorMessage}`);
-      throw error;
+      return { success: false, message: `Failed to disable plugin: ${errorMessage}` };
     }
   }
 
   /**
    * Uninstall a plugin
    */
-  async uninstallPlugin(pluginName: string): Promise<void> {
+  async uninstallPlugin(pluginName: string): Promise<{ success: boolean; message: string }> {
     logger.info(`Uninstalling plugin: ${pluginName}`);
+
+    // Check if prisma is defined
+    if (!this.prisma) {
+      throw new Error('Prisma client is not defined');
+    }
 
     try {
       // Disable plugin first if it's active
@@ -232,11 +345,11 @@ export class PluginManager {
       });
 
       logger.info(`Plugin "${pluginName}" uninstalled successfully`);
-
+      return { success: true, message: `Plugin "${pluginName}" uninstalled successfully` };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error(`Failed to uninstall plugin "${pluginName}": ${errorMessage}`);
-      throw error;
+      return { success: false, message: `Failed to uninstall plugin: ${errorMessage}` };
     }
   }
 

@@ -324,18 +324,27 @@ export class PluginManager {
   }
 
   private async loadActivePlugins(): Promise<void> {
+    console.log('Loading active plugins...');
+    logger.info('Loading active plugins...');
     const activePlugins = await (this.prisma as any).plugin.findMany({
       where: { status: PluginStatus.ACTIVE }
     });
-
+    
+    console.log(`Found ${activePlugins.length} active plugins`);
+    logger.info(`Found ${activePlugins.length} active plugins`);
+    
     for (const plugin of activePlugins) {
       try {
+        console.log(`Loading plugin: ${plugin.name}`);
+        logger.info(`Loading plugin: ${plugin.name}`);
         const loadedPlugin = await this.loadPlugin(plugin.name);
         await loadedPlugin.onEnable();
         this.loadedPlugins.set(plugin.name, loadedPlugin);
+        console.log(`Loaded active plugin: ${plugin.name}`);
         logger.info(`Loaded active plugin: ${plugin.name}`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log(`Failed to load plugin "${plugin.name}": ${errorMessage}`);
         logger.error(`Failed to load plugin "${plugin.name}": ${errorMessage}`);
         
         // Update status to error
@@ -345,17 +354,22 @@ export class PluginManager {
         });
       }
     }
+    console.log(`Finished loading active plugins. Loaded ${this.loadedPlugins.size} plugins.`);
+    logger.info(`Finished loading active plugins. Loaded ${this.loadedPlugins.size} plugins.`);
   }
 
   private async loadPlugin(pluginName: string): Promise<PluginBase> {
+    logger.info(`Loading plugin: ${pluginName}`);
     const pluginPath = path.join(this.pluginDirectory, pluginName);
+    logger.info(`Plugin path: ${pluginPath}`);
     const backendPath = path.join(pluginPath, 'backend', 'index.js');
+    logger.info(`Backend path: ${backendPath}`);
 
     if (!fs.existsSync(backendPath)) {
+      logger.error(`Plugin backend file not found: ${backendPath}`);
       throw new Error(`Plugin backend file not found: ${backendPath}`);
     }
 
-    // Create plugin context
     const context: PluginContext = {
       pluginName,
       pluginPath,
@@ -364,17 +378,22 @@ export class PluginManager {
       logger: logger.child({ plugin: pluginName })
     };
 
-    // Load the plugin module
+    logger.info(`Loading plugin module: ${backendPath}`);
     const PluginClass = require(backendPath).default || require(backendPath);
+    logger.info(`Plugin module loaded successfully`);
     
     if (typeof PluginClass !== 'function') {
+      logger.error(`Plugin "${pluginName}" does not export a valid class`);
       throw new Error(`Plugin "${pluginName}" does not export a valid class`);
     }
 
-    return new PluginClass(context);
+    logger.info(`Creating plugin instance: ${pluginName}`);
+    const instance = new PluginClass(context);
+    logger.info(`Plugin instance created successfully: ${pluginName}`);
+    return instance;
   }
 
-  private async validatePluginStructure(pluginPath: string): Promise<PluginMetadata> {
+  public async validatePluginStructure(pluginPath: string): Promise<PluginMetadata> {
     const metadataPath = path.join(pluginPath, 'plugin.yaml');
     
     if (!fs.existsSync(metadataPath)) {

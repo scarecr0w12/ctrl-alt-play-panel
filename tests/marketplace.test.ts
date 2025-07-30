@@ -67,7 +67,7 @@ describe('Marketplace Integration', () => {
       };
 
       const mockAxiosInstance: any = {
-        get: jest.fn().mockResolvedValue(mockResponse as AxiosResponse<any>)
+        get: jest.fn().mockResolvedValue(mockResponse as unknown as never)
       };
       mockedAxios.create.mockReturnValue(mockAxiosInstance as any);
 
@@ -83,7 +83,7 @@ describe('Marketplace Integration', () => {
 
     it('should handle connection test failure', async () => {
       const mockAxiosInstance = {
-        get: jest.fn().mockRejectedValue(new Error('Network error'))
+        get: jest.fn().mockRejectedValue(new Error('Network error') as never)
       };
       mockedAxios.create.mockReturnValue(mockAxiosInstance as any);
 
@@ -282,7 +282,7 @@ describe('Marketplace Integration', () => {
 
     it('should handle sync failure gracefully', async () => {
       // Mock the marketplace integration to throw error
-      const mockSyncUser = jest.fn().mockRejectedValue(new Error('Network error'));
+      const mockSyncUser = jest.fn().mockRejectedValue(new Error('Network error') as never);
 
       // Replace the marketplace integration instance
       (userSyncService as any).marketplaceIntegration = {

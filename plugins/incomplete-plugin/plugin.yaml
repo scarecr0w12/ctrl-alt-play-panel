@@ -1,0 +1,7 @@
+
+name: incomplete-plugin
+version: 1.0.0
+author: Test
+description: Test plugin
+main: plugin.js
+        

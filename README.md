@@ -4,7 +4,7 @@
   <h3>🎮 Advanced Game Server Management Platform</h3>
   <p><em>Complete marketplace integration • Plugin ecosystem • Production-ready infrastructure</em></p>
   
-  ![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)
+  ![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)
   ![License](https://img.shields.io/badge/license-MIT-green.svg)
   ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)
   ![TypeScript](https://img.shields.io/badge/typescript-ready-blue.svg)
@@ -48,14 +48,17 @@ All methods create the same robust installation - choose what feels most comfort
 
 ### 🗄️ Database Support
 
-Ctrl-Alt-Play Panel supports multiple database systems out of the box:
+Ctrl-Alt-Play Panel supports multiple database systems out of the box with different support levels:
 
-- **PostgreSQL** (recommended for production)
-- **MySQL** / **MariaDB** (great compatibility)
-- **MongoDB** (document-based, flexible schema)
-- **SQLite** (perfect for development and small deployments)
+**Stable Support (Recommended for production):**
+- **SQLite** - Perfect for development and small deployments
+- **MySQL** / **MariaDB** - Great compatibility and performance
 
-During setup, you can choose your preferred database or let the system detect and use existing databases. All setup methods handle database configuration automatically.
+**Experimental Support (Use at your own risk):**
+- **PostgreSQL** - Advanced features but may have compatibility issues
+- **MongoDB** - Document-based with flexible schema but limited testing
+
+During setup, you can choose your preferred database or let the system detect and use existing databases. All setup methods handle database configuration automatically. For production deployments, we recommend using SQLite or MySQL/MariaDB for the most stable experience.
 
 **Access your panel:** <http://localhost:3000>
 
@@ -332,12 +335,12 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 - ✅ Analytics and dashboard system
 - ✅ Production deployment infrastructure
 
-### Phase 4 (v1.6.0 - Q2 2025)
+### Phase 4 (v1.6.0 - Complete)
 
-- 🔄 Enhanced frontend marketplace interface
-- 🔄 Advanced plugin features and management
-- 🔄 Enterprise user management
-- 🔄 Enhanced monitoring and analytics
+- ✅ Enhanced frontend marketplace interface
+- ✅ Advanced plugin features and management
+- ✅ Enterprise user management
+- ✅ Enhanced monitoring and analytics
 
 ### Long-term (v2.0.0+)
 

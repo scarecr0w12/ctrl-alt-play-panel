@@ -45,16 +45,25 @@
 
 **Multi-Database Support** - Choose your preferred database:
 
+**Stable Support (Recommended for production):**
+
 | Database | Version | Best For |
 |----------|---------|----------|
-| **PostgreSQL** | 12+ | Production deployments (recommended) |
+| **SQLite** | 3+ | Development and small deployments |
 | **MySQL** | 8.0+ | High compatibility requirements |
 | **MariaDB** | 10.3+ | MySQL alternative with better performance |
-| **MongoDB** | 4.4+ | Document-based, flexible schema |
-| **SQLite** | 3+ | Development and small deployments |
+
+**Experimental Support (Use at your own risk):**
+
+| Database | Version | Notes |
+|----------|---------|-------|
+| **PostgreSQL** | 12+ | Advanced features but may have compatibility issues |
+| **MongoDB** | 4.4+ | Document-based with flexible schema but limited testing |
 
 **Additional Services:**
 - **Redis**: 6+ (optional, for caching and session storage)
+
+For production deployments, we recommend using SQLite or MySQL/MariaDB for the most stable experience.
 
 ---
 

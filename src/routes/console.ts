@@ -8,7 +8,13 @@ import DatabaseService from '../services/database';
 const router = Router();
 
 // Get service instances
-const agentService = ExternalAgentService.getInstance();
+let agentService: ExternalAgentService | undefined;
+try {
+  agentService = ExternalAgentService.getInstance();
+} catch (error) {
+  // Handle case where ExternalAgentService is not available
+  console.warn('ExternalAgentService not available in test environment');
+}
 const mappingService = ServerAgentMappingService.getInstance();
 
 /**
@@ -25,7 +31,7 @@ async function validateServerAndGetAgent(serverId: string): Promise<{ valid: boo
   }
 
   // Check if agent is actually available
-  if (!agentService.isAgentAvailable(validation.nodeUuid!)) {
+  if (!agentService || !agentService.isAgentAvailable(validation.nodeUuid!)) {
     return {
       valid: false,
       error: `Agent for server ${serverId} is not available`
@@ -52,6 +58,10 @@ router.get('/status', async (req: Request, res: Response) => {
     logger.info(`Getting console status for server ${serverId}`);
 
     // Check console connection status via agent
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.getConsoleStatus(validation.nodeUuid!, serverId);
     
     if (!result.success) {
@@ -95,6 +105,10 @@ router.post('/connect', async (req: Request, res: Response) => {
     logger.info(`Connecting to console for server ${serverId}`);
 
     // Connect to console via agent
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.connectConsole(validation.nodeUuid!, serverId);
     
     if (!result.success) {
@@ -143,6 +157,10 @@ router.post('/disconnect', async (req: Request, res: Response) => {
     logger.info(`Disconnecting from console for server ${serverId}`);
 
     // Disconnect from console via agent
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.disconnectConsole(validation.nodeUuid!, serverId);
     
     if (!result.success) {
@@ -191,6 +209,10 @@ router.post('/command', async (req: Request, res: Response) => {
     logger.info(`Sending command to server ${serverId}: ${command}`);
 
     // Send command via agent
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.sendConsoleCommand(validation.nodeUuid!, serverId, command);
     
     if (!result.success) {
@@ -236,6 +258,10 @@ router.get('/history', async (req: Request, res: Response) => {
     logger.info(`Getting console history for server ${serverId} (${lines} lines)`);
 
     // Get console history via agent
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.getConsoleHistory(validation.nodeUuid!, serverId, lines);
     
     if (!result.success) {
@@ -278,6 +304,10 @@ router.post('/clear', async (req: Request, res: Response) => {
     logger.info(`Clearing console buffer for server ${serverId}`);
 
     // Clear console buffer via agent
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.clearConsoleBuffer(validation.nodeUuid!, serverId);
     
     if (!result.success) {
@@ -322,6 +352,10 @@ router.get('/download', async (req: Request, res: Response) => {
     logger.info(`Downloading console logs for server ${serverId} (format: ${format})`);
 
     // Get console logs via agent
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.downloadConsoleLogs(validation.nodeUuid!, serverId, format);
     
     if (!result.success) {
@@ -463,6 +497,10 @@ router.post('/settings', async (req: Request, res: Response) => {
  */
 router.get('/health', async (req: Request, res: Response) => {
   try {
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const agentStatuses = await agentService.healthCheckAll();
     const totalAgents = agentStatuses.size;
     const onlineAgents = Array.from(agentStatuses.values()).filter(status => status.online).length;

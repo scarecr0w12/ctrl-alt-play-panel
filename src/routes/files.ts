@@ -6,7 +6,12 @@ import { logger } from '../utils/logger';
 const router = Router();
 
 // Get service instances
-const agentService = ExternalAgentService.getInstance();
+let agentService: ExternalAgentService | undefined;
+try {
+  agentService = ExternalAgentService.getInstance();
+} catch (error) {
+  console.warn('Failed to initialize ExternalAgentService:', error);
+}
 const mappingService = ServerAgentMappingService.getInstance();
 
 /**
@@ -23,7 +28,7 @@ async function validateServerAndGetAgent(serverId: string): Promise<{ valid: boo
   }
 
   // Check if agent is actually available
-  if (!agentService.isAgentAvailable(validation.nodeUuid!)) {
+  if (!agentService || !agentService.isAgentAvailable(validation.nodeUuid!)) {
     return {
       valid: false,
       error: `Agent for server ${serverId} is not available`
@@ -50,6 +55,10 @@ router.get('/list', async (req: Request, res: Response) => {
 
     logger.info(`Listing files for server ${serverId} at path ${userPath}`);
 
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.listFiles(validation.nodeUuid!, serverId, userPath);
     
     if (!result.success) {
@@ -91,6 +100,10 @@ router.get('/read', async (req: Request, res: Response) => {
 
     logger.info(`Reading file for server ${serverId}: ${filePath}`);
 
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.readFile(validation.nodeUuid!, serverId, filePath);
     
     if (!result.success) {
@@ -134,6 +147,10 @@ router.post('/write', async (req: Request, res: Response) => {
 
     logger.info(`Writing file for server ${serverId}: ${filePath}`);
 
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.writeFile(validation.nodeUuid!, serverId, filePath, content);
     
     if (!result.success) {
@@ -177,6 +194,10 @@ router.post('/mkdir', async (req: Request, res: Response) => {
 
     logger.info(`Creating directory for server ${serverId}: ${dirPath}`);
 
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.createDirectory(validation.nodeUuid!, serverId, dirPath);
     
     if (!result.success) {
@@ -218,6 +239,10 @@ router.delete('/delete', async (req: Request, res: Response) => {
 
     logger.info(`Deleting file for server ${serverId}: ${filePath}`);
 
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.deleteFile(validation.nodeUuid!, serverId, filePath);
     
     if (!result.success) {
@@ -259,6 +284,10 @@ router.post('/rename', async (req: Request, res: Response) => {
 
     logger.info(`Renaming file for server ${serverId}: ${oldPath} -> ${newPath}`);
 
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.renameFile(validation.nodeUuid!, serverId, oldPath, newPath);
     
     if (!result.success) {
@@ -301,6 +330,10 @@ router.get('/download', async (req: Request, res: Response) => {
 
     logger.info(`Downloading file for server ${serverId}: ${filePath}`);
 
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.downloadFile(validation.nodeUuid!, serverId, filePath);
     
     if (!result.success) {
@@ -361,6 +394,10 @@ router.post('/upload', async (req: Request, res: Response) => {
       fileData = Buffer.from(content, 'base64');
     }
 
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.uploadFile(validation.nodeUuid!, serverId, filePath, fileData);
     
     if (!result.success) {
@@ -403,6 +440,10 @@ router.get('/info', async (req: Request, res: Response) => {
 
     logger.info(`Getting file info for server ${serverId}: ${filePath}`);
 
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.getFileInfo(validation.nodeUuid!, serverId, filePath);
     
     if (!result.success) {
@@ -446,9 +487,12 @@ router.get('/search', async (req: Request, res: Response) => {
 
     logger.info(`Searching files for server ${serverId} in ${searchPath} with query: ${query}`);
 
-    // For now, use list files and filter on our side
-    // TODO: Implement proper search in external agents
-    const result = await agentService.listFiles(validation.nodeUuid!, serverId, searchPath);
+    // Use proper search in external agents
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
+    const result = await agentService.searchFiles(validation.nodeUuid!, serverId, searchPath, query, fileType);
     
     if (!result.success) {
       res.status(500).json({ error: result.error || 'Failed to search files' });
@@ -456,19 +500,14 @@ router.get('/search', async (req: Request, res: Response) => {
     }
 
     const files = result.data?.files || [];
-    const filteredFiles = files.filter((file: any) => {
-      const matchesQuery = file.name.toLowerCase().includes(query.toLowerCase());
-      const matchesType = !fileType || fileType === 'all' || file.type === fileType;
-      return matchesQuery && matchesType;
-    });
 
     res.json({
       serverId,
       path: searchPath,
       query,
       fileType,
-      files: filteredFiles,
-      total: filteredFiles.length,
+      files: files,
+      total: files.length,
       success: true
     });
   } catch (error) {
@@ -509,6 +548,10 @@ router.post('/batch', async (req: Request, res: Response) => {
     for (const filePath of files) {
       try {
         let result;
+        if (!agentService) {
+          res.status(500).json({ error: 'External agent service not available' });
+          return;
+        }
         switch (operation) {
           case 'delete':
             result = await agentService.deleteFile(validation.nodeUuid!, serverId, filePath);
@@ -589,6 +632,10 @@ router.get('/permissions', async (req: Request, res: Response) => {
 
     logger.info(`Getting permissions for server ${serverId}: ${filePath}`);
 
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.getFileInfo(validation.nodeUuid!, serverId, filePath);
     
     if (!result.success) {
@@ -633,6 +680,10 @@ router.post('/permissions', async (req: Request, res: Response) => {
 
     logger.info(`Setting permissions for server ${serverId}: ${filePath} to ${permissions}`);
 
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const result = await agentService.setFilePermissions(validation.nodeUuid!, serverId, filePath, permissions);
     
     if (!result.success) {
@@ -685,6 +736,10 @@ router.post('/archive', async (req: Request, res: Response) => {
 
     logger.info(`Archive ${operation} for server ${serverId}: ${archivePath} (${format})`);
 
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     let result: any;
     if (operation === 'create') {
       result = await agentService.createArchive(validation.nodeUuid!, serverId, files, archivePath, format);
@@ -749,6 +804,10 @@ router.post('/upload-progress', async (req: Request, res: Response) => {
       // For chunked uploads, we need to append to existing file or create temp file
       // This is a simplified implementation - real chunked uploads would require more sophisticated handling
       const chunkPath = totalChunks > 1 ? `${filePath}.chunk${chunkIndex}` : filePath;
+      if (!agentService) {
+        res.status(500).json({ error: 'External agent service not available' });
+        return;
+      }
       const result = await agentService.uploadFile(validation.nodeUuid!, serverId, chunkPath, fileData);
       
       if (!result.success) {
@@ -774,6 +833,10 @@ router.post('/upload-progress', async (req: Request, res: Response) => {
         fileData = Buffer.from(content, 'base64');
       }
 
+      if (!agentService) {
+        res.status(500).json({ error: 'External agent service not available' });
+        return;
+      }
       const result = await agentService.uploadFile(validation.nodeUuid!, serverId, filePath, fileData);
       
       if (!result.success) {
@@ -803,6 +866,10 @@ router.post('/upload-progress', async (req: Request, res: Response) => {
  */
 router.get('/health', async (req: Request, res: Response) => {
   try {
+    if (!agentService) {
+      res.status(500).json({ error: 'External agent service not available' });
+      return;
+    }
     const agentStatuses = await agentService.healthCheckAll();
     const totalAgents = agentStatuses.size;
     const onlineAgents = Array.from(agentStatuses.values()).filter(status => status.online).length;

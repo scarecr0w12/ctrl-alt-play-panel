@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import { createServer, Server } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
+import PluginManager from './services/PluginManager.full';
 
 // Import routes that are working
 import monitoringRoutes from './routes/monitoring';
@@ -30,6 +31,7 @@ import { AgentDiscoveryService } from './services/agentDiscoveryService';
 import { MonitoringService } from './services/monitoringService';
 import { DatabaseService } from './services/database';
 import { getSafePortConfiguration, portManager } from './utils/portManager';
+import { initializeRedis } from './utils/redisClient';
 
 // Load environment variables with development/production awareness
 if (process.env.NODE_ENV === 'development') {
@@ -90,7 +92,7 @@ class GamePanelApp {
         status: 'OK',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        version: '1.1.3',
+        version: '1.6.0',
         features: ['monitoring', 'steam-workshop', 'user-profiles', 'notifications', 'external-agents', 'ctrl-alt-system']
       });
     });
@@ -319,6 +321,20 @@ class GamePanelApp {
       await DatabaseService.initialize();
       console.log('📄 Database initialized successfully');
       logger.info('📄 Database initialized successfully');
+      
+      // Initialize Redis
+      console.log('Initializing Redis...');
+      await initializeRedis();
+      console.log('🔗 Redis initialized successfully');
+      logger.info('🔗 Redis initialized successfully');
+
+      // Initialize Plugin Manager
+      console.log('Initializing Plugin Manager...');
+      const prisma = DatabaseService.getInstance();
+      const pluginManager = new PluginManager(prisma);
+      await pluginManager.initialize();
+      console.log('🔌 Plugin Manager initialized successfully');
+      logger.info('🔌 Plugin Manager initialized successfully');
 
       // Initialize API routes after database is ready
       console.log('Initializing routes...');

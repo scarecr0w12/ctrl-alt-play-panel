@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { asyncHandler, createError } from '../middlewares/errorHandler';
 import { logger } from '../utils/logger';
+import { addToBlacklist } from '../utils/redisClient';
 
 interface JWTPayload {
   user: {
@@ -171,7 +172,14 @@ router.post('/refresh', asyncHandler(async (req: Request, res: Response) => {
 
 // Logout endpoint
 router.post('/logout', asyncHandler(async (req: Request, res: Response) => {
-  // TODO: Implement token blacklisting if needed
+  const authHeader = req.headers.authorization;
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    
+    // Add token to blacklist with 24 hour expiry (JWT tokens typically expire in 24 hours)
+    await addToBlacklist(token, 24 * 60 * 60);
+  }
 
   res.json({
     success: true,

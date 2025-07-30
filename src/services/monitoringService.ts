@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { ExternalAgentService } from './externalAgentService';
 import { SocketService } from './socket';
 import SystemMetricsCollector from './systemMetricsCollector';
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
 
@@ -44,12 +45,17 @@ export interface SystemMetrics extends ResourceMetrics {
 }
 
 export class MonitoringService {
-  private externalAgentService: ExternalAgentService;
+  private externalAgentService: ExternalAgentService | undefined;
   private systemCollector: SystemMetricsCollector;
 
   constructor() {
     this.systemCollector = new SystemMetricsCollector();
-    this.externalAgentService = ExternalAgentService.getInstance();
+    try {
+      this.externalAgentService = ExternalAgentService.getInstance();
+    } catch (error) {
+      logger.warn('Failed to initialize ExternalAgentService in MonitoringService:', error);
+      this.externalAgentService = undefined;
+    }
   }
 
   /**
@@ -67,6 +73,10 @@ export class MonitoringService {
       }
 
       // Get metrics from external agent
+      if (!this.externalAgentService) {
+        console.warn('ExternalAgentService not available');
+        return null;
+      }
       const metricsResponse = await this.externalAgentService.getServerMetrics(server.node.uuid, serverId);
       
       if (!metricsResponse.success) {
@@ -320,22 +330,67 @@ export class MonitoringService {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const startTime = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
 
-      // For now, return mock aggregated data
-      // TODO: Implement proper aggregation when MongoDB features are available
-      const mockData = [
-        {
-          _id: '2025-01-01 12:00',
-          avgCpu: Math.random() * 100,
-          avgMemory: Math.random() * 100,
-          avgDisk: Math.random() * 100,
-          totalNetworkIn: Math.random() * 1000,
-          totalNetworkOut: Math.random() * 1000,
-          totalPlayers: Math.floor(Math.random() * 100),
-          serverCount: Math.floor(Math.random() * 10) + 1
+      // Implement proper aggregation using Prisma
+      
+      // Query server metrics for the specified time range and node
+      const metrics = await prisma.serverMetrics.findMany({
+        where: {
+          nodeId: nodeId,
+          timestamp: {
+            gte: startTime
+          }
+        },
+        orderBy: {
+          timestamp: 'asc'
         }
-      ];
-
-      return mockData;
+      });
+      
+      // If no metrics found, return empty array
+      if (metrics.length === 0) {
+        return [];
+      }
+      
+      // Group metrics by time intervals (hourly for 24h/7d, minute-level for 1h/6h)
+      const interval = timeRange === '1h' || timeRange === '6h' ? 5 * 60 * 1000 : 60 * 60 * 1000; // 5 minutes or 1 hour
+      
+      const aggregatedData: any[] = [];
+      const groupedMetrics: Record<string, any[]> = {};
+      
+      // Group metrics by time interval
+      for (const metric of metrics) {
+        const intervalStart = new Date(Math.floor(metric.timestamp.getTime() / interval) * interval);
+        const intervalKey = intervalStart.toISOString();
+        
+        if (!groupedMetrics[intervalKey]) {
+          groupedMetrics[intervalKey] = [];
+        }
+        
+        groupedMetrics[intervalKey].push(metric);
+      }
+      
+      // Calculate aggregated values for each interval
+      for (const [intervalKey, intervalMetrics] of Object.entries(groupedMetrics)) {
+        const avgCpu = intervalMetrics.reduce((sum, m) => sum + m.cpu, 0) / intervalMetrics.length;
+        const avgMemory = intervalMetrics.reduce((sum, m) => sum + m.memory, 0) / intervalMetrics.length;
+        const avgDisk = intervalMetrics.reduce((sum, m) => sum + m.disk, 0) / intervalMetrics.length;
+        const totalNetworkIn = intervalMetrics.reduce((sum, m) => sum + m.networkIn, 0);
+        const totalNetworkOut = intervalMetrics.reduce((sum, m) => sum + m.networkOut, 0);
+        const totalPlayers = intervalMetrics.reduce((sum, m) => sum + m.players, 0);
+        const serverCount = new Set(intervalMetrics.map(m => m.serverId)).size;
+        
+        aggregatedData.push({
+          _id: intervalKey,
+          avgCpu: Number(avgCpu.toFixed(2)),
+          avgMemory: Number(avgMemory.toFixed(2)),
+          avgDisk: Number(avgDisk.toFixed(2)),
+          totalNetworkIn: Number(totalNetworkIn.toFixed(2)),
+          totalNetworkOut: Number(totalNetworkOut.toFixed(2)),
+          totalPlayers,
+          serverCount
+        });
+      }
+      
+      return aggregatedData;
     } catch (error) {
       console.error(`Failed to get node metrics for ${nodeId}:`, error);
       return [];

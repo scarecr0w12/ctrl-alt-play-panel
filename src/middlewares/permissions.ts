@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import permissionService from '../services/permissionService';
 import { logger } from '../utils/logger';
+import { isBlacklisted } from '../utils/redisClient';
 
 const prisma = new PrismaClient();
 
@@ -53,6 +54,25 @@ export const authenticateToken = async (
 
     // Verify JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
+    
+    // Check if token is blacklisted
+    const blacklisted = await isBlacklisted(token);
+    if (blacklisted) {
+      await permissionService.logSecurityEvent(
+        'AUTH_FAILED',
+        decoded.user?.id,
+        undefined,
+        req.ip,
+        req.get('User-Agent'),
+        false,
+        'Token is blacklisted'
+      );
+      res.status(401).json({
+        success: false,
+        message: 'Token has been invalidated'
+      });
+      return;
+    }
     
     // Check if session exists and is active
     const session = await prisma.userSession.findFirst({

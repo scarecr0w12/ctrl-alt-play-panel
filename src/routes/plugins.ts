@@ -1,8 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import PluginManager from '../services/PluginManager.full';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// Create a PluginManager instance
+const pluginManager = new PluginManager(prisma);
 
 /**
  * Plugin Management Routes
@@ -12,21 +16,19 @@ const prisma = new PrismaClient();
 // GET / - List all installed plugins
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const plugins = await (prisma as any).plugin.findMany({
-      orderBy: { name: 'asc' }
-    });
+    const plugins = await pluginManager.getInstalledPlugins();
 
     res.json({
       success: true,
       data: plugins,
-      count: plugins.length
+      message: 'Plugins retrieved successfully'
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch plugins',
-      details: errorMessage
+      error: errorMessage,
+      message: 'Failed to retrieve plugins'
     });
   }
 });
@@ -34,30 +36,30 @@ router.get('/', async (req: Request, res: Response) => {
 // GET /:name - Get specific plugin details
 router.get('/:name', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name } = req.params;
+    const pluginName = req.params.name;
+    const plugins = await pluginManager.getInstalledPlugins();
+    const plugin = plugins.find((p: any) => p.name === pluginName);
     
-    const plugin = await (prisma as any).plugin.findUnique({
-      where: { name }
-    });
-
     if (!plugin) {
       res.status(404).json({
         success: false,
-        error: 'Plugin not found'
+        error: 'Plugin not found',
+        message: `Plugin "${pluginName}" not found`
       });
       return;
     }
 
     res.json({
       success: true,
-      data: plugin
+      data: plugin,
+      message: 'Plugin retrieved successfully'
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch plugin',
-      details: errorMessage
+      error: errorMessage,
+      message: 'Failed to retrieve plugin'
     });
   }
 });
@@ -65,48 +67,33 @@ router.get('/:name', async (req: Request, res: Response): Promise<void> => {
 // POST /:name/enable - Enable a plugin
 router.post('/:name/enable', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name } = req.params;
+    const pluginName = req.params.name;
     
-    const plugin = await (prisma as any).plugin.findUnique({
-      where: { name }
-    });
-
+    // Check if plugin exists
+    const plugins = await pluginManager.getInstalledPlugins();
+    const plugin = plugins.find((p: any) => p.name === pluginName);
+    
     if (!plugin) {
       res.status(404).json({
         success: false,
-        error: 'Plugin not found'
+        error: 'Plugin not found',
+        message: `Plugin "${pluginName}" not found`
       });
       return;
     }
 
-    if (plugin.status === 'ACTIVE') {
-      res.status(400).json({
-        success: false,
-        error: 'Plugin is already active'
-      });
-      return;
-    }
-
-    // Update plugin status
-    const updatedPlugin = await (prisma as any).plugin.update({
-      where: { name },
-      data: { 
-        status: 'ACTIVE',
-        lastUpdated: new Date()
-      }
-    });
-
+    await pluginManager.enablePlugin(pluginName);
+    
     res.json({
       success: true,
-      message: `Plugin "${name}" enabled successfully`,
-      data: updatedPlugin
+      message: `Plugin "${pluginName}" enabled successfully`
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({
       success: false,
-      error: 'Failed to enable plugin',
-      details: errorMessage
+      error: errorMessage,
+      message: 'Failed to enable plugin'
     });
   }
 });
@@ -114,48 +101,33 @@ router.post('/:name/enable', async (req: Request, res: Response): Promise<void> 
 // POST /:name/disable - Disable a plugin
 router.post('/:name/disable', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name } = req.params;
+    const pluginName = req.params.name;
     
-    const plugin = await (prisma as any).plugin.findUnique({
-      where: { name }
-    });
-
+    // Check if plugin exists
+    const plugins = await pluginManager.getInstalledPlugins();
+    const plugin = plugins.find((p: any) => p.name === pluginName);
+    
     if (!plugin) {
       res.status(404).json({
         success: false,
-        error: 'Plugin not found'
+        error: 'Plugin not found',
+        message: `Plugin "${pluginName}" not found`
       });
       return;
     }
 
-    if (plugin.status === 'INACTIVE') {
-      res.status(400).json({
-        success: false,
-        error: 'Plugin is already inactive'
-      });
-      return;
-    }
-
-    // Update plugin status
-    const updatedPlugin = await (prisma as any).plugin.update({
-      where: { name },
-      data: { 
-        status: 'INACTIVE',
-        lastUpdated: new Date()
-      }
-    });
-
+    await pluginManager.disablePlugin(pluginName);
+    
     res.json({
       success: true,
-      message: `Plugin "${name}" disabled successfully`,
-      data: updatedPlugin
+      message: `Plugin "${pluginName}" disabled successfully`
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({
       success: false,
-      error: 'Failed to disable plugin',
-      details: errorMessage
+      error: errorMessage,
+      message: 'Failed to disable plugin'
     });
   }
 });
@@ -163,35 +135,33 @@ router.post('/:name/disable', async (req: Request, res: Response): Promise<void>
 // DELETE /:name - Uninstall a plugin
 router.delete('/:name', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name } = req.params;
+    const pluginName = req.params.name;
     
-    const plugin = await (prisma as any).plugin.findUnique({
-      where: { name }
-    });
-
+    // Check if plugin exists
+    const plugins = await pluginManager.getInstalledPlugins();
+    const plugin = plugins.find((p: any) => p.name === pluginName);
+    
     if (!plugin) {
       res.status(404).json({
         success: false,
-        error: 'Plugin not found'
+        error: 'Plugin not found',
+        message: `Plugin "${pluginName}" not found`
       });
       return;
     }
 
-    // Delete plugin from database
-    await (prisma as any).plugin.delete({
-      where: { name }
-    });
-
+    await pluginManager.uninstallPlugin(pluginName);
+    
     res.json({
       success: true,
-      message: `Plugin "${name}" uninstalled successfully`
+      message: `Plugin "${pluginName}" uninstalled successfully`
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({
       success: false,
-      error: 'Failed to uninstall plugin',
-      details: errorMessage
+      error: errorMessage,
+      message: 'Failed to uninstall plugin'
     });
   }
 });

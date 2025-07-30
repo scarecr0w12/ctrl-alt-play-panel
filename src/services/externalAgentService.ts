@@ -349,6 +349,17 @@ export class ExternalAgentService {
   }
 
   /**
+   * Search files via external agent
+   */
+  public async searchFiles(nodeUuid: string, serverId: string, path: string, query: string, fileType?: string): Promise<AgentResponse> {
+    return this.sendCommand(nodeUuid, {
+      action: 'search_files',
+      serverId,
+      payload: { path, query, fileType }
+    });
+  }
+
+  /**
    * Read file content via external agent
    */
   public async readFile(nodeUuid: string, serverId: string, filePath: string): Promise<AgentResponse> {
