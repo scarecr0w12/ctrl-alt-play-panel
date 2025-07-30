@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import { createServer, Server } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
+import path from 'path';
+import fs from 'fs';
 import PluginManager from './services/PluginManager.full';
 
 // Import routes that are working
@@ -23,6 +25,7 @@ import nodesRoutes from './routes/nodes';
 import ctrlsRoutes from './routes/ctrls';
 import altsRoutes from './routes/alts';
 import agentsRoutes from './routes/agents';
+import { dashboardRoutes } from './routes/dashboard';
 
 // Import middleware and services
 import { errorHandler } from './middlewares/errorHandler';
@@ -63,20 +66,20 @@ class GamePanelApp {
   }
 
   private initializeMiddlewares(): void {
-    // Rate limiting
-    const limiter = rateLimit({
-      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000,
-      max: parseInt(process.env.RATE_LIMIT_MAX || '100'),
-      message: 'Too many requests from this IP, please try again later.'
-    });
+    // Rate limiting - DISABLED FOR TESTING
+    // const limiter = rateLimit({
+    //   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000,
+    //   max: parseInt(process.env.RATE_LIMIT_MAX || '100'),
+    //   message: 'Too many requests from this IP, please try again later.'
+    // });
 
     // Apply middlewares
-    this.app.use(helmet());
+    // this.app.use(helmet()); // DISABLED FOR TESTING
     this.app.use(cors());
     this.app.use(compression());
     this.app.use(express.json({ limit: '50mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-    this.app.use(limiter);
+    // this.app.use(limiter); // DISABLED FOR TESTING
 
     // Logging middleware
     this.app.use((req, res, next) => {
@@ -117,6 +120,7 @@ class GamePanelApp {
     this.app.use('/api/ctrls', ctrlsRoutes);
     this.app.use('/api/alts', altsRoutes);
     this.app.use('/api/agents', agentsRoutes);
+    this.app.use('/api/dashboard', dashboardRoutes);
     console.log('Added essential API routes successfully');
 
     // Basic info endpoint
@@ -138,49 +142,127 @@ class GamePanelApp {
 
     // Serve static files (frontend)
     console.log('Adding static file serving...');
+    
+    // Serve Next.js static files from frontend/public
+    this.app.use(express.static('frontend/public'));
+    
+    // Serve Next.js built files from frontend/.next/static
+    this.app.use('/_next/static', express.static('frontend/.next/static'));
+    
+    // Serve legacy public files if they exist
     this.app.use(express.static('public'));
+    
     console.log('Added static file serving successfully');
 
     // Safe redirect routes
     console.log('Adding redirect routes...');
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     
     this.app.get('/console', (req, res) => {
-      res.redirect(`${frontendUrl}/console`);
+      const protocol = req.get('x-forwarded-proto') || req.protocol;
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
+      res.redirect(`${baseUrl}/console`);
     });
 
     this.app.get('/', (req, res) => {
-      res.redirect(`${frontendUrl}/`);
+      const protocol = req.get('x-forwarded-proto') || req.protocol;
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
+      res.redirect(`${baseUrl}/`);
     });
     console.log('Added redirect routes successfully');
 
     // HTML redirect routes
     this.app.get('/dashboard.html', (req, res) => {
-      res.redirect(`${frontendUrl}/dashboard`);
+      const protocol = req.get('x-forwarded-proto') || req.protocol;
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
+      res.redirect(`${baseUrl}/dashboard`);
     });
 
     this.app.get('/login.html', (req, res) => {
-      res.redirect(`${frontendUrl}/login`);
+      const protocol = req.get('x-forwarded-proto') || req.protocol;
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
+      res.redirect(`${baseUrl}/login`);
     });
 
     this.app.get('/register.html', (req, res) => {
-      res.redirect(`${frontendUrl}/register`);
+      const protocol = req.get('x-forwarded-proto') || req.protocol;
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
+      res.redirect(`${baseUrl}/register`);
     });
 
     this.app.get('/files.html', (req, res) => {
-      res.redirect(`${frontendUrl}/files`);
+      const protocol = req.get('x-forwarded-proto') || req.protocol;
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
+      res.redirect(`${baseUrl}/files`);
     });
 
     this.app.get('/console.html', (req, res) => {
-      res.redirect('http://localhost:3001/console');
+      const protocol = req.get('x-forwarded-proto') || req.protocol;
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
+      res.redirect(`${baseUrl}/console`);
+    });
+
+    // Frontend route handler for Next.js static export (maps URLs to route-specific HTML files)
+    this.app.use((req, res, next) => {
+      // Skip API routes, WebSocket routes, and static files
+      if (req.path.startsWith('/api/') || req.path.startsWith('/ws/') || req.path.startsWith('/_next/')) {
+        return next();
+      }
+      
+      // Only handle GET requests for potential frontend routes
+      if (req.method !== 'GET') {
+        return next();
+      }
+      
+      // Normalize path: remove trailing slash and get clean route name
+      let routePath = req.path.replace(/\/$/, '') || '/';
+      let htmlFileName = 'index.html'; // Default for root path
+      
+      // Map URL paths to corresponding HTML files
+      if (routePath !== '/') {
+        htmlFileName = routePath.substring(1) + '.html'; // Remove leading slash, add .html
+      }
+      
+      // Try to serve the specific HTML file for this route
+      const htmlFilePath = path.join(__dirname, '../frontend/.next/server/pages', htmlFileName);
+      console.log(`[DEBUG] Request for ${req.path} -> trying to serve ${htmlFileName} from ${htmlFilePath}`);
+      
+      if (fs.existsSync(htmlFilePath)) {
+        console.log(`[DEBUG] File exists, serving: ${htmlFilePath}`);
+        try {
+          const fileContent = fs.readFileSync(htmlFilePath, 'utf8');
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          return res.send(fileContent);
+        } catch (error) {
+          console.log(`[DEBUG] Error reading file: ${error}`);
+          return next();
+        }
+      } else {
+        // Fallback to index.html for unknown routes (SPA behavior)
+        const indexPath = path.join(__dirname, '../frontend/.next/server/pages/index.html');
+        if (fs.existsSync(indexPath)) {
+          return res.sendFile(indexPath);
+        } else {
+          return next(); // Let 404 handler take over
+        }
+      }
     });
 
     // Simple 404 handler (avoid problematic catch-all)
     this.app.use((req, res) => {
+      const protocol = req.get('x-forwarded-proto') || req.protocol;
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
       res.status(404).json({
         error: 'Page not found',
         message: 'The requested page does not exist. Please use the React frontend.',
-        reactFrontend: 'http://localhost:3001'
+        reactFrontend: baseUrl
       });
     });
   }

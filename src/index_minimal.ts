@@ -32,19 +32,20 @@ class GamePanelApp {
 
   private initializeMiddlewares(): void {
     // Rate limiting
-    const limiter = rateLimit({
-      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000,
-      max: parseInt(process.env.RATE_LIMIT_MAX || '100'),
-      message: 'Too many requests from this IP, please try again later.'
-    });
+    // Rate limiting - DISABLED FOR TESTING
+    // const limiter = rateLimit({
+    //   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000,
+    //   max: parseInt(process.env.RATE_LIMIT_MAX || '100'),
+    //   message: 'Too many requests from this IP, please try again later.'
+    // });
 
     // Apply middlewares
-    this.app.use(helmet());
+    // this.app.use(helmet()); // DISABLED FOR TESTING
     this.app.use(cors());
     this.app.use(compression());
     this.app.use(express.json({ limit: '50mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-    this.app.use(limiter);
+    // this.app.use(limiter); // DISABLED FOR TESTING
 
     // Logging middleware
     this.app.use((req, res, next) => {

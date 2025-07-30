@@ -3,15 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { logger } from '../utils/logger';
-
-// Basic types for plugin system
-interface PluginMetadata {
-  name: string;
-  version: string;
-  author: string;
-  description?: string;
-  permissions?: Record<string, any>;
-}
+import { PluginMetadata } from '../types/plugin/interfaces';
 
 enum PluginStatus {
   ACTIVE = 'ACTIVE',

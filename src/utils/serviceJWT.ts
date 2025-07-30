@@ -225,10 +225,13 @@ export class ServiceJWT {
 /**
  * Default service JWT instance
  */
-export const serviceJWT = new ServiceJWT(
-  process.env.MARKETPLACE_JWT_SECRET || '',
-  process.env.SERVICE_ID || 'panel-system'
-);
+// Only create serviceJWT if marketplace credentials are available
+export const serviceJWT = process.env.MARKETPLACE_JWT_SECRET 
+  ? new ServiceJWT(
+      process.env.MARKETPLACE_JWT_SECRET,
+      process.env.SERVICE_ID || 'panel-system'
+    )
+  : null;
 
 /**
  * Middleware helper for extracting and validating service tokens

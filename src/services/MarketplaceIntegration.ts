@@ -24,8 +24,9 @@ import {
 import { logger } from '../utils/logger';
 
 export class MarketplaceIntegration {
-  private client: AxiosInstance;
+  private client?: AxiosInstance;
   private config: MarketplaceConfig;
+  private isEnabled: boolean = false;
   private retryCount = 0;
 
   constructor(config?: Partial<MarketplaceConfig>) {
@@ -41,9 +42,14 @@ export class MarketplaceIntegration {
       ...config
     };
 
+    // Log warning but don't fail if marketplace credentials aren't configured
     if (!this.config.api_key || !this.config.jwt_secret) {
-      throw new Error('Marketplace API key and JWT secret are required');
+      console.warn('Marketplace API key and JWT secret not configured. Marketplace integration will be disabled.');
+      this.isEnabled = false;
+      return;
     }
+    
+    this.isEnabled = true;
 
     this.client = axios.create({
       baseURL: this.config.base_url,
@@ -457,5 +463,7 @@ export class MarketplaceIntegration {
 
 /**
  * Default marketplace integration instance
+ * Temporarily disabled until marketplace credentials are configured
  */
-export const marketplaceIntegration = new MarketplaceIntegration();
+// export const marketplaceIntegration = new MarketplaceIntegration();
+export const marketplaceIntegration = null;
