@@ -1,0 +1,319 @@
+name: Cursor Configuration Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '.cursor/**'
+      - 'memory-bank/**'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '.cursor/**'
+      - 'memory-bank/**'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  validate-cursor-config:
+    name: Validate Cursor Configuration
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        npm install -g @modelcontextprotocol/cli
+        
+    - name: Validate MCP Configuration
+      run: |
+        echo "🔍 Validating MCP server configuration..."
+        
+        # Check if mcp.json exists and is valid JSON
+        if [ ! -f ".cursor/mcp.json" ]; then
+          echo "❌ .cursor/mcp.json not found"
+          exit 1
+        fi
+        
+        # Validate JSON syntax
+        if ! jq . .cursor/mcp.json > /dev/null 2>&1; then
+          echo "❌ .cursor/mcp.json contains invalid JSON"
+          exit 1
+        fi
+        
+        # Check required MCP servers
+        required_servers=("github" "filesystem" "memory" "git")
+        for server in "${required_servers[@]}"; do
+          if ! jq -e ".mcpServers.${server}" .cursor/mcp.json > /dev/null; then
+            echo "❌ Required MCP server '${server}' not configured"
+            exit 1
+          fi
+        done
+        
+        echo "✅ MCP configuration is valid"
+        
+    - name: Validate Custom Modes
+      run: |
+        echo "🎭 Validating custom modes configuration..."
+        
+        # Check if modes.json exists and is valid JSON
+        if [ ! -f ".cursor/modes.json" ]; then
+          echo "❌ .cursor/modes.json not found"
+          exit 1
+        fi
+        
+        # Validate JSON syntax
+        if ! jq . .cursor/modes.json > /dev/null 2>&1; then
+          echo "❌ .cursor/modes.json contains invalid JSON"
+          exit 1
+        fi
+        
+        # Check for required custom modes
+        required_modes=("architect" "typescript-expert" "devops-specialist")
+        for mode in "${required_modes[@]}"; do
+          if ! jq -e ".customModes[] | select(.slug == \"${mode}\")" .cursor/modes.json > /dev/null; then
+            echo "❌ Required custom mode '${mode}' not found"
+            exit 1
+          fi
+        done
+        
+        # Validate mode structure
+        jq -r '.customModes[] | select(.slug and .name and .roleDefinition and .groups and .source) | .slug' .cursor/modes.json > /tmp/valid_modes.txt
+        mode_count=$(jq '.customModes | length' .cursor/modes.json)
+        valid_count=$(wc -l < /tmp/valid_modes.txt)
+        
+        if [ "$mode_count" != "$valid_count" ]; then
+          echo "❌ Some custom modes have invalid structure"
+          exit 1
+        fi
+        
+        echo "✅ Custom modes configuration is valid"
+        
+    - name: Validate Rules System
+      run: |
+        echo "📋 Validating rules system..."
+        
+        # Check rules directory structure
+        required_dirs=("core" "typescript" "workflow" "deployment")
+        for dir in "${required_dirs[@]}"; do
+          if [ ! -d ".cursor/rules/${dir}" ]; then
+            echo "❌ Rules directory '.cursor/rules/${dir}' not found"
+            exit 1
+          fi
+        done
+        
+        # Validate rule files have proper frontmatter
+        rule_files_valid=true
+        for rule_file in .cursor/rules/**/*.mdc; do
+          if [ -f "$rule_file" ]; then
+            echo "Checking $rule_file..."
+            
+            # Check for frontmatter
+            if ! head -n 1 "$rule_file" | grep -q "^---$"; then
+              echo "❌ Rule file $rule_file missing frontmatter start"
+              rule_files_valid=false
+              continue
+            fi
+            
+            # Extract frontmatter and validate required fields
+            frontmatter=$(sed -n '2,/^---$/p' "$rule_file" | head -n -1)
+            
+            if ! echo "$frontmatter" | grep -q "description:"; then
+              echo "❌ Rule file $rule_file missing 'description' field"
+              rule_files_valid=false
+            fi
+            
+            if ! echo "$frontmatter" | grep -q "globs:"; then
+              echo "❌ Rule file $rule_file missing 'globs' field"
+              rule_files_valid=false
+            fi
+            
+            if ! echo "$frontmatter" | grep -q "alwaysApply:"; then
+              echo "❌ Rule file $rule_file missing 'alwaysApply' field"
+              rule_files_valid=false
+            fi
+          fi
+        done
+        
+        if [ "$rule_files_valid" = false ]; then
+          echo "❌ Rule validation failed"
+          exit 1
+        fi
+        
+        echo "✅ Rules system is valid"
+        
+    - name: Validate Memory Bank
+      run: |
+        echo "🧠 Validating memory bank system..."
+        
+        # Check memory bank directory
+        if [ ! -d "memory-bank" ]; then
+          echo "❌ memory-bank directory not found"
+          exit 1
+        fi
+        
+        # Check required memory bank files
+        required_files=("projectContext.md" "activeContext.md" "systemPatterns.md" "techContext.md" "progress.md")
+        for file in "${required_files[@]}"; do
+          if [ ! -f "memory-bank/${file}" ]; then
+            echo "❌ Required memory bank file 'memory-bank/${file}' not found"
+            exit 1
+          fi
+          
+          # Check file is not empty
+          if [ ! -s "memory-bank/${file}" ]; then
+            echo "❌ Memory bank file 'memory-bank/${file}' is empty"
+            exit 1
+          fi
+        done
+        
+        echo "✅ Memory bank system is valid"
+        
+    - name: Test MCP Server Availability
+      run: |
+        echo "🔌 Testing MCP server availability..."
+        
+        # Install Docker for Docker MCP server testing
+        if ! docker --version > /dev/null 2>&1; then
+          echo "⚠️ Docker not available for MCP server testing"
+        else
+          echo "✅ Docker available for MCP testing"
+        fi
+        
+        # Test npm-based MCP servers
+        npm_servers=("@modelcontextprotocol/server-memory" "@modelcontextprotocol/server-filesystem")
+        for server in "${npm_servers[@]}"; do
+          if npm list "$server" > /dev/null 2>&1 || npm view "$server" > /dev/null 2>&1; then
+            echo "✅ MCP server '$server' is available"
+          else
+            echo "⚠️ MCP server '$server' may not be available"
+          fi
+        done
+        
+    - name: Generate Configuration Report
+      run: |
+        echo "📊 Generating Cursor configuration report..."
+        
+        {
+          echo "# Cursor Configuration Report"
+          echo "Generated on: $(date)"
+          echo ""
+          echo "## MCP Servers"
+          jq -r '.mcpServers | keys[]' .cursor/mcp.json | sed 's/^/- /'
+          echo ""
+          echo "## Custom Modes"
+          jq -r '.customModes[] | "- \(.name) (\(.slug))"' .cursor/modes.json
+          echo ""
+          echo "## Rules"
+          find .cursor/rules -name "*.mdc" | sed 's|.cursor/rules/||' | sed 's/^/- /'
+          echo ""
+          echo "## Memory Bank Files"
+          ls memory-bank/*.md | sed 's|memory-bank/||' | sed 's/^/- /'
+        } > cursor-config-report.md
+        
+        cat cursor-config-report.md
+        
+    - name: Upload Configuration Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: cursor-config-report
+        path: cursor-config-report.md
+        retention-days: 30
+
+  test-cursor-integration:
+    name: Test Cursor Integration
+    runs-on: ubuntu-latest
+    needs: validate-cursor-config
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Test TypeScript compilation with Cursor rules
+      run: |
+        echo "🏗️ Testing TypeScript compilation..."
+        
+        # Ensure TypeScript strict mode
+        if ! grep -q '"strict": true' tsconfig.json; then
+          echo "❌ TypeScript strict mode not enabled"
+          exit 1
+        fi
+        
+        # Test compilation
+        npm run build
+        echo "✅ TypeScript compilation successful"
+        
+    - name: Test Memory Bank Integration
+      run: |
+        echo "🔍 Testing memory bank integration..."
+        
+        # Create a simple test to verify memory bank files are properly structured
+        node -e "
+          const fs = require('fs');
+          const path = require('path');
+          
+          const memoryBankDir = 'memory-bank';
+          const requiredFiles = ['projectContext.md', 'activeContext.md', 'systemPatterns.md', 'techContext.md', 'progress.md'];
+          
+          for (const file of requiredFiles) {
+            const filePath = path.join(memoryBankDir, file);
+            const content = fs.readFileSync(filePath, 'utf8');
+            
+            if (content.length < 100) {
+              console.error(\`❌ Memory bank file \${file} appears to be too short\`);
+              process.exit(1);
+            }
+            
+            if (!content.includes('#')) {
+              console.error(\`❌ Memory bank file \${file} missing markdown headers\`);
+              process.exit(1);
+            }
+          }
+          
+          console.log('✅ Memory bank integration test passed');
+        "
+        
+    - name: Validate Project Structure
+      run: |
+        echo "📁 Validating project structure for Cursor compatibility..."
+        
+        # Check critical directories exist
+        required_dirs=(".cursor" "memory-bank" "src" "frontend")
+        for dir in "${required_dirs[@]}"; do
+          if [ ! -d "$dir" ]; then
+            echo "❌ Required directory '$dir' not found"
+            exit 1
+          fi
+        done
+        
+        # Check for TypeScript files (no .js files in src)
+        js_files=$(find src -name "*.js" 2>/dev/null | wc -l)
+        if [ "$js_files" -gt 0 ]; then
+          echo "❌ Found .js files in src directory (TypeScript-only policy)"
+          find src -name "*.js"
+          exit 1
+        fi
+        
+        echo "✅ Project structure is valid for Cursor"

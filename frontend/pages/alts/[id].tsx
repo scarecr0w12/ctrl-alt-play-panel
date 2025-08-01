@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/Layout';
-import { nodesApi, serversApi } from '@/lib/api';
+import { nodesApi, serversApi, altsApi } from '@/lib/api';
+import toast from 'react-hot-toast';
 import {
   ArrowLeftIcon,
   DocumentArrowUpIcon,
@@ -161,15 +162,20 @@ export default function AltEditPage() {
         configLogs: JSON.parse(formData.configLogs),
         features: JSON.parse(formData.features),
         fileDenylist: JSON.parse(formData.fileDenylist),
+        variables: variables,
       };
 
-      // TODO: Implement template update API
-      console.log('Save functionality needs implementation');
-      alert('Save functionality not yet implemented');
+      // Call the API to update the Alt template
+      await altsApi.update(alt.id, updateData);
+      
+      toast.success('Alt template saved successfully');
       setUnsavedChanges(false);
+      
+      // Reload the Alt data to get the latest version
+      await loadAlt();
     } catch (error) {
       console.error('Failed to save Alt:', error);
-      alert('Failed to save Alt. Please check JSON syntax.');
+      toast.error('Failed to save Alt. Please check JSON syntax and try again.');
     } finally {
       setSaving(false);
     }
@@ -179,11 +185,27 @@ export default function AltEditPage() {
     if (!alt) return;
 
     try {
-      // TODO: Implement template export API
-      console.log('Export functionality needs implementation');
-      alert('Export functionality not yet implemented');
+      // Call the API to export the Alt template
+      const response = await altsApi.export(alt.id);
+      
+      // Create a blob and download the file
+      const blob = new Blob([JSON.stringify(response.data, null, 2)], {
+        type: 'application/json'
+      });
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${alt.name.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Alt template exported successfully');
     } catch (error) {
       console.error('Failed to export Alt:', error);
+      toast.error('Failed to export Alt template. Please try again.');
     }
   };
 

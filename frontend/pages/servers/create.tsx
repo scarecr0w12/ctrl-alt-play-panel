@@ -73,6 +73,8 @@ export default function CreateServerPage() {
   const [selectedCtrl, setSelectedCtrl] = useState<Ctrl | null>(null);
   const [alts, setAlts] = useState<Alt[]>([]);
   const [selectedAlt, setSelectedAlt] = useState<Alt | null>(null);
+  const [nodes, setNodes] = useState<any[]>([]);
+  const [selectedNode, setSelectedNode] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   
@@ -88,6 +90,7 @@ export default function CreateServerPage() {
 
   useEffect(() => {
     loadCtrls();
+    loadNodes();
   }, []);
 
   useEffect(() => {
@@ -134,6 +137,21 @@ export default function CreateServerPage() {
     }
   };
 
+  const loadNodes = async () => {
+    try {
+      const response = await serversApi.getNodes();
+      if (response.data.success) {
+        setNodes(response.data.data || []);
+        // Set the first available node as default
+        if (response.data.data && response.data.data.length > 0) {
+          setSelectedNode(response.data.data[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load nodes:', error);
+    }
+  };
+
   const handleCreateServer = async () => {
     if (!selectedAlt) return;
 
@@ -144,7 +162,7 @@ export default function CreateServerPage() {
         name: serverConfig.name,
         description: serverConfig.description,
         altId: selectedAlt.id,
-        nodeId: 'default', // TODO: Add node selection
+        nodeId: selectedNode || 'default',
         memory: serverConfig.memory,
         disk: serverConfig.disk,
         cpu: 100, // Default CPU limit
@@ -337,6 +355,28 @@ export default function CreateServerPage() {
                         rows={3}
                         className="w-full px-3 py-2 bg-panel-surface border border-white/20 rounded-lg text-white focus:outline-none focus:border-panel-primary"
                       />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Node *
+                      </label>
+                      <select
+                        value={selectedNode}
+                        onChange={(e) => setSelectedNode(e.target.value)}
+                        className="w-full px-3 py-2 bg-panel-surface border border-white/20 rounded-lg text-white focus:outline-none focus:border-panel-primary"
+                        required
+                      >
+                        {nodes.length === 0 ? (
+                          <option value="">No nodes available</option>
+                        ) : (
+                          nodes.map((node) => (
+                            <option key={node.id} value={node.id}>
+                              {node.name} ({node.location || 'Unknown location'})
+                            </option>
+                          ))
+                        )}
+                      </select>
                     </div>
                   </div>
                 </div>

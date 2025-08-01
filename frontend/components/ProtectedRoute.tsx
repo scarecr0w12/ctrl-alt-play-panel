@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -10,12 +10,30 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
   const { isAuthenticated, isAdmin, loading } = useAuth();
   const router = useRouter();
+  const hasRedirected = useRef(false);
+  const lastAuthState = useRef(isAuthenticated);
 
   useEffect(() => {
-    if (!loading) {
+    // Reset redirect flag when auth state changes from false to true
+    if (lastAuthState.current !== isAuthenticated) {
+      if (isAuthenticated) {
+        hasRedirected.current = false;
+      }
+      lastAuthState.current = isAuthenticated;
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    // Only redirect after loading is complete AND we have definitive auth state
+    // Prevent multiple redirects with hasRedirected flag
+    if (!loading && !hasRedirected.current) {
       if (!isAuthenticated) {
+        console.log('🔒 [PROTECTED] Not authenticated - redirecting to login');
+        hasRedirected.current = true;
         router.push('/login');
       } else if (adminOnly && !isAdmin) {
+        console.log('🔒 [PROTECTED] Not admin - redirecting to dashboard');
+        hasRedirected.current = true;
         router.push('/dashboard');
       }
     }

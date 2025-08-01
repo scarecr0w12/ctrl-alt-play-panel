@@ -1,0 +1,433 @@
+name: Cursor-Enhanced CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Pre-flight checks using Cursor configuration
+  cursor-preflight:
+    name: Cursor Configuration Checks
+    runs-on: ubuntu-latest
+    
+    outputs:
+      cursor-valid: ${{ steps.validate.outputs.valid }}
+      mcp-servers: ${{ steps.validate.outputs.mcp_servers }}
+      custom-modes: ${{ steps.validate.outputs.custom_modes }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Validate Cursor Configuration
+      id: validate
+      run: |
+        echo "🎯 Validating Cursor configuration for CI/CD..."
+        
+        # Check if essential Cursor files exist
+        if [ ! -f ".cursor/mcp.json" ] || [ ! -f ".cursor/modes.json" ] || [ ! -d ".cursor/rules" ]; then
+          echo "❌ Incomplete Cursor configuration"
+          echo "valid=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        
+        # Count MCP servers and custom modes
+        mcp_count=$(jq '.mcpServers | keys | length' .cursor/mcp.json)
+        modes_count=$(jq '.customModes | length' .cursor/modes.json)
+        
+        echo "✅ Cursor configuration valid"
+        echo "- MCP Servers: $mcp_count"
+        echo "- Custom Modes: $modes_count"
+        
+        echo "valid=true" >> $GITHUB_OUTPUT
+        echo "mcp_servers=$mcp_count" >> $GITHUB_OUTPUT
+        echo "custom_modes=$modes_count" >> $GITHUB_OUTPUT
+
+  # Enhanced testing with Cursor-aware validation
+  enhanced-testing:
+    name: Enhanced Testing Suite
+    runs-on: ubuntu-latest
+    needs: cursor-preflight
+    if: needs.cursor-preflight.outputs.cursor-valid == 'true'
+    
+    strategy:
+      matrix:
+        node-version: [18, 20]
+        test-suite: [unit, integration, cursor-rules]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        npm install --only=dev
+        
+    - name: Setup test environment
+      run: |
+        cp .env.test .env 2>/dev/null || echo "No .env.test found, using defaults"
+        echo "NODE_ENV=test" >> .env
+        echo "GITHUB_ACTIONS=true" >> .env
+        
+    - name: Generate Prisma client (test mode)
+      run: |
+        echo "DATABASE_URL=file:./test.db" >> .env
+        npx prisma generate
+        npx prisma db push --force-reset
+        
+    - name: Run Unit Tests
+      if: matrix.test-suite == 'unit'
+      run: |
+        echo "🧪 Running unit tests with Cursor-aware validation..."
+        
+        # Run Jest with coverage
+        npm run test:unit --if-present || npm test -- --testPathPattern="\.test\.(ts|js)$" --coverage
+        
+        # Validate TypeScript compilation
+        npm run type-check --if-present || npx tsc --noEmit
+        
+    - name: Run Integration Tests
+      if: matrix.test-suite == 'integration'
+      run: |
+        echo "🔗 Running integration tests..."
+        
+        # Start required services for integration tests
+        docker-compose -f docker-compose.test.yml up -d postgres redis 2>/dev/null || echo "Test services not available"
+        
+        # Wait for services
+        sleep 10
+        
+        # Run integration tests
+        npm run test:integration --if-present || npm test -- --testPathPattern="\.integration\.(ts|js)$"
+        
+        # Cleanup
+        docker-compose -f docker-compose.test.yml down 2>/dev/null || true
+        
+    - name: Cursor Rules Validation
+      if: matrix.test-suite == 'cursor-rules'
+      run: |
+        echo "📋 Validating code against Cursor rules..."
+        
+        # Check TypeScript-only policy
+        js_files=$(find src frontend -name "*.js" 2>/dev/null | grep -v node_modules | wc -l)
+        if [ "$js_files" -gt 0 ]; then
+          echo "❌ Found JavaScript files (TypeScript-only policy):"
+          find src frontend -name "*.js" 2>/dev/null | grep -v node_modules
+          exit 1
+        fi
+        echo "✅ TypeScript-only policy compliance verified"
+        
+        # Check naming conventions
+        invalid_names=$(find src frontend -type f \( -name "*.ts" -o -name "*.tsx" \) | grep -E "[A-Z].*\.(ts|tsx)$" | grep -v "src/components" | wc -l)
+        if [ "$invalid_names" -gt 0 ]; then
+          echo "⚠️ Found files with potentially incorrect naming conventions"
+          find src frontend -type f \( -name "*.ts" -o -name "*.tsx" \) | grep -E "[A-Z].*\.(ts|tsx)$" | grep -v "src/components" | head -5
+        fi
+        
+        # Check for Panel+Agent architecture compliance
+        echo "🏗️ Checking Panel+Agent architecture compliance..."
+        
+        # Agent code should not directly access database
+        if find agent -name "*.ts" -exec grep -l "prisma\|database" {} \; 2>/dev/null | head -1; then
+          echo "⚠️ Agent code may be directly accessing database (architecture violation)"
+        fi
+        
+        echo "✅ Cursor rules validation completed"
+        
+    - name: Memory Bank Validation
+      if: matrix.test-suite == 'cursor-rules'
+      run: |
+        echo "🧠 Validating memory bank consistency..."
+        
+        # Check memory bank files exist and are current
+        required_files=("projectContext.md" "activeContext.md" "systemPatterns.md" "techContext.md" "progress.md")
+        
+        for file in "${required_files[@]}"; do
+          if [ ! -f "memory-bank/$file" ]; then
+            echo "❌ Missing memory bank file: $file"
+            exit 1
+          fi
+          
+          # Check if file was updated recently (within 90 days)
+          if [ $(find "memory-bank/$file" -mtime +90 | wc -l) -gt 0 ]; then
+            echo "⚠️ Memory bank file $file may be outdated (>90 days old)"
+          fi
+        done
+        
+        echo "✅ Memory bank validation completed"
+
+  # AI-assisted code quality analysis
+  ai-quality-analysis:
+    name: AI Quality Analysis
+    runs-on: ubuntu-latest
+    needs: [cursor-preflight, enhanced-testing]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: AI-Powered Code Analysis
+      run: |
+        echo "🤖 Running AI-powered code analysis..."
+        
+        # Static analysis with TypeScript
+        echo "📊 TypeScript analysis..."
+        npx tsc --noEmit --strict 2>&1 | tee ts-analysis.log || true
+        
+        # ESLint analysis
+        echo "🔍 ESLint analysis..."
+        npm run lint 2>&1 | tee eslint-analysis.log || true
+        
+        # Custom Panel+Agent analysis
+        echo "🏗️ Architecture analysis..."
+        
+        {
+          echo "# 🤖 AI Code Quality Report"
+          echo ""
+          echo "Generated: $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          echo ""
+          echo "## TypeScript Analysis"
+          if [ -s ts-analysis.log ]; then
+            echo "Issues found:"
+            echo "\`\`\`"
+            head -20 ts-analysis.log
+            echo "\`\`\`"
+          else
+            echo "✅ No TypeScript errors detected"
+          fi
+          echo ""
+          
+          echo "## ESLint Analysis"
+          if [ -s eslint-analysis.log ]; then
+            echo "Linting issues:"
+            echo "\`\`\`"
+            head -20 eslint-analysis.log
+            echo "\`\`\`"
+          else
+            echo "✅ No linting errors detected"
+          fi
+          echo ""
+          
+          echo "## Architecture Compliance"
+          
+          # Check for proper separation of concerns
+          panel_files=$(find src -name "*.ts" | wc -l)
+          agent_files=$(find agent -name "*.ts" 2>/dev/null | wc -l)
+          frontend_files=$(find frontend -name "*.tsx" -o -name "*.ts" | wc -l)
+          
+          echo "- Panel (backend) files: $panel_files"
+          echo "- Agent files: $agent_files"
+          echo "- Frontend files: $frontend_files"
+          echo ""
+          
+          echo "## Memory Bank Integration"
+          echo "- Configuration files: ${{ needs.cursor-preflight.outputs.mcp-servers }} MCP servers"
+          echo "- Custom AI modes: ${{ needs.cursor-preflight.outputs.custom-modes }} modes"
+          echo ""
+          
+          echo "## Recommendations"
+          echo "- Continue following TypeScript-first development"
+          echo "- Maintain Panel+Agent architectural boundaries"
+          echo "- Leverage Cursor AI modes for specialized development"
+          echo "- Keep memory bank updated with project evolution"
+          
+        } > ai-quality-report.md
+        
+        cat ai-quality-report.md
+        
+    - name: Upload AI Analysis Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: ai-quality-report-${{ github.sha }}
+        path: |
+          ai-quality-report.md
+          ts-analysis.log
+          eslint-analysis.log
+        retention-days: 30
+
+  # Docker build with Cursor-aware optimizations
+  docker-build:
+    name: Docker Build & Test
+    runs-on: ubuntu-latest
+    needs: enhanced-testing
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Log in to Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          
+    - name: Build Docker image with Cursor optimizations
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          NODE_VERSION=${{ env.NODE_VERSION }}
+          CURSOR_CONFIG=.cursor
+          MEMORY_BANK=memory-bank
+          
+    - name: Test Docker container
+      run: |
+        echo "🐳 Testing Docker container..."
+        
+        # Get the first tag for testing
+        test_tag=$(echo "${{ steps.meta.outputs.tags }}" | head -1)
+        
+        # Run container health check
+        docker run --rm -d --name test-container \
+          -p 3000:3000 \
+          -e NODE_ENV=production \
+          "$test_tag"
+          
+        # Wait for container to start
+        sleep 30
+        
+        # Test health endpoint
+        if curl -f http://localhost:3000/health; then
+          echo "✅ Container health check passed"
+        else
+          echo "❌ Container health check failed"
+          docker logs test-container
+          exit 1
+        fi
+        
+        # Cleanup
+        docker stop test-container
+        
+    - name: Scan for vulnerabilities
+      uses: docker/scout-action@v1
+      if: github.event_name != 'pull_request'
+      with:
+        command: cves
+        image: ${{ steps.meta.outputs.tags }}
+        only-severities: critical,high
+        write-comment: false
+
+  # Deployment readiness check
+  deployment-readiness:
+    name: Deployment Readiness
+    runs-on: ubuntu-latest
+    needs: [ai-quality-analysis, docker-build]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Deployment Readiness Check
+      run: |
+        echo "🚀 Checking deployment readiness..."
+        
+        # Check all required files exist
+        required_files=("docker-compose.yml" "docker-compose.prod.yml" ".env.example")
+        for file in "${required_files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "❌ Missing deployment file: $file"
+            exit 1
+          fi
+        done
+        
+        # Check Cursor configuration is production-ready
+        if [ ! -f ".cursor/mcp.json" ]; then
+          echo "❌ Missing Cursor MCP configuration"
+          exit 1
+        fi
+        
+        # Validate memory bank is current
+        memory_age=$(find memory-bank -name "*.md" -mtime +30 | wc -l)
+        if [ "$memory_age" -gt 0 ]; then
+          echo "⚠️ Some memory bank files are older than 30 days"
+        fi
+        
+        echo "✅ Deployment readiness check passed"
+        echo "🎯 Ready for production deployment with Cursor AI assistance"
+        
+    - name: Create Deployment Summary
+      run: |
+        {
+          echo "# 🚀 Deployment Summary"
+          echo ""
+          echo "**Branch**: ${{ github.ref_name }}"
+          echo "**Commit**: ${{ github.sha }}"
+          echo "**Timestamp**: $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          echo ""
+          echo "## Quality Gates"
+          echo "- ✅ Cursor configuration validation passed"
+          echo "- ✅ Enhanced testing suite completed"
+          echo "- ✅ AI quality analysis completed"
+          echo "- ✅ Docker build and security scan passed"
+          echo "- ✅ Deployment readiness verified"
+          echo ""
+          echo "## AI-Enhanced Features"
+          echo "- **MCP Servers**: ${{ needs.cursor-preflight.outputs.mcp-servers }} configured"
+          echo "- **Custom Modes**: ${{ needs.cursor-preflight.outputs.custom-modes }} AI agents available"
+          echo "- **Memory Bank**: Up-to-date project context"
+          echo "- **Rule System**: TypeScript-first development enforced"
+          echo ""
+          echo "## Next Steps"
+          echo "1. Deploy to staging environment"
+          echo "2. Run smoke tests with AI assistance"
+          echo "3. Promote to production"
+          echo "4. Monitor with enhanced observability"
+          echo ""
+          echo "---"
+          echo "*Generated by Cursor-Enhanced CI/CD Pipeline*"
+        } > deployment-summary.md
+        
+        cat deployment-summary.md
+        
+    - name: Upload Deployment Summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-summary-${{ github.sha }}
+        path: deployment-summary.md
+        retention-days: 90

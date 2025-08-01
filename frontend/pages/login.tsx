@@ -19,23 +19,25 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isBlocked, setIsBlocked] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated (only after auth loading is complete)
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!authLoading && isAuthenticated) {
       router.push('/dashboard');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🔄 [LOGIN] handleSubmit triggered');
     setError('');
     
     // Sanitize inputs
     const sanitizedEmail = sanitizeInput(email);
     const sanitizedPassword = sanitizeInput(password);
+    console.log('🧹 [LOGIN] Inputs sanitized:', { email: sanitizedEmail });
     
     // Validate inputs
     if (!validateEmail(sanitizedEmail)) {
@@ -43,10 +45,12 @@ export default function LoginPage() {
       return;
     }
     
-    if (!sanitizedPassword || sanitizedPassword.length < 1) {
-      setError('Please enter your password');
+    if (sanitizedPassword.length < 6) {
+      setError('Password must be at least 6 characters long');
       return;
     }
+    
+    console.log('✅ [LOGIN] Input validation passed');
     
     // Check rate limiting
     const clientIP = 'client'; // In production, this would be the actual IP
@@ -56,21 +60,30 @@ export default function LoginPage() {
       return;
     }
     
+    console.log('🚦 [LOGIN] Rate limiting passed');
     setLoading(true);
+    console.log('⏳ [LOGIN] Loading state set to true');
 
     try {
+      console.log('🔑 [LOGIN] Calling AuthContext login function...');
       const success = await login(sanitizedEmail, sanitizedPassword);
+      console.log('📊 [LOGIN] AuthContext login result:', success);
+      
       if (success) {
+        console.log('✅ [LOGIN] Login successful - redirecting to dashboard');
         // Reset rate limiter on successful login
         loginRateLimiter.reset(clientIP);
+        // Simple direct redirect - the AuthContext state will update properly
         router.push('/dashboard');
       } else {
+        console.log('❌ [LOGIN] Login failed - invalid credentials');
         setError('Invalid email or password');
       }
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('💥 [LOGIN] Exception during login:', error);
       setError('Login failed. Please try again.');
     } finally {
+      console.log('🏁 [LOGIN] Setting loading to false');
       setLoading(false);
     }
   };

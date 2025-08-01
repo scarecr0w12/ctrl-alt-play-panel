@@ -189,7 +189,9 @@ const UserManagement: React.FC = () => {
         username: createFormData.username.trim(),
         email: createFormData.email.trim(),
         password: createFormData.password,
-        role: createFormData.role
+        role: createFormData.role,
+        firstName: createFormData.firstName.trim(),
+        lastName: createFormData.lastName.trim()
       };
       
       await createUser(userData);

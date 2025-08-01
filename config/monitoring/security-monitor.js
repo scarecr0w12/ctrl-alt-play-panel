@@ -158,11 +158,107 @@ class SecurityMonitor {
       alerts.push(alert);
       await fs.writeFile(alertPath, JSON.stringify(alerts, null, 2));
       
-      // TODO: Integrate with external alerting services (Slack, Discord, Email, etc.)
+      // Send to external alerting services
+      await this.sendExternalAlerts(alert);
       
     } catch (error) {
       console.error('Error writing alert:', error);
     }
+  }
+
+  async sendExternalAlerts(alert) {
+    try {
+      // Slack integration
+      if (process.env.SLACK_WEBHOOK_URL) {
+        await this.sendSlackAlert(alert);
+      }
+      
+      // Discord integration
+      if (process.env.DISCORD_WEBHOOK_URL) {
+        await this.sendDiscordAlert(alert);
+      }
+      
+      // Email integration
+      if (process.env.EMAIL_ALERTS_ENABLED === 'true') {
+        await this.sendEmailAlert(alert);
+      }
+      
+    } catch (error) {
+      console.error('Error sending external alerts:', error);
+    }
+  }
+
+  async sendSlackAlert(alert) {
+    const { default: fetch } = await import('node-fetch');
+    
+    const message = {
+      text: `🚨 *Security Alert*`,
+      attachments: [{
+        color: alert.level === 'CRITICAL' ? '#ff0000' : alert.level === 'HIGH' ? '#ff6600' : '#ffcc00',
+        fields: [
+          {
+            title: 'Level',
+            value: alert.level,
+            short: true
+          },
+          {
+            title: 'Time',
+            value: new Date(alert.timestamp).toLocaleString(),
+            short: true
+          },
+          {
+            title: 'Message',
+            value: alert.message,
+            short: false
+          }
+        ]
+      }]
+    };
+
+    await fetch(process.env.SLACK_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message)
+    });
+  }
+
+  async sendDiscordAlert(alert) {
+    const { default: fetch } = await import('node-fetch');
+    
+    const embed = {
+      title: '🚨 Security Alert',
+      color: alert.level === 'CRITICAL' ? 0xff0000 : alert.level === 'HIGH' ? 0xff6600 : 0xffcc00,
+      fields: [
+        {
+          name: 'Level',
+          value: alert.level,
+          inline: true
+        },
+        {
+          name: 'Time',
+          value: new Date(alert.timestamp).toLocaleString(),
+          inline: true
+        },
+        {
+          name: 'Message',
+          value: alert.message,
+          inline: false
+        }
+      ],
+      timestamp: alert.timestamp
+    };
+
+    await fetch(process.env.DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embeds: [embed] })
+    });
+  }
+
+  async sendEmailAlert(alert) {
+    // Email integration would use a service like SendGrid, AWS SES, or SMTP
+    // This is a placeholder for email alerting implementation
+    console.log(`📧 Email alert would be sent: ${alert.level} - ${alert.message}`);
   }
 
   async stop() {

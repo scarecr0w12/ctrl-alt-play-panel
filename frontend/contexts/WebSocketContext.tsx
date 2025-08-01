@@ -64,7 +64,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     }
 
     // Create socket connection
-    const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000', {
+    const newSocket = io(window.location.origin, {
       auth: {
         token: token
       },

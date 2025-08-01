@@ -187,7 +187,7 @@ src/services/
 
 ## Long-term Roadmap (Future Releases)
 
-### Version 1.6.0 - Advanced Features
+### Version 1.6.1 - Advanced Features
 - Mobile application for server management
 - Advanced plugin recommendation engine
 - Machine learning for predictive analytics

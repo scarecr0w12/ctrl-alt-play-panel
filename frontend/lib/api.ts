@@ -1,9 +1,11 @@
 import axios, { AxiosError, AxiosResponse } from 'axios';
 import toast from 'react-hot-toast';
 
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://dev-panel.thecgn.net/api'
-  : 'http://localhost:3000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL 
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api` 
+  : process.env.NODE_ENV === 'development' 
+    ? 'http://localhost:3000/api' 
+    : '/api';
 
 // Create axios instance with default config
 const api = axios.create({

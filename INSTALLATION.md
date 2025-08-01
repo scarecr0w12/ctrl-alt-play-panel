@@ -1,6 +1,6 @@
 # 🎮 Ctrl-Alt-Play Panel Installation Guide
 
-**Version:** 1.6.0  
+**Version:** 1.6.1  
 **Architecture:** Panel+Agent Distributed System  
 **Requirements:** Node.js 18+, Docker, Database (PostgreSQL/MySQL/MariaDB/MongoDB/SQLite)
 
@@ -43,27 +43,20 @@
 
 ### Database Requirements
 
-**Multi-Database Support** - Choose your preferred database:
+**Multi-Database Support** - Full production support for 5 database types:
 
-**Stable Support (Recommended for production):**
-
-| Database | Version | Best For |
-|----------|---------|----------|
-| **SQLite** | 3+ | Development and small deployments |
-| **MySQL** | 8.0+ | High compatibility requirements |
-| **MariaDB** | 10.3+ | MySQL alternative with better performance |
-
-**Experimental Support (Use at your own risk):**
-
-| Database | Version | Notes |
-|----------|---------|-------|
-| **PostgreSQL** | 12+ | Advanced features but may have compatibility issues |
-| **MongoDB** | 4.4+ | Document-based with flexible schema but limited testing |
+| Database | Version | Support Level | Best For |
+|----------|---------|---------------|----------|
+| **PostgreSQL** | 12+ | ✅ Full Production | Enterprise features and advanced queries |
+| **MySQL** | 8.0+ | ✅ Full Production | High performance and wide compatibility |
+| **MariaDB** | 10.3+ | ✅ Full Production | MySQL alternative with enhanced features |
+| **SQLite** | 3+ | ✅ Full Production | Development and small deployments |
+| **MongoDB** | 4.4+ | ✅ Full Production | Document-based with flexible schema |
 
 **Additional Services:**
 - **Redis**: 6+ (optional, for caching and session storage)
 
-For production deployments, we recommend using SQLite or MySQL/MariaDB for the most stable experience.
+All databases are fully supported with automatic connection string generation, dynamic Prisma configuration, and comprehensive testing.
 
 ---
 
@@ -196,8 +189,8 @@ PANEL_URL=https://your-domain.com
 ### Step 4: Start Services
 
 ```bash
-# Start database services
-docker-compose up -d postgres redis
+# Start database services (choose your database)
+docker-compose --profile postgresql up -d  # or mysql, mariadb, mongodb, sqlite
 
 # Wait for services to be ready
 sleep 10
@@ -262,7 +255,7 @@ See [Kubernetes Deployment](docs/deployment/kubernetes/) for enterprise-scale de
 | `NODE_ENV` | Environment mode | `development` | Yes |
 | `PORT` | Panel web port | `3000` | No |
 | `AGENT_PORT` | Agent WebSocket port | `8080` | No |
-| `DATABASE_URL` | PostgreSQL connection string | - | Yes |
+| `DATABASE_URL` | Database connection string (supports 5 types) | - | Yes |
 | `REDIS_URL` | Redis connection string | - | Yes |
 | `JWT_SECRET` | JWT signing secret | - | Yes |
 | `AGENT_SECRET` | Agent authentication secret | - | Yes |
@@ -272,13 +265,32 @@ See [Kubernetes Deployment](docs/deployment/kubernetes/) for enterprise-scale de
 
 ### Database Configuration
 
-The panel requires PostgreSQL 14+ and Redis 6+. Both are provided via Docker containers by default.
+The panel supports multiple database types with full production support. Choose from PostgreSQL, MySQL, MariaDB, MongoDB, or SQLite. Redis 6+ is optional for caching.
+
+**Database Selection:**
+
+```bash
+# Set your preferred database type
+export DB_TYPE=postgresql  # or mysql, mariadb, mongodb, sqlite
+
+# Start with automatic database selection
+./docker-launcher.sh start
+```
 
 **Custom Database Setup:**
 
 ```bash
 # For external PostgreSQL
 DATABASE_URL="postgresql://username:password@host:port/database"
+
+# For external MySQL
+DATABASE_URL="mysql://username:password@host:port/database"
+
+# For external MariaDB
+DATABASE_URL="mysql://username:password@host:port/database"
+
+# For external MongoDB
+DATABASE_URL="mongodb://username:password@host:port/database"
 
 # For external Redis  
 REDIS_URL="redis://host:port"

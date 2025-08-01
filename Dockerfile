@@ -122,6 +122,15 @@ COPY --from=backend-builder /app/dist/prisma ./dist/prisma
 COPY --from=frontend-builder /app/frontend/.next ./frontend/.next
 COPY --from=frontend-builder /app/frontend/public ./frontend/public
 
+# Create symbolic link for CSS file to fix empty CSS issue
+RUN cd /app/frontend/.next/static/css && \
+    EMPTY_CSS=$(ls -1 ef46db3751d8e999.* 2>/dev/null | head -n 1) && \
+    NON_EMPTY_CSS=$(ls -1 [0-9a-f]*.css | grep -v ef46db3751d8e999 | head -n 1) && \
+    if [ -n "$EMPTY_CSS" ] && [ -n "$NON_EMPTY_CSS" ] && [ ! -s "$EMPTY_CSS" ]; then \
+        rm "$EMPTY_CSS" && \
+        ln -s "$NON_EMPTY_CSS" "$EMPTY_CSS"; \
+    fi
+
 # Create non-root user for security
 RUN addgroup -g 1001 -S appuser && \
     adduser -S -u 1001 -G appuser appuser

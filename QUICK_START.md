@@ -1,6 +1,6 @@
 # 🚀 Quick Start Guide - Ctrl-Alt-Play Panel
 
-**Version:** 1.2.0  
+**Version:** 1.6.1  
 **Time to complete:** 10-15 minutes
 
 ---
@@ -144,8 +144,8 @@ cd frontend && npm install && cd ..
 ### Step 2: Start Database Services
 
 ```bash
-# Start only database services  
-docker-compose up -d postgres redis
+# Start database services (choose your database)
+docker-compose --profile postgresql up -d  # or mysql, mariadb, mongodb, sqlite
 
 # Wait for services to start
 sleep 15
@@ -211,8 +211,9 @@ docker-compose ps
 # Check logs for errors
 docker-compose logs ctrl-alt-play
 
-# Check database connection
-docker-compose exec postgres psql -U ctrlaltplay -d ctrlaltplay -c "\dt"
+# Check database connection (adjust for your database type)
+docker-compose exec postgresql psql -U ctrlaltplay -d ctrlaltplay -c "\dt"  # for PostgreSQL
+# docker-compose exec mysql mysql -u ctrlaltplay -p ctrlaltplay -e "SHOW TABLES;"  # for MySQL
 ```
 
 ### 3. Test Basic Functions
@@ -274,11 +275,11 @@ PORT=3001
 
 ```bash
 # Restart database services
-docker-compose restart postgres redis
+docker-compose restart postgresql redis  # adjust service name for your database
 sleep 10
 
 # Check database logs
-docker-compose logs postgres
+docker-compose logs postgresql  # adjust service name for your database
 ```
 
 ### Issue: Permission Denied

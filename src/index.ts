@@ -104,7 +104,9 @@ class GamePanelApp {
   private initializeRoutes(): void {
     // Essential API routes
     console.log('Adding essential API routes...');
+    console.log('Mounting /api/auth routes...');
     this.app.use('/api/auth', authRoutes);
+    console.log('Mounted /api/auth routes successfully');
     this.app.use('/api/monitoring', monitoringRoutes);
     this.app.use('/api/analytics', analyticsRoutes);
     this.app.use('/api/workshop', workshopRoutes);
@@ -168,7 +170,7 @@ class GamePanelApp {
       const protocol = req.get('x-forwarded-proto') || req.protocol;
       const host = req.get('host');
       const baseUrl = `${protocol}://${host}`;
-      res.redirect(`${baseUrl}/`);
+      res.redirect(`${baseUrl}/dashboard`);
     });
     console.log('Added redirect routes successfully');
 
@@ -208,48 +210,98 @@ class GamePanelApp {
       res.redirect(`${baseUrl}/console`);
     });
 
-    // Frontend route handler for Next.js static export (maps URLs to route-specific HTML files)
+    // Serve frontend HTML files directly from Next.js build
     this.app.use((req, res, next) => {
-      // Skip API routes, WebSocket routes, and static files
-      if (req.path.startsWith('/api/') || req.path.startsWith('/ws/') || req.path.startsWith('/_next/')) {
+      // Skip API routes and WebSocket routes
+      if (req.path.startsWith('/api/') || req.path.startsWith('/ws/')) {
         return next();
       }
       
-      // Only handle GET requests for potential frontend routes
-      if (req.method !== 'GET') {
-        return next();
-      }
+      // Handling frontend request
       
-      // Normalize path: remove trailing slash and get clean route name
-      let routePath = req.path.replace(/\/$/, '') || '/';
-      let htmlFileName = 'index.html'; // Default for root path
+      // Determine the HTML file path based on the request
+      let htmlFilePath = '';
       
-      // Map URL paths to corresponding HTML files
-      if (routePath !== '/') {
-        htmlFileName = routePath.substring(1) + '.html'; // Remove leading slash, add .html
-      }
-      
-      // Try to serve the specific HTML file for this route
-      const htmlFilePath = path.join(__dirname, '../frontend/.next/server/pages', htmlFileName);
-      console.log(`[DEBUG] Request for ${req.path} -> trying to serve ${htmlFileName} from ${htmlFilePath}`);
-      
-      if (fs.existsSync(htmlFilePath)) {
-        console.log(`[DEBUG] File exists, serving: ${htmlFilePath}`);
-        try {
-          const fileContent = fs.readFileSync(htmlFilePath, 'utf8');
-          res.setHeader('Content-Type', 'text/html; charset=utf-8');
-          return res.send(fileContent);
-        } catch (error) {
-          console.log(`[DEBUG] Error reading file: ${error}`);
-          return next();
-        }
+      // Handle root path
+      if (req.path === '/' || req.path === '') {
+        htmlFilePath = 'frontend/.next/server/pages/index.html';
+      } 
+      // Handle specific routes
+      else if (req.path === '/login') {
+        htmlFilePath = 'frontend/.next/server/pages/login.html';
+      } else if (req.path === '/register') {
+        htmlFilePath = 'frontend/.next/server/pages/register.html';
+      } else if (req.path === '/dashboard') {
+        htmlFilePath = 'frontend/.next/server/pages/dashboard.html';
+      } else if (req.path === '/profile') {
+        htmlFilePath = 'frontend/.next/server/pages/profile.html';
+      } else if (req.path === '/servers') {
+        htmlFilePath = 'frontend/.next/server/pages/servers.html';
+      } else if (req.path === '/agents') {
+        htmlFilePath = 'frontend/.next/server/pages/agents.html';
+      } else if (req.path === '/ctrls') {
+        htmlFilePath = 'frontend/.next/server/pages/ctrls.html';
+      } else if (req.path === '/files') {
+        htmlFilePath = 'frontend/.next/server/pages/files.html';
+      } else if (req.path === '/console') {
+        htmlFilePath = 'frontend/.next/server/pages/console.html';
+      } else if (req.path === '/monitoring') {
+        htmlFilePath = 'frontend/.next/server/pages/monitoring.html';
+      } else if (req.path === '/analytics') {
+        htmlFilePath = 'frontend/.next/server/pages/analytics.html';
+      } else if (req.path.startsWith('/admin')) {
+        // Handle admin routes
+        htmlFilePath = 'frontend/.next/server/pages/admin.html';
+      } else if (req.path.startsWith('/alts')) {
+        // Handle alts routes
+        htmlFilePath = 'frontend/.next/server/pages/alts.html';
+      } else if (req.path.startsWith('/servers/')) {
+        // Handle specific server routes
+        htmlFilePath = 'frontend/.next/server/pages/servers.html';
       } else {
-        // Fallback to index.html for unknown routes (SPA behavior)
-        const indexPath = path.join(__dirname, '../frontend/.next/server/pages/index.html');
-        if (fs.existsSync(indexPath)) {
-          return res.sendFile(indexPath);
+        // For any other route, try to serve the corresponding HTML file
+        // or fall back to index.html for client-side routing
+        const path = req.path.replace(/^\//, '').replace(/\//g, '-') || 'index';
+        htmlFilePath = `frontend/.next/server/pages/${path}.html`;
+      }
+      
+      // Trying to serve HTML file
+      
+      // Check if the file exists
+      const fullPath = path.resolve('/app', htmlFilePath);
+      
+      if (fs.existsSync(fullPath)) {
+        // Serving HTML file
+        res.setHeader('Content-Type', 'text/html');
+        fs.readFile(fullPath, 'utf8', (err, data) => {
+          if (err) {
+            console.error(`[ERROR] Failed to read file ${fullPath}:`, err);
+            next(err);
+          } else {
+            res.send(data);
+          }
+        });
+      } else {
+        // If the specific HTML file doesn't exist, try index.html as fallback
+        const indexPath = 'frontend/.next/server/pages/index.html';
+        const fullIndexPath = path.resolve('/app', indexPath);
+        // Trying fallback index.html
+        
+        if (fs.existsSync(fullIndexPath)) {
+          // Serving fallback HTML file
+          res.setHeader('Content-Type', 'text/html');
+          fs.readFile(fullIndexPath, 'utf8', (err, data) => {
+            if (err) {
+              console.error(`[ERROR] Failed to read file ${fullIndexPath}:`, err);
+              next(err);
+            } else {
+              res.send(data);
+            }
+          });
         } else {
-          return next(); // Let 404 handler take over
+          // If even index.html doesn't exist, let the next middleware handle it
+          // No HTML file found, passing to next middleware
+          next();
         }
       }
     });

@@ -30,9 +30,9 @@ import { errorHandler } from './middlewares/errorHandler';
 export function createApp(): express.Application {
   const app = express();
 
-  // DEBUG: Prove our code changes are being applied
+  // Production headers
   app.use((req, res, next) => {
-    res.setHeader('X-Debug-Source', 'My-App-Is-Definitely-Running-This-Code');
+    // Security and performance headers
     next();
   });
 
@@ -54,12 +54,15 @@ export function createApp(): express.Application {
   //   crossOriginEmbedderPolicy: false
   // }));
 
-  // CORS
+  // CORS configuration - allow localhost:3001 in development
+  const corsOrigin = process.env.NODE_ENV === 'development' 
+    ? ['http://localhost:3001', 'https://dev-panel.thecgn.net', 'http://localhost:3000']
+    : process.env.CORS_ORIGIN || 'https://dev-panel.thecgn.net';
+  
   app.use(cors({
-    origin: process.env.NODE_ENV === 'production' 
-      ? ['https://yourdomain.com'] 
-      : ['http://localhost:3000', 'http://localhost:3001'],
-    credentials: true
+    origin: corsOrigin,
+    credentials: true,
+    optionsSuccessStatus: 200
   }));
 
   // Compression and parsing

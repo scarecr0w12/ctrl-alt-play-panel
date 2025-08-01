@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { PrismaClient } from '@prisma/client';
 import { MonitoringService } from '../services/monitoringService';
 import DatabaseService from '../services/database';
 import { 
@@ -6,6 +7,8 @@ import {
   requirePermission, 
   requireAnyPermission 
 } from '../middlewares/permissions';
+
+const prisma = new PrismaClient();
 
 const router = Router();
 const monitoringService = new MonitoringService();
@@ -284,21 +287,78 @@ router.get('/export', authenticateToken, requirePermission('monitoring.view'), a
   try {
     const { timeRange = '24h', format = 'json' } = req.query;
 
-    // TODO: Implement data export functionality
-    const exportData = {
-      message: 'Export functionality coming soon',
-      timeRange,
-      format,
-      timestamp: new Date().toISOString()
-    };
+    // Get monitoring data for export
+    const endTime = new Date();
+    const startTime = new Date();
+    
+    // Calculate time range
+    switch (timeRange) {
+      case '1h':
+        startTime.setHours(endTime.getHours() - 1);
+        break;
+      case '6h':
+        startTime.setHours(endTime.getHours() - 6);
+        break;
+      case '24h':
+        startTime.setDate(endTime.getDate() - 1);
+        break;
+      case '7d':
+        startTime.setDate(endTime.getDate() - 7);
+        break;
+      case '30d':
+        startTime.setDate(endTime.getDate() - 30);
+        break;
+      default:
+        startTime.setDate(endTime.getDate() - 1); // Default to 24h
+    }
+
+    // Get server metrics for the time range
+    const metrics = await prisma.serverMetrics.findMany({
+      where: {
+        timestamp: {
+          gte: startTime,
+          lte: endTime
+        }
+      },
+      include: {
+        server: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      },
+      orderBy: {
+        timestamp: 'asc'
+      }
+    });
 
     if (format === 'csv') {
       res.set({
         'Content-Type': 'text/csv',
         'Content-Disposition': `attachment; filename=monitoring-data-${Date.now()}.csv`
       });
-      return res.send('timestamp,server_id,cpu,memory,disk\n'); // Empty CSV header
+      
+      // Generate CSV content
+      const csvHeader = 'timestamp,server_id,server_name,cpu_percent,memory_percent,disk_percent,network_in,network_out\n';
+      const csvRows = metrics.map(metric => 
+        `${metric.timestamp.toISOString()},${metric.serverId},${metric.server.name},${metric.cpuPercent},${metric.memoryPercent},${metric.diskPercent},${metric.networkIn},${metric.networkOut}`
+      ).join('\n');
+      
+      return res.send(csvHeader + csvRows);
     }
+
+    const exportData = {
+      timeRange,
+      format,
+      timestamp: new Date().toISOString(),
+      data: metrics,
+      summary: {
+        totalRecords: metrics.length,
+        timeRange: `${startTime.toISOString()} to ${endTime.toISOString()}`,
+        servers: [...new Set(metrics.map(m => m.serverId))].length
+      }
+    };
 
     return res.json({
       success: true,
@@ -325,13 +385,91 @@ router.post('/compare', authenticateToken, requirePermission('monitoring.view'),
       return res.status(400).json({ error: 'Server IDs array is required' });
     }
 
-    // TODO: Implement server comparison functionality
+    // Calculate time range for comparison
+    const endTime = new Date();
+    const startTime = new Date();
+    
+    switch (timeRange) {
+      case '1h':
+        startTime.setHours(endTime.getHours() - 1);
+        break;
+      case '6h':
+        startTime.setHours(endTime.getHours() - 6);
+        break;
+      case '24h':
+        startTime.setDate(endTime.getDate() - 1);
+        break;
+      case '7d':
+        startTime.setDate(endTime.getDate() - 7);
+        break;
+      case '30d':
+        startTime.setDate(endTime.getDate() - 30);
+        break;
+      default:
+        startTime.setDate(endTime.getDate() - 1);
+    }
+
+    // Get metrics for all specified servers
+    const serverMetrics = await prisma.serverMetrics.findMany({
+      where: {
+        serverId: {
+          in: serverIds
+        },
+        timestamp: {
+          gte: startTime,
+          lte: endTime
+        }
+      },
+      include: {
+        server: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      },
+      orderBy: {
+        timestamp: 'asc'
+      }
+    });
+
+    // Group metrics by server and calculate averages
+    const serverData = {};
+    serverIds.forEach(serverId => {
+      const metrics = serverMetrics.filter(m => m.serverId === serverId);
+      if (metrics.length > 0) {
+        const avgCpu = metrics.reduce((sum, m) => sum + m.cpuPercent, 0) / metrics.length;
+        const avgMemory = metrics.reduce((sum, m) => sum + m.memoryPercent, 0) / metrics.length;
+        const avgDisk = metrics.reduce((sum, m) => sum + m.diskPercent, 0) / metrics.length;
+        const avgNetworkIn = metrics.reduce((sum, m) => sum + m.networkIn, 0) / metrics.length;
+        const avgNetworkOut = metrics.reduce((sum, m) => sum + m.networkOut, 0) / metrics.length;
+
+        serverData[serverId] = {
+          server: metrics[0].server,
+          metrics: {
+            cpu: avgCpu,
+            memory: avgMemory,
+            disk: avgDisk,
+            networkIn: avgNetworkIn,
+            networkOut: avgNetworkOut
+          },
+          dataPoints: metrics.length,
+          timeRange: `${startTime.toISOString()} to ${endTime.toISOString()}`
+        };
+      }
+    });
+
     const comparisonData = {
-      message: 'Server comparison functionality coming soon',
       serverIds,
       timeRange,
       metric,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      data: serverData,
+      summary: {
+        totalServers: Object.keys(serverData).length,
+        timeRange: `${startTime.toISOString()} to ${endTime.toISOString()}`,
+        totalDataPoints: serverMetrics.length
+      }
     };
 
     return res.json({

@@ -1,0 +1,282 @@
+name: AI-Powered Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: string
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  ai-code-review:
+    name: AI Code Review Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Get PR information
+      id: pr_info
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          echo "PR_NUMBER=${{ github.event.number }}" >> $GITHUB_OUTPUT
+          echo "BASE_SHA=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
+          echo "HEAD_SHA=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+        else
+          echo "PR_NUMBER=${{ github.event.inputs.pr_number }}" >> $GITHUB_OUTPUT
+          # For manual dispatch, we'll need to fetch PR info
+          gh pr view ${{ github.event.inputs.pr_number }} --json baseRefOid,headRefOid
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Analyze changed files
+      id: analyze_changes
+      run: |
+        echo "🔍 Analyzing changed files..."
+        
+        # Get list of changed files
+        git diff --name-only ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} > changed_files.txt
+        
+        # Categorize changes
+        ts_files=$(grep '\.tsx\?$' changed_files.txt | wc -l)
+        js_files=$(grep '\.jsx\?$' changed_files.txt | wc -l)
+        test_files=$(grep '\.test\.\|\.spec\.' changed_files.txt | wc -l)
+        config_files=$(grep -E '\.(json|yml|yaml|md)$' changed_files.txt | wc -l)
+        cursor_files=$(grep '\.cursor/' changed_files.txt | wc -l)
+        
+        echo "TYPESCRIPT_FILES=$ts_files" >> $GITHUB_OUTPUT
+        echo "JAVASCRIPT_FILES=$js_files" >> $GITHUB_OUTPUT
+        echo "TEST_FILES=$test_files" >> $GITHUB_OUTPUT
+        echo "CONFIG_FILES=$config_files" >> $GITHUB_OUTPUT
+        echo "CURSOR_FILES=$cursor_files" >> $GITHUB_OUTPUT
+        echo "TOTAL_FILES=$(wc -l < changed_files.txt)" >> $GITHUB_OUTPUT
+        
+        echo "📊 Change Analysis:"
+        echo "- TypeScript files: $ts_files"
+        echo "- JavaScript files: $js_files" 
+        echo "- Test files: $test_files"
+        echo "- Config files: $config_files"
+        echo "- Cursor config files: $cursor_files"
+        echo "- Total files: $(wc -l < changed_files.txt)"
+        
+    - name: TypeScript Policy Check
+      if: steps.analyze_changes.outputs.JAVASCRIPT_FILES > 0
+      run: |
+        echo "❌ JavaScript files detected in changes!"
+        echo "This project follows a TypeScript-only policy."
+        echo "Please convert the following files to TypeScript:"
+        
+        git diff --name-only ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep '\.jsx\?$' || true
+        
+        echo "::error::JavaScript files found. Convert to TypeScript (.ts/.tsx)"
+        exit 1
+        
+    - name: Cursor Configuration Impact Analysis
+      if: steps.analyze_changes.outputs.CURSOR_FILES > 0
+      run: |
+        echo "🎯 Cursor configuration changes detected!"
+        
+        # Check if MCP configuration changed
+        if git diff --name-only ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep -q '\.cursor/mcp\.json'; then
+          echo "🔌 MCP configuration changes detected"
+          
+          # Validate new MCP configuration
+          if [ -f ".cursor/mcp.json" ]; then
+            jq . .cursor/mcp.json > /dev/null || {
+              echo "::error::Invalid JSON in .cursor/mcp.json"
+              exit 1
+            }
+            echo "✅ MCP configuration is valid JSON"
+          fi
+        fi
+        
+        # Check if custom modes changed
+        if git diff --name-only ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep -q '\.cursor/modes\.json'; then
+          echo "🎭 Custom modes configuration changes detected"
+          
+          if [ -f ".cursor/modes.json" ]; then
+            jq . .cursor/modes.json > /dev/null || {
+              echo "::error::Invalid JSON in .cursor/modes.json"
+              exit 1
+            }
+            echo "✅ Custom modes configuration is valid JSON"
+          fi
+        fi
+        
+        # Check if rules changed
+        if git diff --name-only ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep -q '\.cursor/rules/'; then
+          echo "📋 Rules changes detected"
+          echo "Changed rule files:"
+          git diff --name-only ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep '\.cursor/rules/' || true
+        fi
+        
+    - name: Panel+Agent Architecture Review
+      run: |
+        echo "🏗️ Reviewing changes for Panel+Agent architecture compliance..."
+        
+        # Check for direct database access in agent code
+        if git diff ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep -i "database\|prisma" | grep -q "agent/"; then
+          echo "⚠️ Potential architecture violation: Agent code accessing database directly"
+          echo "Agents should communicate through Panel APIs, not direct database access"
+        fi
+        
+        # Check for proper service separation
+        panel_files=$(git diff --name-only ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep -E '^(src/|backend/)' | wc -l)
+        agent_files=$(git diff --name-only ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep '^agent/' | wc -l)
+        frontend_files=$(git diff --name-only ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep '^frontend/' | wc -l)
+        
+        echo "📊 Component changes:"
+        echo "- Panel (backend): $panel_files files"
+        echo "- Agent: $agent_files files" 
+        echo "- Frontend: $frontend_files files"
+        
+    - name: Security Review
+      run: |
+        echo "🔒 Performing security review..."
+        
+        # Check for hardcoded secrets or API keys
+        if git diff ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep -iE "(api[_-]?key|secret|password|token)" | grep -E "(=|:)" | grep -v "example\|placeholder\|\\$\{\|process\.env"; then
+          echo "⚠️ Potential hardcoded secrets detected:"
+          git diff ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep -iE "(api[_-]?key|secret|password|token)" | grep -E "(=|:)" | grep -v "example\|placeholder\|\\$\{\|process\.env" | head -5
+          echo "::warning::Please review for hardcoded secrets"
+        fi
+        
+        # Check for console.log statements in production code
+        if git diff ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep -E "console\.(log|debug|info)" | grep -v "test\|spec\|\.d\.ts"; then
+          echo "⚠️ Console statements found in production code:"
+          git diff ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep -E "console\.(log|debug|info)" | grep -v "test\|spec\|\.d\.ts" | head -3
+          echo "::warning::Consider removing console statements from production code"
+        fi
+        
+    - name: Test Coverage Analysis
+      if: steps.analyze_changes.outputs.TYPESCRIPT_FILES > 0
+      run: |
+        echo "🧪 Analyzing test coverage impact..."
+        
+        # Count TypeScript files that should have tests
+        src_ts_files=$(git diff --name-only ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep -E '\.(ts|tsx)$' | grep -E '^(src/|frontend/src/)' | grep -v '\.d\.ts$' | wc -l)
+        test_ts_files=${{ steps.analyze_changes.outputs.TEST_FILES }}
+        
+        if [ "$src_ts_files" -gt 0 ] && [ "$test_ts_files" -eq 0 ]; then
+          echo "⚠️ Source code changes detected without corresponding test updates"
+          echo "Consider adding or updating tests for:"
+          git diff --name-only ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep -E '\.(ts|tsx)$' | grep -E '^(src/|frontend/src/)' | grep -v '\.d\.ts$'
+          echo "::warning::Consider adding tests for new/modified code"
+        elif [ "$src_ts_files" -gt 0 ] && [ "$test_ts_files" -gt 0 ]; then
+          echo "✅ Source changes include test updates"
+        fi
+        
+    - name: Plugin System Review
+      run: |
+        echo "🔌 Reviewing plugin system changes..."
+        
+        plugin_files=$(git diff --name-only ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep -E 'plugin|plugins' | wc -l)
+        
+        if [ "$plugin_files" -gt 0 ]; then
+          echo "Plugin-related changes detected:"
+          git diff --name-only ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep -E 'plugin|plugins'
+          
+          # Check for plugin security patterns
+          if git diff ${{ steps.pr_info.outputs.BASE_SHA }}..${{ steps.pr_info.outputs.HEAD_SHA }} | grep -q "eval\|Function\|require.*variable"; then
+            echo "⚠️ Potentially unsafe plugin code patterns detected"
+            echo "::warning::Review plugin code for security vulnerabilities"
+          fi
+        fi
+        
+    - name: Generate AI Review Summary
+      run: |
+        echo "📝 Generating AI review summary..."
+        
+        {
+          echo "# 🤖 AI Code Review Summary"
+          echo ""
+          echo "**PR #${{ steps.pr_info.outputs.PR_NUMBER }}** | **Files Changed:** ${{ steps.analyze_changes.outputs.TOTAL_FILES }}"
+          echo ""
+          echo "## 📊 Change Analysis"
+          echo "| Category | Count |"
+          echo "|----------|-------|"
+          echo "| TypeScript Files | ${{ steps.analyze_changes.outputs.TYPESCRIPT_FILES }} |"
+          echo "| JavaScript Files | ${{ steps.analyze_changes.outputs.JAVASCRIPT_FILES }} |"
+          echo "| Test Files | ${{ steps.analyze_changes.outputs.TEST_FILES }} |"
+          echo "| Config Files | ${{ steps.analyze_changes.outputs.CONFIG_FILES }} |"
+          echo "| Cursor Config | ${{ steps.analyze_changes.outputs.CURSOR_FILES }} |"
+          echo ""
+          
+          if [ "${{ steps.analyze_changes.outputs.JAVASCRIPT_FILES }}" -gt 0 ]; then
+            echo "## ❌ Policy Violations"
+            echo "- **TypeScript-Only Policy**: JavaScript files detected and need conversion"
+            echo ""
+          fi
+          
+          if [ "${{ steps.analyze_changes.outputs.CURSOR_FILES }}" -gt 0 ]; then
+            echo "## 🎯 Cursor Configuration Impact"
+            echo "- Changes to Cursor configuration detected"
+            echo "- MCP servers, custom modes, or rules may be affected"
+            echo "- Validation checks passed ✅"
+            echo ""
+          fi
+          
+          echo "## 🏗️ Architecture Compliance"
+          echo "- Panel+Agent separation: Under review"
+          echo "- Security patterns: Checked"
+          echo "- Plugin system: Reviewed"
+          echo ""
+          
+          echo "## 🧪 Testing Recommendations"
+          if [ "${{ steps.analyze_changes.outputs.TYPESCRIPT_FILES }}" -gt 0 ] && [ "${{ steps.analyze_changes.outputs.TEST_FILES }}" -eq 0 ]; then
+            echo "- Consider adding tests for modified TypeScript files"
+          else
+            echo "- Test coverage appears adequate"
+          fi
+          echo ""
+          
+          echo "---"
+          echo "*This review was generated by Cursor AI-powered workflows*"
+        } > ai_review_summary.md
+        
+        cat ai_review_summary.md
+        
+    - name: Post Review Comment
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('ai_review_summary.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });
+          
+    - name: Upload Review Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ai-review-pr-${{ steps.pr_info.outputs.PR_NUMBER }}
+        path: |
+          ai_review_summary.md
+          changed_files.txt
+        retention-days: 30

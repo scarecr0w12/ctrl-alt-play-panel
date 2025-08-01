@@ -1,0 +1,65 @@
+name: Memory Bank Auto-Update (Simplified)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'frontend/**'
+      - '.cursor/**'
+  schedule:
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+jobs:
+  update-memory-bank:
+    name: Update Memory Bank Context
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Update Active Context
+      run: |
+        echo "🔄 Updating activeContext.md..."
+        
+        # Simple update to activeContext.md
+        echo "# Active Context: Current Development Focus" > memory-bank/activeContext.md
+        echo "" >> memory-bank/activeContext.md
+        echo "## Current Phase: AI-Enhanced Development" >> memory-bank/activeContext.md
+        echo "" >> memory-bank/activeContext.md
+        echo "### Last Updated: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> memory-bank/activeContext.md
+        echo "### Update Trigger: ${{ github.event_name }}" >> memory-bank/activeContext.md
+        echo "" >> memory-bank/activeContext.md
+        echo "### Current Focus" >> memory-bank/activeContext.md
+        echo "- Panel+Agent architecture development" >> memory-bank/activeContext.md
+        echo "- TypeScript-first development approach" >> memory-bank/activeContext.md
+        echo "- Cursor IDE with specialized AI agents" >> memory-bank/activeContext.md
+        echo "- Plugin ecosystem expansion" >> memory-bank/activeContext.md
+        echo "" >> memory-bank/activeContext.md
+        echo "---" >> memory-bank/activeContext.md
+        echo "*Auto-updated by GitHub Actions*" >> memory-bank/activeContext.md
+        
+        echo "✅ activeContext.md updated"
+        
+    - name: Commit Updates
+      run: |
+        echo "💾 Committing memory bank updates..."
+        
+        git config --local user.email "action@github.com"
+        git config --local user.name "Memory Bank Auto-Update"
+        
+        if git diff --quiet memory-bank/; then
+          echo "No changes to commit"
+          exit 0
+        fi
+        
+        git add memory-bank/
+        git commit -m "🧠 Auto-update memory bank context - $(date '+%Y-%m-%d %H:%M')"
+        git push
+        
+        echo "✅ Memory bank updates committed"

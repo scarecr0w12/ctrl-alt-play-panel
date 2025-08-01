@@ -14,6 +14,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Performance optimizations
 - Advanced monitoring and observability
 
+## [1.6.1] - 2025-01-27 - SSL Setup & Frontend Routing Fixes
+
+### Added
+
+- **🔒 SSL Setup & Frontend Routing**: Enhanced security and navigation
+  - **SSL Configuration**: Improved SSL certificate management and setup
+    - Enhanced SSL setup scripts with better error handling
+    - Automatic SSL certificate detection and configuration
+    - Improved SSL certificate validation and renewal processes
+  - **Frontend Routing Fixes**: Enhanced navigation and user experience
+    - Fixed frontend routing issues for better navigation
+    - Improved route handling and redirect logic
+    - Enhanced user interface responsiveness
+
+### Enhanced
+
+- **Security**: Improved SSL certificate management and validation
+- **User Experience**: Better frontend navigation and routing
+- **Documentation**: Updated installation and deployment guides
+- **Development Environment**: Cleaned up IDE-specific files and improved gitignore
+
+### Fixed
+
+- SSL setup script compatibility and error handling
+- Frontend routing issues affecting navigation
+- IDE-specific files now properly excluded from repository
+- Documentation consistency and accuracy
+
 ## [1.6.0] - 2025-07-29 - Phase 3 Complete: Multi-Database Support & Enhanced Plugin System
 
 ### Added

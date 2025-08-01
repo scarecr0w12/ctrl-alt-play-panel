@@ -348,7 +348,7 @@ export default function CtrlsPage() {
                                     }`}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      // TODO: Implement edit
+                                      router.push(`/ctrls/${ctrl.id}/edit`);
                                     }}
                                   >
                                     <PencilIcon className="h-4 w-4 inline mr-2" />
@@ -464,7 +464,7 @@ export default function CtrlsPage() {
                                           active ? 'bg-white/10 text-white' : 'text-gray-300'
                                         }`}
                                         onClick={() => {
-                                          // TODO: Navigate to edit page
+                                          router.push(`/alts/${alt.id}`);
                                         }}
                                       >
                                         <PencilIcon className="h-4 w-4 inline mr-2" />

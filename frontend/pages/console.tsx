@@ -17,14 +17,13 @@ export default function ConsolePage() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const [showServerSelector, setShowServerSelector] = useState(false);
+  const [activeConsoles, setActiveConsoles] = useState<Set<string>>(new Set());
 
   // Initialize socket connection
   useEffect(() => {
     if (!user) return;
 
-    const socketInstance = io(process.env.NODE_ENV === 'production' 
-      ? 'https://dev-panel.thecgn.net' 
-      : 'http://localhost:3000', {
+    const socketInstance = io(window.location.origin, {
       auth: {
         token: localStorage.getItem('authToken')
       },
@@ -54,8 +53,10 @@ export default function ConsolePage() {
   }, [user, success, warning, showError]);
 
   const handleAddConsole = (serverId: string, serverName: string) => {
-    // Note: This functionality needs to be implemented via props or context
-    info(`Console for ${serverName} - manual implementation needed`);
+    // Add server to active consoles
+    setActiveConsoles(prev => new Set([...prev, serverId]));
+    info(`Console for ${serverName} added`);
+    setShowServerSelector(false);
   };
 
   if (!user) {
@@ -114,6 +115,14 @@ export default function ConsolePage() {
             <ConsoleManager
               socket={socket}
               className="h-full"
+              activeConsoles={Array.from(activeConsoles)}
+              onConsoleClose={(serverId: string) => {
+                setActiveConsoles(prev => {
+                  const newSet = new Set(prev);
+                  newSet.delete(serverId);
+                  return newSet;
+                });
+              }}
             />
           </div>
 
@@ -136,7 +145,7 @@ export default function ConsolePage() {
           isOpen={showServerSelector}
           onClose={() => setShowServerSelector(false)}
           onServerSelect={handleAddConsole}
-          excludeServerIds={[]} // TODO: Get active console server IDs
+          excludeServerIds={Array.from(activeConsoles)}
         />
       </div>
     </Layout>

@@ -42,6 +42,7 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isValidating, setIsValidating] = useState(false);
 
   // Configure axios defaults
   useEffect(() => {
@@ -56,34 +57,89 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     checkAuth();
   }, []);
 
+  // Debug: Log all auth state changes
+  useEffect(() => {
+    console.log('🔄 [AUTH] AuthContext state changed:', {
+      user: user ? { id: user.id, role: user.role, firstName: user.firstName } : null,
+      loading,
+      isAuthenticated: !!user
+    });
+  }, [user, loading]);
+
   const checkAuth = async () => {
+    if (isValidating) {
+      console.log('🔄 [AUTH] Validation already in progress, skipping');
+      return;
+    }
+    
     try {
+      setIsValidating(true);
       const token = Cookies.get('authToken');
       const userData = Cookies.get('user');
       
       if (token && userData) {
-        setUser(JSON.parse(userData));
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        // Validate token with backend
+        try {
+          const response = await axios.get('/api/auth/validate', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          if (response.data.success) {
+            setUser(JSON.parse(userData));
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          } else {
+            // Token is invalid, clear cookies silently
+            console.log('Token validation failed - clearing auth state');
+            Cookies.remove('authToken');
+            Cookies.remove('user');
+            delete axios.defaults.headers.common['Authorization'];
+            setUser(null);
+          }
+        } catch (validationError) {
+          // Token validation failed, clear cookies silently
+          console.error('Token validation failed:', validationError);
+          Cookies.remove('authToken');
+          Cookies.remove('user');
+          delete axios.defaults.headers.common['Authorization'];
+          setUser(null);
+        }
+      } else {
+        // No token or user data, ensure clean state
+        setUser(null);
       }
     } catch (error) {
       console.error('Auth check failed:', error);
-      logout();
+      // Don't call logout() here to avoid unnecessary redirects
+      setUser(null);
     } finally {
       setLoading(false);
+      setIsValidating(false);
     }
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log('🔐 [AUTH] AuthContext login function called');
       setLoading(true);
-      const response = await axios.post(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/auth/login`, {
+      console.log('⏳ [AUTH] Auth loading set to true');
+      
+      console.log('📡 [AUTH] Making API call to /api/auth/login');
+      const response = await axios.post('/api/auth/login', {
         email,
         password
       });
+      console.log('📋 [AUTH] API Response received:', { status: response.status, success: response.data?.success });
 
       if (response.data.success) {
+        console.log('✅ [AUTH] Login API call successful');
         const { token, user: userData } = response.data.data;
+        console.log('📋 [AUTH] Extracted data:', { 
+          tokenLength: token?.length, 
+          userName: userData?.firstName,
+          userRole: userData?.role 
+        });
         
+        console.log('🍪 [AUTH] Setting cookies...');
         // Store token and user data in secure cookies
         Cookies.set('authToken', token, { 
           expires: 7, // 7 days
@@ -95,11 +151,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'strict'
         });
+        console.log('✅ [AUTH] Cookies set successfully');
 
+        console.log('🔑 [AUTH] Setting axios Authorization header');
         // Set axios default header
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         
+        console.log('👤 [AUTH] Setting user state');
         setUser(userData);
+        console.log('📊 [AUTH] User state set, isAuthenticated should now be:', !!userData);
+        
+        // Validate token with backend after login
+        console.log('🔍 [AUTH] Starting post-login token validation');
+        try {
+          const validationResponse = await axios.get('/api/auth/validate', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          console.log('✅ [AUTH] Post-login token validation successful:', validationResponse.data?.success);
+        } catch (validationError) {
+          console.error('❌ [AUTH] Post-login token validation failed:', validationError);
+          // Even if validation fails, we'll still consider login successful
+          // as the initial login was successful
+        }
         toast.success(`Welcome back, ${userData.firstName}!`);
         return true;
       } else {
@@ -118,7 +191,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const register = async (username: string, email: string, password: string): Promise<boolean> => {
     try {
       setLoading(true);
-      const response = await axios.post(`${process.env.BACKEND_URL || 'http://localhost:3000'}/api/auth/register`, {
+      const response = await axios.post('/api/auth/register', {
         username,
         email,
         password
@@ -143,6 +216,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         
         setUser(userData);
+        // Validate token with backend after registration
+        try {
+          await axios.get('/api/auth/validate', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        } catch (validationError) {
+          console.error('Post-registration token validation failed:', validationError);
+          // Even if validation fails, we'll still consider registration successful
+          // as the initial registration was successful
+        }
         toast.success(`Welcome to Ctrl+Alt+Play, ${userData.firstName}!`);
         return true;
       } else {

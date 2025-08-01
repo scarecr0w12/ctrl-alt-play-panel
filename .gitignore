@@ -105,6 +105,8 @@ uploads/*
 *~
 .kilocode/
 .kilocodemodes
+.windsurf/
+.cursor/
 
 # OS generated files
 .DS_Store
@@ -207,5 +209,11 @@ data/backups/
 test-external-access.sh
 nginx/*.backup*
 nginx/nginx.conf.backup*
+
+# Backup files
+*.backup
+*.old
+*.tmp
+*~
 
 .github/chatmodes/

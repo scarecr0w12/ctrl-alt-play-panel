@@ -17,6 +17,19 @@ services:
       - DB_LOCAL=${DB_LOCAL:-true}
       - REDIS_URL=redis://redis:6379
       - LOG_LEVEL=debug
+      # Critical authentication and security variables
+      - JWT_SECRET=${JWT_SECRET}
+      - MARKETPLACE_JWT_SECRET=${MARKETPLACE_JWT_SECRET}
+      - AGENT_SECRET=${AGENT_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+      # Additional configuration variables
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - DOMAIN=${DOMAIN}
+      - BASE_URL=${BASE_URL}
+      - SSL_ENABLED=${SSL_ENABLED}
+      - PLUGIN_SYSTEM_ENABLED=${PLUGIN_SYSTEM_ENABLED}
+      - WORKSHOP_INTEGRATION_ENABLED=${WORKSHOP_INTEGRATION_ENABLED}
+      - ANALYTICS_ENABLED=${ANALYTICS_ENABLED}
     volumes:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
@@ -26,7 +39,7 @@ services:
       - redis
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "src/health-check.js"]
+      test: ["CMD", "node", "dist/health-check.js"]
       interval: 30s
       timeout: 10s
       retries: 5

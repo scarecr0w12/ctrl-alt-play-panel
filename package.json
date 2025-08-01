@@ -1,6 +1,7 @@
 {
      "name": "ctrl-alt-play",
-     "version": "1.6.0",
+  "type": "module",
+     "version": "1.6.1",
      "description": "A comprehensive web-based game server management system - Ctrl-Alt-Play Panel Server",
      "main": "dist/index.js",
      "bin": {
@@ -82,6 +83,7 @@
           "yaml": "^2.8.0"
      },
      "devDependencies": {
+          "@eslint/js": "^9.32.0",
           "@types/bcrypt": "^6.0.0",
           "@types/bcryptjs": "^3.0.0",
           "@types/compression": "^1.7.5",

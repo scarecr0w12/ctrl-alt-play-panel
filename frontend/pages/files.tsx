@@ -78,8 +78,20 @@ export default function FilesPage() {
           window.open(`/api/files/download?serverId=${serverId}&path=${encodeURIComponent(filePath)}`, '_blank');
           break;
         case 'copy':
-          // TODO: Implement copy to clipboard functionality
-          info('Copy functionality will be implemented');
+          try {
+            // Copy file path to clipboard
+            await navigator.clipboard.writeText(filePath);
+            success(`Copied path: ${filePath}`);
+          } catch (error) {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = filePath;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            success(`Copied path: ${filePath}`);
+          }
           break;
         case 'rename':
           const newName = prompt('Enter new name:', file.name);
