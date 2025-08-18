@@ -3,7 +3,7 @@
  * Provides mocks, test helpers, and testing framework for plugin development
  */
 
-import { PluginContext, PluginLogger, PluginDatabase, PluginApi, PluginEvents, PluginHooks, MockConfig, TestCase, TestSuite } from './types';
+import { PluginContext, PluginLogger, PluginDatabase, PluginApi, PluginEvents, PluginHooks, MockConfig, TestCase, TestSuite, TestResults } from './types';
 
 /**
  * Mock Plugin Context for testing
@@ -408,13 +408,6 @@ export class PluginTestRunner {
     results.duration = Date.now() - startTime;
     return results;
   }
-}
-
-export interface TestResults {
-  passed: number;
-  failed: number;
-  errors: Array<{ test: string; error: Error }>;
-  duration: number;
 }
 
 /**

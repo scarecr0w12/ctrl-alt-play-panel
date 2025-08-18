@@ -368,16 +368,16 @@ class {{className}} {
           'plugin': this.name
         },
         Env: [
-          \`SERVER_PORT=\${config.port || {{gamePort}}}\`,
-          \`SERVER_NAME=\${config.serverName || name}\`,
-          \`MAX_PLAYERS=\${config.maxPlayers || {{maxPlayers}}}\`
+          "SERVER_PORT=" + (config.port || "{{gamePort}}"),
+          "SERVER_NAME=" + (config.serverName || name),
+          "MAX_PLAYERS=" + (config.maxPlayers || "{{maxPlayers}}")
         ],
         ExposedPorts: {
-          \`\${config.port || {{gamePort}}}/tcp\`: {}
+          [(config.port || "{{gamePort}}") + "/tcp"]: {}
         },
         HostConfig: {
           PortBindings: {
-            \`\${config.port || {{gamePort}}}/tcp\`: [{ HostPort: String(config.port || {{gamePort}}) }]
+            [(config.port || "{{gamePort}}") + "/tcp"]: [{ HostPort: String(config.port || "{{gamePort}}") }]
           }
         }
       });
@@ -406,10 +406,10 @@ class {{className}} {
       
       await container.start();
       
-      this.logger.info(\`Server \${id} started\`);
+      this.logger.info("Server " + id + " started");
       res.json({ success: true, message: 'Server started' });
     } catch (error) {
-      this.logger.error(\`Failed to start server \${req.params.id}:\`, error);
+      this.logger.error("Failed to start server " + req.params.id + ":", error);
       res.status(500).json({ success: false, error: error.message });
     }
   }
@@ -421,10 +421,10 @@ class {{className}} {
       
       await container.stop();
       
-      this.logger.info(\`Server \${id} stopped\`);
+      this.logger.info("Server " + id + " stopped");
       res.json({ success: true, message: 'Server stopped' });
     } catch (error) {
-      this.logger.error(\`Failed to stop server \${req.params.id}:\`, error);
+      this.logger.error("Failed to stop server " + req.params.id + ":", error);
       res.status(500).json({ success: false, error: error.message });
     }
   }
@@ -446,7 +446,7 @@ class {{className}} {
         }
       });
     } catch (error) {
-      this.logger.error(\`Failed to get server status \${req.params.id}:\`, error);
+      this.logger.error("Failed to get server status " + req.params.id + ":", error);
       res.status(500).json({ success: false, error: error.message });
     }
   }
@@ -464,7 +464,7 @@ class {{className}} {
           const stats = await container.stats({ stream: false });
           
           // Log performance metrics
-          this.logger.debug(\`Server \${containerInfo.Names[0]} metrics:\`, {
+          this.logger.debug("Server " + containerInfo.Names[0] + " metrics:", {
             cpu: stats.cpu_stats,
             memory: stats.memory_stats,
             network: stats.networks
@@ -492,7 +492,7 @@ class {{className}} {
 
       for (const containerInfo of containers) {
         const container = this.docker.getContainer(containerInfo.Id);
-        const backupPath = path.join('/backups', \`\${containerInfo.Names[0]}-\${Date.now()}.tar\`);
+        const backupPath = path.join('/backups', containerInfo.Names[0] + "-" + Date.now() + ".tar");
         
         // Create backup archive
         const stream = await container.getArchive({ path: '/data' });
@@ -500,7 +500,7 @@ class {{className}} {
         
         stream.pipe(writeStream);
         
-        this.logger.info(\`Backup created: \${backupPath}\`);
+        this.logger.info("Backup created: " + backupPath);
       }
     } catch (error) {
       this.logger.error('Backup failed:', error);
@@ -710,11 +710,7 @@ frontend:
     - path: "/{{name}}"
       component: "{{componentName}}"`,
 
-        'index.js': `/**
- * {{name}} React Plugin
- * Backend API for React frontend components
- */
-
+        'index.js': `// {{name}} React Plugin Backend
 class {{className}} {
   constructor(context) {
     this.context = context;
@@ -729,7 +725,6 @@ class {{className}} {
   }
 
   registerRoutes() {
-    // API endpoint for frontend data
     this.context.api.registerRoute({
       path: '/api/{{name}}/data',
       method: 'GET',
@@ -747,7 +742,6 @@ class {{className}} {
 
   async getData(req, res) {
     try {
-      // Fetch data for React component
       const data = {
         status: 'active',
         items: [],
@@ -765,10 +759,7 @@ class {{className}} {
   async updateData(req, res) {
     try {
       const { data } = req.body;
-      
-      // Process update from React component
       this.logger.info('Data updated from frontend:', data);
-      
       res.json({ success: true, message: 'Data updated successfully' });
     } catch (error) {
       this.logger.error('Failed to update data:', error);
@@ -779,154 +770,40 @@ class {{className}} {
 
 module.exports = {{className}};`,
 
-        'components/{{componentName}}.jsx': `import React, { useState, useEffect } from 'react';
-import { usePluginApi, PluginCard } from '@ctrl-alt-play/plugin-sdk';
+        'components/component.jsx.template': `// React Component Template for {{componentName}}
+// Copy this to {{componentName}}.jsx and customize
+import React, { useState, useEffect } from 'react';
 
-/**
- * {{componentName}} React Component
- * {{description}}
- */
-export const {{componentName}} = () => {
-  const { data, loading, error, execute } = usePluginApi('/api/{{name}}/data');
-  const [formData, setFormData] = useState({});
+export const {{componentName}} = ({ pluginName }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (data) {
-      setFormData(data.config || {});
-    }
-  }, [data]);
+    fetchData();
+  }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    await execute(formData);
+  const fetchData = async () => {
+    try {
+      const response = await fetch('/api/{{name}}/data');
+      const result = await response.json();
+      setData(result.data);
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2">Loading {{name}}...</span>
-      </div>
-    );
+    return React.createElement('div', { className: 'loading' }, 'Loading...');
   }
 
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <h3 className="text-red-800 font-semibold">Error</h3>
-        <p className="text-red-600">{error.message}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">{{name}}</h2>
-        <p className="text-gray-600 mb-6">{{description}}</p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Status Panel */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-3">Status</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Status:</span>
-                <span className={\`px-2 py-1 rounded text-sm \${
-                  data?.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                }\`}>
-                  {data?.status || 'Unknown'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Last Updated:</span>
-                <span className="text-sm text-gray-500">
-                  {data?.timestamp ? new Date(data.timestamp).toLocaleString() : 'N/A'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Configuration Panel */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-3">Configuration</h3>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Setting 1
-                </label>
-                <input
-                  type="text"
-                  value={formData.setting1 || ''}
-                  onChange={(e) => setFormData({...formData, setting1: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter setting value"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Setting 2
-                </label>
-                <select
-                  value={formData.setting2 || ''}
-                  onChange={(e) => setFormData({...formData, setting2: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select option</option>
-                  <option value="option1">Option 1</option>
-                  <option value="option2">Option 2</option>
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                Save Configuration
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Data Display */}
-        {data?.items && data.items.length > 0 && (
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-3">Items</h3>
-            <div className="bg-white border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Name</th>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Status</th>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.items.map((item, index) => (
-                    <tr key={index} className="border-t">
-                      <td className="px-4 py-2">{item.name}</td>
-                      <td className="px-4 py-2">
-                        <span className={\\`px-2 py-1 rounded text-xs \\${
-                          item.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }\\`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2">
-                        <button className="text-blue-600 hover:underline text-sm">
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+  return React.createElement('div', { className: 'plugin-component' },
+    React.createElement('h2', null, '{{name}}'),
+    React.createElement('p', null, '{{description}}'),
+    React.createElement('div', { className: 'status' },
+      'Status: ' + (data?.status || 'Unknown')
+    )
   );
 };
 
@@ -942,9 +819,7 @@ export default {{componentName}};`,
     "lint": "eslint .",
     "dev": "plugin-cli dev",
     "build": "plugin-cli build",
-    "docs": "plugin-cli docs",
-    "frontend:build": "webpack --mode production",
-    "frontend:dev": "webpack serve --mode development"
+    "docs": "plugin-cli docs"
   },
   "keywords": ["ctrl-alt-play", "plugin", "react"],
   "author": "{{author}}",
@@ -955,55 +830,47 @@ export default {{componentName}};`,
   },
   "devDependencies": {
     "jest": "^29.0.0",
-    "eslint": "^8.0.0",
-    "webpack": "^5.0.0",
-    "webpack-cli": "^4.0.0",
-    "webpack-dev-server": "^4.0.0",
-    "@babel/core": "^7.0.0",
-    "@babel/preset-react": "^7.0.0",
-    "babel-loader": "^8.0.0"
+    "eslint": "^8.0.0"
   }
 }`,
 
-        'webpack.config.js': `const path = require('path');
+        'README.md': `# {{name}} - React Component Plugin
 
-module.exports = {
-  entry: './components/index.js',
-  output: {
-    path: path.resolve(__dirname, 'dist'),
-    filename: 'bundle.js',
-    library: '{{name}}',
-    libraryTarget: 'umd'
-  },
-  module: {
-    rules: [
-      {
-        test: /\\.jsx?$/,
-        exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: ['@babel/preset-react']
-          }
-        }
-      }
-    ]
-  },
-  resolve: {
-    extensions: ['.js', '.jsx']
-  },
-  externals: {
-    react: 'React',
-    'react-dom': 'ReactDOM'
-  }
-};`
+{{description}}
+
+## Installation
+
+\`\`\`bash
+plugin-cli install ./{{name}}
+plugin-cli enable {{name}}
+\`\`\`
+
+## Development
+
+\`\`\`bash
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+\`\`\`
+
+## Components
+
+- {{componentName}}: Main React component
+
+## API Endpoints
+
+- GET /api/{{name}}/data - Get plugin data
+- POST /api/{{name}}/data - Update plugin data
+`
       },
-      dependencies: ['react', 'react-dom', 'webpack', 'babel-loader'],
+      dependencies: ['react', 'react-dom'],
       instructions: `
 1. Install dependencies: npm install
-2. Build frontend: npm run frontend:build
+2. Customize components in components/ directory
 3. Start development: npm run dev
-4. Run tests: npm test
+4. Build for production: npm run build
 `
     });
   }

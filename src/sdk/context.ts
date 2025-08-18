@@ -93,7 +93,7 @@ export class PluginContextImpl implements PluginContext {
       const response = await this.api.get(`/plugins/${this.name}/metrics`);
       return response.data;
     } catch (error) {
-      this.logger.warn('Failed to get plugin metrics:', error);
+      this.logger.warn('Failed to get plugin metrics:', error as any);
       return null;
     }
   }
@@ -106,7 +106,7 @@ export class PluginContextImpl implements PluginContext {
       const response = await this.api.get(`/plugins/${this.name}/status`);
       return response.data.status;
     } catch (error) {
-      this.logger.warn('Failed to get plugin status:', error);
+      this.logger.warn('Failed to get plugin status:', error as any);
       return 'unknown';
     }
   }

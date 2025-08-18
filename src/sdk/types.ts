@@ -236,3 +236,15 @@ export interface UsePluginApiOptions {
   headers?: Record<string, string>;
   autoFetch?: boolean;
 }
+
+// Testing results interface
+export interface TestResults {
+  passed: number;
+  failed: number;
+  errors: Array<{ test: string; error: Error }>;
+  duration: number;
+  coverage?: {
+    percentage: number;
+    raw: string;
+  } | null;
+}

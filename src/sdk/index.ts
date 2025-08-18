@@ -12,7 +12,7 @@ export * from './templates';
 
 // Plugin base classes
 export { PluginBase } from '../types/plugin/PluginBase';
-export { PluginContext } from './context';
+export { PluginContextImpl as PluginContext } from './context';
 
 // Development utilities
 export { DevServer } from './dev-server';

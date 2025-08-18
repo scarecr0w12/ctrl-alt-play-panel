@@ -119,7 +119,7 @@ export class PluginTester {
   private async runValidation(): Promise<TestResults> {
     console.log('✅ Running plugin validation...');
     
-    const errors: string[] = [];
+    const errors: Array<{ test: string; error: Error }> = [];
     let passed = 0;
     let failed = 0;
 
