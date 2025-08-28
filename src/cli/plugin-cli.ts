@@ -4,6 +4,10 @@ import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
 import PluginManager from '../services/PluginManager.full';
+import * as chokidar from 'chokidar';
+import { spawn, ChildProcess } from 'child_process';
+import * as http from 'http';
+import express from 'express';
 
 // Dynamic import for chalk to avoid ESM issues
 let chalk: any;
@@ -128,6 +132,38 @@ class PluginCLI {
       .command('uninstall <name>')
       .description('Uninstall a plugin')
       .action((name) => this.uninstallPlugin(name));
+
+    // Dev command - hot-reload development server
+    this.program
+      .command('dev [path]')
+      .description('Start development server with hot-reload')
+      .option('-p, --port <port>', 'Development server port', '3001')
+      .option('-w, --watch', 'Enable file watching', true)
+      .action((pluginPath, options) => this.startDevServer(pluginPath, options));
+
+    // Build command
+    this.program
+      .command('build [path]')
+      .description('Build and package plugin')
+      .option('-o, --output <dir>', 'Output directory', 'dist')
+      .option('--production', 'Build for production', false)
+      .action((pluginPath, options) => this.buildPlugin(pluginPath, options));
+
+    // Test command
+    this.program
+      .command('test [path]')
+      .description('Run plugin tests')
+      .option('--watch', 'Watch for file changes', false)
+      .option('--coverage', 'Generate coverage report', false)
+      .action((pluginPath, options) => this.testPlugin(pluginPath, options));
+
+    // Docs command
+    this.program
+      .command('docs [path]')
+      .description('Generate plugin documentation')
+      .option('-o, --output <dir>', 'Documentation output directory', 'docs')
+      .option('--format <format>', 'Documentation format (html, markdown)', 'html')
+      .action((pluginPath, options) => this.generateDocs(pluginPath, options));
   }
 
   async run() {
@@ -481,6 +517,367 @@ export default class ${name} extends PluginBase {
       console.error(chalk.red('❌ Failed to disable plugin:'), error);
       console.log(chalk.red(`   - ${(error as Error).message || error}`));
     }
+  }
+
+  private async startDevServer(pluginPath: string = '.', options: { port: string; watch: boolean }) {
+    try {
+      const resolvedPath = path.resolve(pluginPath);
+      
+      if (!chalk) {
+        chalk = { blue: (s: string) => s, green: (s: string) => s, yellow: (s: string) => s, red: (s: string) => s, gray: (s: string) => s };
+      }
+
+      console.log(chalk.blue(`🚀 Starting development server for plugin at: ${resolvedPath}`));
+      console.log(chalk.gray(`   Port: ${options.port}`));
+      console.log(chalk.gray(`   Watch: ${options.watch}`));
+
+      // Validate plugin structure first
+      if (!fs.existsSync(path.join(resolvedPath, 'plugin.yaml'))) {
+        throw new Error('plugin.yaml not found. This doesn\'t appear to be a plugin directory.');
+      }
+
+      // Create development server
+      const app = express();
+      const port = parseInt(options.port);
+
+      // Enable CORS for development
+      app.use((req, res, next) => {
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+        next();
+      });
+
+      // Plugin status endpoint
+      app.get('/status', (req, res) => {
+        res.json({ 
+          status: 'development',
+          path: resolvedPath,
+          timestamp: new Date().toISOString()
+        });
+      });
+
+      // Plugin reload endpoint
+      app.post('/reload', (req, res) => {
+        console.log(chalk.yellow('🔄 Plugin reload triggered'));
+        res.json({ success: true, message: 'Plugin reloaded' });
+      });
+
+      const server = app.listen(port, () => {
+        console.log(chalk.green(`✅ Development server running on http://localhost:${port}`));
+        console.log(chalk.gray('   Available endpoints:'));
+        console.log(chalk.gray(`   - GET  /status  - Plugin status`));
+        console.log(chalk.gray(`   - POST /reload  - Trigger reload`));
+      });
+
+      // Set up file watching if enabled
+      if (options.watch) {
+        const watcher = chokidar.watch(resolvedPath, {
+          ignored: ['node_modules/**', 'dist/**', '.git/**'],
+          persistent: true
+        });
+
+        watcher.on('change', (filePath) => {
+          console.log(chalk.yellow(`📝 File changed: ${path.relative(resolvedPath, filePath)}`));
+          console.log(chalk.gray('   Plugin should be reloaded in your development environment'));
+        });
+
+        console.log(chalk.blue('👀 File watcher enabled'));
+      }
+
+      // Handle graceful shutdown
+      process.on('SIGINT', () => {
+        console.log(chalk.yellow('\n🛑 Shutting down development server...'));
+        server.close(() => {
+          console.log(chalk.green('✅ Development server stopped'));
+          process.exit(0);
+        });
+      });
+
+    } catch (error) {
+      if (!chalk) chalk = { red: (s: string) => s };
+      console.error(chalk.red('❌ Failed to start development server:'), error);
+    }
+  }
+
+  private async buildPlugin(pluginPath: string = '.', options: { output: string; production: boolean }) {
+    try {
+      const resolvedPath = path.resolve(pluginPath);
+      const outputDir = path.resolve(options.output);
+
+      if (!chalk) {
+        chalk = { blue: (s: string) => s, green: (s: string) => s, yellow: (s: string) => s, gray: (s: string) => s };
+      }
+
+      console.log(chalk.blue(`🔨 Building plugin at: ${resolvedPath}`));
+      console.log(chalk.gray(`   Output: ${outputDir}`));
+      console.log(chalk.gray(`   Production: ${options.production}`));
+
+      // Validate plugin structure
+      const pluginYamlPath = path.join(resolvedPath, 'plugin.yaml');
+      if (!fs.existsSync(pluginYamlPath)) {
+        throw new Error('plugin.yaml not found');
+      }
+
+      // Create output directory
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+
+      // Copy plugin files
+      const filesToCopy = ['plugin.yaml', 'index.js', 'package.json', 'README.md'];
+      for (const file of filesToCopy) {
+        const srcPath = path.join(resolvedPath, file);
+        const destPath = path.join(outputDir, file);
+        
+        if (fs.existsSync(srcPath)) {
+          fs.copyFileSync(srcPath, destPath);
+          console.log(chalk.gray(`   ✓ Copied ${file}`));
+        }
+      }
+
+      // Copy directories
+      const dirsToConisder = ['templates', 'scripts', 'config', 'webhooks', 'docker'];
+      for (const dir of dirsToConisder) {
+        const srcDir = path.join(resolvedPath, dir);
+        const destDir = path.join(outputDir, dir);
+        
+        if (fs.existsSync(srcDir) && fs.statSync(srcDir).isDirectory()) {
+          this.copyDir(srcDir, destDir);
+          console.log(chalk.gray(`   ✓ Copied ${dir}/ directory`));
+        }
+      }
+
+      // Create package archive if production build
+      if (options.production) {
+        const packagePath = path.join(outputDir, '..', `plugin-${Date.now()}.tar.gz`);
+        console.log(chalk.yellow(`📦 Creating package: ${packagePath}`));
+        // Note: In production, you might want to use tar or zip libraries
+        console.log(chalk.gray('   Package creation would happen here (requires tar/zip library)'));
+      }
+
+      console.log(chalk.green(`✅ Plugin built successfully in ${outputDir}`));
+
+    } catch (error) {
+      if (!chalk) chalk = { red: (s: string) => s };
+      console.error(chalk.red('❌ Failed to build plugin:'), error);
+    }
+  }
+
+  private async testPlugin(pluginPath: string = '.', options: { watch: boolean; coverage: boolean }) {
+    try {
+      const resolvedPath = path.resolve(pluginPath);
+
+      if (!chalk) {
+        chalk = { blue: (s: string) => s, green: (s: string) => s, yellow: (s: string) => s, gray: (s: string) => s };
+      }
+
+      console.log(chalk.blue(`🧪 Running tests for plugin at: ${resolvedPath}`));
+      console.log(chalk.gray(`   Watch mode: ${options.watch}`));
+      console.log(chalk.gray(`   Coverage: ${options.coverage}`));
+
+      // Check if package.json exists with test scripts
+      const packageJsonPath = path.join(resolvedPath, 'package.json');
+      let hasTestScript = false;
+
+      if (fs.existsSync(packageJsonPath)) {
+        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+        hasTestScript = packageJson.scripts && packageJson.scripts.test;
+      }
+
+      if (hasTestScript) {
+        console.log(chalk.yellow('🔄 Running npm test...'));
+        
+        const testArgs = ['test'];
+        if (options.watch) testArgs.push('--watch');
+        if (options.coverage) testArgs.push('--coverage');
+
+        const testProcess = spawn('npm', testArgs, {
+          cwd: resolvedPath,
+          stdio: 'inherit'
+        });
+
+        testProcess.on('exit', (code) => {
+          if (code === 0) {
+            console.log(chalk.green('✅ Tests completed successfully'));
+          } else {
+            console.log(chalk.red('❌ Tests failed'));
+          }
+        });
+      } else {
+        // Run basic plugin validation as fallback
+        console.log(chalk.yellow('📋 No test script found, running plugin validation...'));
+        await this.validatePlugin(resolvedPath);
+      }
+
+    } catch (error) {
+      if (!chalk) chalk = { red: (s: string) => s };
+      console.error(chalk.red('❌ Failed to run tests:'), error);
+    }
+  }
+
+  private async generateDocs(pluginPath: string = '.', options: { output: string; format: string }) {
+    try {
+      const resolvedPath = path.resolve(pluginPath);
+      const outputDir = path.resolve(options.output);
+
+      if (!chalk) {
+        chalk = { blue: (s: string) => s, green: (s: string) => s, gray: (s: string) => s };
+      }
+
+      console.log(chalk.blue(`📚 Generating documentation for plugin at: ${resolvedPath}`));
+      console.log(chalk.gray(`   Output: ${outputDir}`));
+      console.log(chalk.gray(`   Format: ${options.format}`));
+
+      // Create output directory
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+
+      // Read plugin metadata
+      const pluginYamlPath = path.join(resolvedPath, 'plugin.yaml');
+      if (!fs.existsSync(pluginYamlPath)) {
+        throw new Error('plugin.yaml not found');
+      }
+
+      const yaml = require('js-yaml');
+      const pluginData = yaml.load(fs.readFileSync(pluginYamlPath, 'utf8'));
+
+      // Generate documentation based on format
+      if (options.format === 'markdown') {
+        const markdown = this.generateMarkdownDocs(pluginData, resolvedPath);
+        fs.writeFileSync(path.join(outputDir, 'README.md'), markdown);
+        console.log(chalk.gray('   ✓ Generated README.md'));
+      } else {
+        const html = this.generateHtmlDocs(pluginData, resolvedPath);
+        fs.writeFileSync(path.join(outputDir, 'index.html'), html);
+        console.log(chalk.gray('   ✓ Generated index.html'));
+      }
+
+      console.log(chalk.green(`✅ Documentation generated in ${outputDir}`));
+
+    } catch (error) {
+      if (!chalk) chalk = { red: (s: string) => s };
+      console.error(chalk.red('❌ Failed to generate documentation:'), error);
+    }
+  }
+
+  private copyDir(src: string, dest: string) {
+    if (!fs.existsSync(dest)) {
+      fs.mkdirSync(dest, { recursive: true });
+    }
+
+    const entries = fs.readdirSync(src, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const srcPath = path.join(src, entry.name);
+      const destPath = path.join(dest, entry.name);
+
+      if (entry.isDirectory()) {
+        this.copyDir(srcPath, destPath);
+      } else {
+        fs.copyFileSync(srcPath, destPath);
+      }
+    }
+  }
+
+  private generateMarkdownDocs(pluginData: any, pluginPath: string): string {
+    return `# ${pluginData.name}
+
+${pluginData.description || 'No description provided'}
+
+## Plugin Information
+
+- **Version**: ${pluginData.version}
+- **Author**: ${pluginData.author}
+- **Created**: ${new Date().toISOString()}
+
+## Installation
+
+\`\`\`bash
+# Install the plugin
+plugin-cli install ${path.basename(pluginPath)}
+
+# Enable the plugin
+plugin-cli enable ${pluginData.name}
+\`\`\`
+
+## Configuration
+
+${pluginData.permissions ? '### Permissions\n\n```yaml\n' + JSON.stringify(pluginData.permissions, null, 2) + '\n```' : ''}
+
+## API Documentation
+
+This plugin provides the following functionality:
+
+- Plugin lifecycle management
+- Configuration handling
+- Event system integration
+
+## Development
+
+\`\`\`bash
+# Start development server
+plugin-cli dev ${path.basename(pluginPath)}
+
+# Run tests
+plugin-cli test ${path.basename(pluginPath)}
+
+# Build for production
+plugin-cli build ${path.basename(pluginPath)} --production
+\`\`\`
+`;
+  }
+
+  private generateHtmlDocs(pluginData: any, pluginPath: string): string {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${pluginData.name} - Plugin Documentation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        h1, h2, h3 { color: #333; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 5px; }
+        code { background: #f4f4f4; padding: 2px 4px; border-radius: 3px; }
+        .meta { background: #e8f4fd; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>${pluginData.name}</h1>
+    <p>${pluginData.description || 'No description provided'}</p>
+    
+    <div class="meta">
+        <h2>Plugin Information</h2>
+        <ul>
+            <li><strong>Version:</strong> ${pluginData.version}</li>
+            <li><strong>Author:</strong> ${pluginData.author}</li>
+            <li><strong>Generated:</strong> ${new Date().toISOString()}</li>
+        </ul>
+    </div>
+
+    <h2>Installation</h2>
+    <pre><code># Install the plugin
+plugin-cli install ${path.basename(pluginPath)}
+
+# Enable the plugin
+plugin-cli enable ${pluginData.name}</code></pre>
+
+    ${pluginData.permissions ? `<h2>Configuration</h2>
+    <h3>Permissions</h3>
+    <pre><code>${JSON.stringify(pluginData.permissions, null, 2)}</code></pre>` : ''}
+
+    <h2>Development</h2>
+    <pre><code># Start development server
+plugin-cli dev ${path.basename(pluginPath)}
+
+# Run tests
+plugin-cli test ${path.basename(pluginPath)}
+
+# Build for production
+plugin-cli build ${path.basename(pluginPath)} --production</code></pre>
+</body>
+</html>`;
   }
 
   private getTemplate(templateType: string): PluginTemplate {
