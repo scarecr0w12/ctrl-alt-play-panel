@@ -185,4 +185,6 @@ dev-debug.log
 # tasks/ 
 .cursor/mcp.json
 .kilocode/mcp.json
-.windsurf/mcp-config.json
+.windsurf/mcp-config.json.cursor/
+.kilocode/
+.windsurf/
