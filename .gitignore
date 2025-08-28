@@ -183,3 +183,6 @@ dev-debug.log
 # Task files
 # tasks.json
 # tasks/ 
+.cursor/mcp.json
+.kilocode/mcp.json
+.windsurf/mcp-config.json
