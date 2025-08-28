@@ -1,0 +1,11 @@
+version: "1.0"
+chatmode: "code"
+description: "Code writing, modification, and refactoring specialist"
+created: "2025-07-28"
+source: ".github/chatmodes/code.chatmode.md"
+groups:
+  - read
+  - edit
+  - browser
+  - command
+  - mcp

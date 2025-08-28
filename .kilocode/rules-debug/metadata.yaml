@@ -1,0 +1,11 @@
+version: "1.0"
+chatmode: "debug"
+description: "Troubleshooting, error investigation, and systematic problem diagnosis specialist"
+created: "2025-07-28"
+source: ".github/chatmodes/debug.chatmode.md"
+groups:
+  - read
+  - edit
+  - browser
+  - command
+  - mcp

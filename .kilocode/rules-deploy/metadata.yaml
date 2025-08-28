@@ -1,0 +1,11 @@
+version: "1.0"
+chatmode: "deploy"
+description: "Deployment and infrastructure management specialist for the Panel+Agent architecture"
+created: "2025-07-28"
+source: ".github/chatmodes/deploy.chatmode.md"
+groups:
+  - read
+  - edit
+  - browser
+  - command
+  - mcp

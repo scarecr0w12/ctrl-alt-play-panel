@@ -1,0 +1,11 @@
+version: "1.0"
+chatmode: "reviewer"
+description: "Code review and quality assurance specialist"
+created: "2025-07-28"
+source: ".github/chatmodes/reviewer.chatmode.md"
+groups:
+  - read
+  - edit
+  - browser
+  - command
+  - mcp

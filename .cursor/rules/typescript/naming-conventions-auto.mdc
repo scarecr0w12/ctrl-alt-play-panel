@@ -1,0 +1,63 @@
+---
+description: TypeScript and JavaScript file naming conventions for the Ctrl-Alt-Play Panel project ensuring consistency across frontend and backend components
+globs: src/**/*.ts, src/**/*.tsx, frontend/**/*.ts, frontend/**/*.tsx, *.config.ts, *.config.js
+alwaysApply: false
+---
+
+# Naming Conventions
+
+## Critical Requirements
+
+- **Backend Files**: Use camelCase for all backend TypeScript files
+- **Frontend Components**: Use PascalCase for React components
+- **Configuration Files**: Use kebab-case or ecosystem conventions
+- **Directories**: Use kebab-case, group by domain not file type
+- **No nesting** deeper than 3 levels without architectural justification
+
+## Examples
+
+<example>
+// ✅ Good - Backend files
+src/services/
+├── userService.ts
+├── agentDiscoveryService.ts
+├── serverManagementService.ts
+└── authService.ts
+
+src/routes/
+├── auth.ts
+├── servers.ts
+└── users.ts
+
+// ✅ Good - Frontend components
+frontend/components/
+├── ServerCard.tsx
+├── UserManagement.tsx
+├── GameServerList.tsx
+└── AuthContext.tsx
+
+// ✅ Good - Configuration
+docker-compose.yml
+jest.config.ts
+next.config.ts
+.env.development
+</example>
+
+<example type="invalid">
+// ❌ Bad - Inconsistent naming
+src/services/
+├── UserService.ts        # Should be userService.ts
+├── agent-discovery.ts    # Should be agentDiscoveryService.ts
+└── ServerMgmt.js         # Should be .ts and full name
+
+frontend/components/
+├── servercard.tsx        # Should be ServerCard.tsx
+├── user_management.tsx   # Should be UserManagement.tsx
+└── gameServer-list.tsx   # Should be GameServerList.tsx
+</example>
+
+## Directory Structure Standards
+- Group by domain: services, routes, components together
+- Use consistent naming across similar directories
+- Maintain flat structure where possible
+- Separate tests in same directory or dedicated test folders

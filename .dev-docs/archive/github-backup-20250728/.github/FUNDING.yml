@@ -1,0 +1,34 @@
+# Funding Configuration for Ctrl-Alt-Play Panel
+# These are supported funding model platforms
+
+# GitHub Sponsors
+github: # Add GitHub username here if you set up GitHub Sponsors
+
+# Open Collective
+open_collective: # Add Open Collective project name
+
+# Ko-fi
+ko_fi: # Add Ko-fi username
+
+# Tidelift
+tidelift: # Add package-manager/package-name
+
+# Community Bridge
+community_bridge: # Add project name
+
+# Liberapay
+liberapay: # Add username
+
+# IssueHunt
+issuehunt: # Add username
+
+# Otechie
+otechie: # Add username
+
+# LFX Crowdfunding
+lfx_crowdfunding: # Add project name
+
+# Custom funding URLs (up to 4)
+custom: # Add custom funding URLs
+  # - https://paypal.me/username
+  # - https://buymeacoffee.com/username

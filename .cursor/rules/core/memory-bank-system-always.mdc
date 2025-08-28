@@ -1,0 +1,64 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Memory Bank System
+
+## Critical Requirements
+
+- **MEMORY BANK ACTIVE**: Begin every response with `[MEMORY BANK: ACTIVE]` or `[MEMORY BANK: INACTIVE]`
+- **READ ALL FILES**: Always read ALL memory bank files at the start of every task
+- **UPDATE REGULARLY**: Update memory bank when significant changes occur
+- **MAINTAIN HIERARCHY**: Follow structured file organization for project context
+
+## Memory Bank Structure
+
+Required core files in `memory-bank/` directory:
+1. **projectContext.md** - What the Ctrl-Alt-Play Panel is and why it exists
+2. **activeContext.md** - Current work focus, recent changes, next steps  
+3. **systemPatterns.md** - Architecture patterns, technical decisions
+4. **techContext.md** - Technologies, setup, constraints, dependencies
+5. **progress.md** - What works, what's left, current status, known issues
+6. **decisionLog.md** - Architectural decisions with rationale and dates
+
+## Examples
+
+<example>
+[MEMORY BANK: ACTIVE]
+
+Reading memory bank files...
+- ✅ projectContext.md - Game server management platform
+- ✅ activeContext.md - Working on plugin system integration
+- ✅ systemPatterns.md - Panel+Agent distributed architecture
+- ✅ techContext.md - TypeScript, React, Node.js, Docker, multi-DB
+- ✅ progress.md - Core MVP complete, plugin marketplace in progress
+- ✅ decisionLog.md - Recent decision to use Prisma ORM
+
+Based on current context, I can help with plugin development...
+</example>
+
+<example type="invalid">
+// ❌ Bad - No memory bank check
+Let me help you with that feature request...
+
+// ❌ Bad - Partial memory bank read
+[MEMORY BANK: ACTIVE]
+I read the progress.md file and see we need to work on...
+</example>
+
+## Update Triggers
+
+Update memory bank when:
+- Implementing significant features
+- Making architectural decisions  
+- Discovering new project patterns
+- User explicitly requests with "update memory bank"
+- Context needs clarification for future sessions
+
+## Integration
+- **Always read** memory bank at session start
+- **Update progress.md** after completing major tasks
+- **Log decisions** in decisionLog.md with timestamp and rationale
+- **Maintain activeContext.md** with current focus and next steps

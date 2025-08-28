@@ -103,10 +103,7 @@ uploads/*
 *.swp
 *.swo
 *~
-.kilocode/
-.kilocodemodes
-.windsurf/
-.cursor/
+
 
 # OS generated files
 .DS_Store
@@ -117,32 +114,12 @@ uploads/*
 ehthumbs.db
 Thumbs.db
 
-# Docker
-.docker/
 
 # SSL certificates
 *.pem
 *.crt
 *.key
 
-# Development artifacts
-*-old.*
-*-backup.*
-*-previous.*
-*_COMPLETION_*
-*_IMPLEMENTATION_*
-*_REPORT_*
-PROJECT_STATUS_*
-DEVELOPMENT_STATUS_*
-
-# Research and AI documents (development artifacts)
-CTRL_ALT_PLAY_PROJECT_OVERVIEW_AND_STATUS_REPORT.md
-CTRL_ALT_SYSTEM.md
-DEPENDENCY_UPGRADE_ANALYSIS.md
-DOMAIN_INDEPENDENT_SETUP.md
-*_OVERVIEW_*.md
-*_ANALYSIS_*.md
-*_SYSTEM_*.md
 
 # Development scripts and fixes (not for production)
 easy-setup.sh
@@ -150,37 +127,10 @@ fix-*.sh
 test-*.js
 *-test.js
 
-# Development documentation and internal files
-.dev-docs/
-memory-bank/
-ai-conversations/
-research/
-reports/
-phase-reports/
-development-notes/
-.windsurf/
-.windsurfignore
 
-
-# Development status and analysis documents (internal use only)
-CTRL_ALT_PLAY_PROJECT_OVERVIEW_AND_STATUS_REPORT.md
-CTRL_ALT_SYSTEM.md
-DEPENDENCY_UPGRADE_ANALYSIS.md
-DOMAIN_INDEPENDENT_SETUP.md
-*_OVERVIEW_*.md
-*_ANALYSIS_*.md
-*_SYSTEM_*.md
-*_STATUS_*.md
-*_COMPLETION_*.md
-*_IMPLEMENTATION_*.md
-*_REPORT_*.md
-PHASE*.md
-PROJECT_STATUS_*.md
-DEVELOPMENT_STATUS_*.md
 
 # Production environment files (only templates should be in repo)
 .env.production
-.env.production.example
 
 # Development documentation archives
 docs/archive/
@@ -217,3 +167,19 @@ nginx/nginx.conf.backup*
 *~
 
 .github/chatmodes/
+
+logs
+dev-debug.log
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+
+# Task files
+# tasks.json
+# tasks/ 

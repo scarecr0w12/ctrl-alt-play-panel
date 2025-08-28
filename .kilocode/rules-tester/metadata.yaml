@@ -1,0 +1,11 @@
+version: "1.0"
+chatmode: "tester"
+description: "Software testing, quality assurance, and test automation specialist"
+created: "2025-07-28"
+source: ".github/chatmodes/tester.chatmode.md"
+groups:
+  - read
+  - edit
+  - browser
+  - command
+  - mcp

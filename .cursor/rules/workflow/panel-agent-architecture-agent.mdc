@@ -1,0 +1,73 @@
+---
+description: Specialized knowledge about the Ctrl-Alt-Play Panel+Agent distributed architecture. Apply when discussing system design, component communication, scaling strategies, or architectural decisions. Essential for maintaining consistency in the distributed game server management platform.
+globs: 
+alwaysApply: false
+---
+
+# Panel+Agent Architecture Guidelines
+
+## Critical Architecture Patterns
+
+- **DISTRIBUTED DESIGN**: Panel acts as central management hub, Agents handle server operations
+- **COMMUNICATION PROTOCOL**: RESTful APIs + WebSocket for real-time updates
+- **SERVICE DISCOVERY**: Dynamic agent registration and health monitoring
+- **PLUGIN ECOSYSTEM**: Extensible architecture supporting marketplace plugins
+- **MULTI-TENANT**: Support multiple organizations with isolated environments
+
+## Examples
+
+<example>
+// ✅ Good - Proper Panel+Agent communication
+interface AgentDiscoveryRequest {
+  agentId: string;
+  capabilities: AgentCapability[];
+  healthEndpoint: string;
+  supportedGames: string[];
+}
+
+class PanelAgentCommunicator {
+  async registerAgent(agent: AgentDiscoveryRequest): Promise<AgentResponse> {
+    try {
+      const registration = await this.agentRegistry.register(agent);
+      await this.establishWebSocketConnection(agent);
+      return { success: true, agentId: registration.id };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+}
+</example>
+
+<example type="invalid">
+// ❌ Bad - Direct database access from agent
+class Agent {
+  async getServerList() {
+    // Agents should not directly access Panel database
+    return await this.panelDatabase.servers.findMany();
+  }
+}
+</example>
+
+## Component Responsibilities
+
+### Panel Responsibilities
+- User management and authentication
+- Server configuration and policies
+- Plugin marketplace and management
+- Agent discovery and coordination
+- Analytics and reporting
+- Web interface and API gateway
+
+### Agent Responsibilities  
+- Server process management
+- Resource monitoring and reporting
+- Game-specific operations
+- File system management
+- Local security enforcement
+- Health status reporting
+
+## Communication Patterns
+- **Command/Response**: Panel sends commands, Agent acknowledges and reports status
+- **Event Streaming**: Real-time updates for console output, resource usage, player activity
+- **Health Checks**: Regular heartbeat and capability reporting
+- **Plugin Sync**: Automated plugin installation and updates

@@ -1,0 +1,56 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# TypeScript Strict Standards
+
+## Critical Requirements
+
+- **ALL NEW CODE** must be written in TypeScript, never JavaScript
+- **NO .js files** allowed for new development - use .ts or .tsx only
+- **STRICT MODE** required - all TypeScript must compile with strict: true
+- **NO `any` types** - explicit typing required, `any` is prohibited
+- **INTERFACE DEFINITIONS** - use interfaces for object shapes, types for unions
+- **TYPE SAFETY** - prefer type guards over type assertions
+
+## Examples
+
+<example>
+// ✅ Good - Explicit typing with interface
+interface ServerConfig {
+  id: string;
+  name: string;
+  port: number;
+  status: 'running' | 'stopped' | 'starting';
+}
+
+async function createServer(config: ServerConfig): Promise<ApiResponse<Server>> {
+  try {
+    const server = await serverService.create(config);
+    return { success: true, data: server };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+</example>
+
+<example type="invalid">
+// ❌ Bad - JavaScript file or any types
+function processServer(config: any): any {
+  return config;
+}
+
+// ❌ Bad - Missing error handling
+async function createServer(config) {
+  const server = await serverService.create(config);
+  return server;
+}
+</example>
+
+## File Extensions
+- Backend: `.ts` for all server-side code
+- Frontend: `.tsx` for React components, `.ts` for utilities
+- Config: `.ts` where supported (next.config.ts, jest.config.ts)
+- Tests: `.test.ts` or `.spec.ts`

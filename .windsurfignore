@@ -1,0 +1,90 @@
+# Windsurf Ignore File
+# Ignore files and directories that are not relevant to Windsurf's code intelligence
+
+# Node.js dependencies
+node_modules/
+
+# Build outputs
+build/
+dist/
+out/
+.next/
+.nuxt/
+
+# Logs
+logs/
+*.log
+
+# Environment files
+.env*
+!.env.example
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Database
+*.db
+*.sqlite
+
+# Temporary files
+.tmp/
+temp/
+
+# Coverage reports
+coverage/
+
+# Project specific ignores
+.prisma/
+.windsurf/
+.kilocode/
+
+# GitHub
+#.github/
+
+# Cache directories
+.cache/
+.npm/
+.yarn/cache/
+
+# Binary files
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Media files
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.svg
+*.ico
+*.mp3
+*.wav
+*.flac

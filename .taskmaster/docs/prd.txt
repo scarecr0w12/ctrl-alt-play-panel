@@ -1,0 +1,40 @@
+# Project PRD - Ctrl Alt Play Panel
+
+## Summary
+A control panel to manage distributed AI agents (Panel+Agent architecture). Provides server management, file manager, console, plugin system, and monitoring.
+
+## Goals
+- Provide secure agent lifecycle management (start/stop/restart/status)
+- Real-time console streaming and monitoring
+- Plugin system with sandboxing and permissions
+- Deployment-agnostic, zero-dependency setup
+
+## Users
+- System administrators
+- DevOps engineers
+- Plugin developers
+- End users managing game servers
+
+## Features
+1. Agent discovery and registration
+2. Server lifecycle management
+3. Web-based console with real-time streaming
+4. File manager with permission controls
+5. Plugin SDK and sandbox
+6. Health checks and monitoring dashboard
+7. Role-based access control (RBAC)
+
+## Success Criteria
+- Agents discoverable and register automatically
+- Console commands authorized and logged
+- Plugins run in sandbox with permission enforcement
+- CI/CD pipelines passing with tests and linting
+
+## Milestones
+- M1: Core API + Agent discovery
+- M2: Console and File Manager
+- M3: Plugin SDK and Security
+- M4: Monitoring, testing, and docs
+
+## Notes
+Use existing project conventions and memory bank for architecture decisions.

@@ -1,0 +1,11 @@
+version: "1.0"
+chatmode: "orchestrator"
+description: "Strategic workflow orchestrator for multi-mode delegation and verification"
+created: "2025-07-28"
+source: ".github/chatmodes/orchestrator.chatmode.md"
+groups:
+  - read
+  - edit
+  - browser
+  - command
+  - mcp

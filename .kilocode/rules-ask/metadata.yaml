@@ -1,0 +1,11 @@
+version: "1.0"
+chatmode: "ask"
+description: "Explanations, documentation, and answers to technical questions specialist"
+created: "2025-07-28"
+source: ".github/chatmodes/ask.chatmode.md"
+groups:
+  - read
+  - edit
+  - browser
+  - command
+  - mcp

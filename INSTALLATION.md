@@ -62,47 +62,16 @@ All databases are fully supported with automatic connection string generation, d
 
 ## 🚀 Quick Start
 
-### Option 1: Automated Setup Script
+**For the fastest setup experience, see the comprehensive [Quick Start Guide in README.md](README.md#-quick-start) which provides a streamlined one-minute setup process.**
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/ctrl-alt-play-panel.git
-cd ctrl-alt-play-panel
+The README.md includes:
+- **One-minute setup** with automated environment detection
+- **Cross-platform compatibility** (Linux, macOS, Windows)
+- **Multiple database support** (PostgreSQL, MySQL, MariaDB, MongoDB, SQLite)
+- **Docker and native installation options**
+- **Troubleshooting for common issues**
 
-# Run the setup script
-./scripts/setup.sh
-
-# Configure environment
-nano .env
-
-# Start the application
-./start.sh
-```
-
-### Option 2: Docker Quick Start
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/ctrl-alt-play-panel.git
-cd ctrl-alt-play-panel
-
-# Copy and configure environment
-cp .env.example .env
-nano .env  # Edit with your settings
-
-# Start all services
-docker-compose up -d
-
-# Initialize database
-docker-compose exec ctrl-alt-play npm run db:push
-docker-compose exec ctrl-alt-play npm run db:seed
-```
-
-**Access the panel:** http://localhost:3000
-
-**Default credentials:**
-- Username: `admin`
-- Password: `admin123`
+For detailed installation options and advanced configuration, continue with the sections below.
 
 ---
 
@@ -274,7 +243,7 @@ The panel supports multiple database types with full production support. Choose 
 export DB_TYPE=postgresql  # or mysql, mariadb, mongodb, sqlite
 
 # Start with automatic database selection
-./docker-launcher.sh start
+./start-dev.sh
 ```
 
 **Custom Database Setup:**

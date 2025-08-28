@@ -1,5 +1,4 @@
 {
-  "root": true,
   "env": {
     "node": true,
     "es2020": true
@@ -10,7 +9,9 @@
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "ecmaVersion": 2020,
-    "sourceType": "module"
+    "sourceType": "module",
+    "project": "./tsconfig.json",
+    "tsconfigRootDir": "."
   },
   "plugins": [
     "@typescript-eslint"
@@ -29,6 +30,7 @@
   "ignorePatterns": [
     "dist/",
     "node_modules/",
+    "frontend/",
     "*.js"
   ]
 }

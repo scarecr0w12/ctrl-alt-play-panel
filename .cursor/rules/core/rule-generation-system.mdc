@@ -1,0 +1,133 @@
+---
+description: Comprehensive rule generation system for maintaining consistency and quality across the Ctrl-Alt-Play Panel codebase. This rule must be followed whenever a user requests new rule creation, rule modification, behavior changes, or when the AI needs to remember certain patterns. It ensures proper organization, documentation standards, and effective rule application while maintaining the hierarchical rule system fundamental to project consistency and automated assistance effectiveness.
+globs: 
+alwaysApply: true
+---
+
+# Rule Generation System
+
+## Core Principles
+
+**All rules must be created in the .cursor/rules/ directory structure with proper categorization and naming conventions.**
+
+### Rule Types and Configuration
+
+#### Auto-Apply Rules (alwaysApply: true)
+- Applied to every chat and command
+- Use for core standards that should never be violated
+- Filename suffix: `-always.mdc`
+- Description: Detailed explanation of purpose
+- Globs: Leave blank
+
+#### File-Pattern Rules (globs defined)
+- Applied when working with matching files
+- Use for language-specific or file-type standards
+- Filename suffix: `-auto.mdc`
+- Description: Clear context for when to apply
+- Globs: Specific file patterns (e.g., `src/**/*.ts`, `*.config.js`)
+
+#### Agent-Selected Rules (description only)
+- Available for AI to choose when relevant
+- Use for specialized scenarios or workflows
+- Filename suffix: `-agent.mdc`
+- Description: Comprehensive context about when to apply
+- Globs: Leave blank
+- alwaysApply: false
+
+#### Manual Rules (minimal frontmatter)
+- Only applied when explicitly referenced
+- Use for specific procedures or advanced techniques
+- Filename suffix: `-manual.mdc`
+- Description: Leave blank
+- Globs: Leave blank
+- alwaysApply: false
+
+### Directory Organization
+
+```
+.cursor/rules/
+├── core/          # Core system behavior and rule generation
+├── typescript/    # TypeScript-specific standards
+├── testing/       # Testing patterns and requirements
+├── deployment/    # Docker, CI/CD, deployment standards
+├── ui/            # Frontend, React, styling standards
+├── workflow/      # Development workflow and process rules
+└── security/      # Security patterns and requirements
+```
+
+### Rule Content Standards
+
+#### Required Template Structure
+```mdc
+---
+description: [Detailed context for when to apply this rule]
+globs: [File patterns or blank]
+alwaysApply: [true/false]
+---
+
+# Rule Title
+
+## Critical Requirements
+- Bullet point list of actionable requirements
+- Clear, specific directives
+- No ambiguous language
+
+## Examples
+
+<example>
+// Valid implementation example
+</example>
+
+<example type="invalid">
+// Invalid implementation to avoid
+</example>
+
+## Context
+Brief explanation of why this rule exists and its importance.
+```
+
+#### Content Guidelines
+- **Concise but complete**: Focus on actionable directives
+- **Include valid/invalid examples**: Help AI understand patterns
+- **Use context from actual mistakes**: Reference real issues when creating rules
+- **Keep under 50 lines when possible**: Optimize for AI context window
+- **Use clear markdown formatting**: Improve AI comprehension
+
+### Rule Creation Process
+
+1. **Check existing rules** in all subdirectories for similar patterns
+2. **Determine rule type** based on usage pattern and scope
+3. **Choose appropriate directory** based on domain/technology
+4. **Use proper naming convention**: `{domain}-{purpose}-{type}.mdc`
+5. **Apply template structure** with all required sections
+6. **Include relevant examples** from actual project context
+
+### Success Response Format
+
+After creating or updating a rule, respond with:
+
+```
+✅ AutoRuleGen Success: .cursor/rules/{directory}/{rule-name}.mdc
+📋 Rule Type: {Auto-Apply|File-Pattern|Agent-Selected|Manual}
+📝 Rule Description: {The exact content of the description field}
+```
+
+## Critical Rules
+
+- **NEVER** create rules outside the .cursor/rules/ directory structure
+- **ALWAYS** include all three frontmatter fields (description, globs, alwaysApply)
+- **NEVER** use quotes around glob patterns or group with `{}`
+- **ALWAYS** check for existing rules before creating new ones
+- **INCLUDE** both valid and invalid examples when possible
+- **FOCUS** on actionable directives rather than explanatory text
+- **MAINTAIN** consistent naming and organization patterns
+
+## Integration with Project Context
+
+Rules should align with the Ctrl-Alt-Play Panel architecture:
+- Panel+Agent distributed system patterns
+- TypeScript-first development approach
+- Docker-based deployment methodology
+- Plugin system extensibility requirements
+- Multi-database support considerations
+- Security and authentication standards

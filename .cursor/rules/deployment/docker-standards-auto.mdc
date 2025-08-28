@@ -1,0 +1,62 @@
+---
+description: Docker and containerization standards for the Ctrl-Alt-Play Panel project ensuring consistent deployment across development, staging, and production environments
+globs: Dockerfile*, docker-compose*.yml, *.dockerfile, scripts/docker-*.sh
+alwaysApply: false
+---
+
+# Docker Standards
+
+## Critical Requirements
+
+- **MULTI-STAGE BUILDS** for production optimization
+- **NON-ROOT USER** for security in all containers
+- **HEALTH CHECKS** for all services
+- **ENVIRONMENT-SPECIFIC** configurations via docker-compose files
+- **VOLUME MOUNTS** for persistent data and configuration
+- **NETWORK ISOLATION** between services
+
+## Examples
+
+<example>
+# ✅ Good - Multi-stage Dockerfile with security
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+FROM node:18-alpine AS runtime
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S appuser -u 1001 -G appgroup
+WORKDIR /app
+COPY --from=builder /app/node_modules ./node_modules
+COPY --chown=appuser:appgroup . .
+USER appuser
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+EXPOSE 3000
+CMD ["npm", "start"]
+</example>
+
+<example type="invalid">
+# ❌ Bad - Running as root, no health checks
+FROM node:18
+COPY . .
+RUN npm install
+EXPOSE 3000
+CMD ["npm", "start"]
+</example>
+
+## Docker Compose Standards
+- Use environment-specific files: `docker-compose.yml`, `docker-compose.prod.yml`
+- Define networks for service isolation
+- Use named volumes for persistent data
+- Include restart policies for production
+- Set resource limits for containers
+- Use secrets for sensitive configuration
+
+## File Organization
+- Base configurations in `docker-compose.yml`
+- Production overrides in `docker-compose.prod.yml`
+- Development overrides in `docker-compose.dev.yml`
+- Nginx configurations in `nginx/` directory
+- SSL certificates in `ssl/` directory (gitignored)

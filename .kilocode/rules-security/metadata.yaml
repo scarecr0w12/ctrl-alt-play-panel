@@ -1,0 +1,11 @@
+version: "1.0"
+chatmode: "security"
+description: "Application security, vulnerability assessment, and security best practices implementation specialist"
+created: "2025-07-28"
+source: ".github/chatmodes/security.chatmode.md"
+groups:
+  - read
+  - edit
+  - browser
+  - command
+  - mcp

@@ -1,0 +1,11 @@
+version: "1.0"
+chatmode: "architect"
+description: "Architectural planning and system design specialist"
+created: "2025-07-28"
+source: ".github/chatmodes/architect.chatmode.md"
+groups:
+  - read
+  - edit
+  - browser
+  - command
+  - mcp
