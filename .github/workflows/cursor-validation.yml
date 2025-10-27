@@ -227,7 +227,7 @@ jobs:
         cat cursor-config-report.md
         
     - name: Upload Configuration Report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: cursor-config-report
         path: cursor-config-report.md

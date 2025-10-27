@@ -273,7 +273,7 @@ jobs:
           });
           
     - name: Upload Review Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ai-review-pr-${{ steps.pr_info.outputs.PR_NUMBER }}
         path: |

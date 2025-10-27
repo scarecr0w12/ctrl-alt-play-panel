@@ -260,7 +260,7 @@ jobs:
         cat ai-quality-report.md
         
     - name: Upload AI Analysis Report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ai-quality-report-${{ github.sha }}
         path: |
@@ -426,7 +426,7 @@ jobs:
         cat deployment-summary.md
         
     - name: Upload Deployment Summary
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: deployment-summary-${{ github.sha }}
         path: deployment-summary.md
