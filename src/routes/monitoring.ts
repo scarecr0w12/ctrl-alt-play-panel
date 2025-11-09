@@ -342,7 +342,7 @@ router.get('/export', authenticateToken, requirePermission('monitoring.view'), a
       // Generate CSV content
       const csvHeader = 'timestamp,server_id,server_name,cpu_percent,memory_percent,disk_percent,network_in,network_out\n';
       const csvRows = metrics.map(metric => 
-        `${metric.timestamp.toISOString()},${metric.serverId},${metric.server.name},${metric.cpuPercent},${metric.memoryPercent},${metric.diskPercent},${metric.networkIn},${metric.networkOut}`
+        `${metric.timestamp.toISOString()},${metric.serverId},${metric.server.name},${metric.cpu},${metric.memory},${metric.disk},${metric.networkIn},${metric.networkOut}`
       ).join('\n');
       
       return res.send(csvHeader + csvRows);
@@ -438,9 +438,9 @@ router.post('/compare', authenticateToken, requirePermission('monitoring.view'),
     serverIds.forEach(serverId => {
       const metrics = serverMetrics.filter(m => m.serverId === serverId);
       if (metrics.length > 0) {
-        const avgCpu = metrics.reduce((sum, m) => sum + m.cpuPercent, 0) / metrics.length;
-        const avgMemory = metrics.reduce((sum, m) => sum + m.memoryPercent, 0) / metrics.length;
-        const avgDisk = metrics.reduce((sum, m) => sum + m.diskPercent, 0) / metrics.length;
+        const avgCpu = metrics.reduce((sum, m) => sum + m.cpu, 0) / metrics.length;
+        const avgMemory = metrics.reduce((sum, m) => sum + m.memory, 0) / metrics.length;
+        const avgDisk = metrics.reduce((sum, m) => sum + m.disk, 0) / metrics.length;
         const avgNetworkIn = metrics.reduce((sum, m) => sum + m.networkIn, 0) / metrics.length;
         const avgNetworkOut = metrics.reduce((sum, m) => sum + m.networkOut, 0) / metrics.length;
 

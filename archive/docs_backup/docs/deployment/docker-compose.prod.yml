@@ -1,0 +1,125 @@
+# Production Docker Compose file for Ctrl-Alt-Play Panel
+# Version: 2.x compatible
+
+services:
+  # Ctrl-Alt-Play Panel Application
+  ctrl-alt-play:
+    build: 
+      context: ../..
+      dockerfile: Dockerfile
+      target: production
+    container_name: ctrl-alt-play-panel
+    restart: unless-stopped
+    ports:
+      - "${PANEL_PORT:-3000}:3000"  # Web interface
+      - "${AGENT_PORT:-8080}:8080"  # Agent WebSocket port
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://ctrlaltplay:${POSTGRES_PASSWORD:-ctrlaltplay}@postgres:5432/ctrlaltplay
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-this-in-production}
+      AGENT_SECRET: ${AGENT_SECRET:-change-this-agent-secret}
+      PORT: 3000
+      AGENT_PORT: 8080
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - uploads_data:/app/uploads:rw
+      - logs_data:/app/logs:rw
+      - app_data:/app/data:rw
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ctrl-alt-play-network
+    healthcheck:
+      test: ["CMD-SHELL", "node /app/dist/health-check.js || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: ctrl-alt-play-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ctrlaltplay
+      POSTGRES_USER: ctrlaltplay
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ctrlaltplay}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data:rw
+      - ../../database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "127.0.0.1:${POSTGRES_EXTERNAL_PORT:-5432}:5432"  # Only bind to localhost for security
+    networks:
+      - ctrl-alt-play-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ctrlaltplay -d ctrlaltplay"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ctrl-alt-play-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru ${REDIS_PASSWORD:+--requirepass $REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data:rw
+    ports:
+      - "127.0.0.1:${REDIS_EXTERNAL_PORT:-6379}:6379"  # Only bind to localhost for security
+    networks:
+      - ctrl-alt-play-network
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ${REDIS_PASSWORD:+-a $REDIS_PASSWORD} ping | grep PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # Nginx Reverse Proxy (Production ready)
+  nginx:
+    image: nginx:alpine
+    container_name: ctrl-alt-play-nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ../../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../../nginx/ssl:/etc/nginx/ssl:ro
+      - logs_data:/var/log/nginx:rw
+    depends_on:
+      ctrl-alt-play:
+        condition: service_healthy
+    networks:
+      - ctrl-alt-play-network
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t && wget --no-verbose --tries=1 --spider http://localhost:80/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  uploads_data:
+    driver: local
+  logs_data:
+    driver: local
+  app_data:
+    driver: local
+
+networks:
+  ctrl-alt-play-network:
+    driver: bridge
+    name: ctrl-alt-play-prod

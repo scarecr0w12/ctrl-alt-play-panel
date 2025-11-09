@@ -1,0 +1,126 @@
+# Test Environment Docker Compose file for Ctrl-Alt-Play Panel
+# Version: 2.x compatible
+
+services:
+  # Ctrl-Alt-Play Panel Application (Web Interface)
+  ctrl-alt-play:
+    build: 
+      context: ../..
+      dockerfile: Dockerfile
+      target: production
+    container_name: ctrl-alt-play-test
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "8080:8080"  # Agent WebSocket port
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://ctrlaltplay:ctrlaltplay@postgres:5432/ctrlaltplay_test
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: test-jwt-secret-key-not-secure
+      AGENT_SECRET: test-agent-secret-key-not-secure
+      LOG_LEVEL: debug
+      PORT: 3000
+      AGENT_PORT: 8080
+    volumes:
+      - test_uploads:/app/uploads:rw
+      - test_logs:/app/logs:rw
+      - test_data:/app/data:rw
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ctrl-alt-play-test-network
+    healthcheck:
+      test: ["CMD-SHELL", "node /app/dist/health-check.js || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Test Agent (for integration testing)
+  test-agent:
+    build:
+      context: ../../agent
+      dockerfile: Dockerfile
+    container_name: ctrl-alt-play-test-agent
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PANEL_URL: ws://ctrl-alt-play:8080
+      NODE_ID: test-node-docker
+      AGENT_SECRET: test-agent-secret-key-not-secure
+      HEALTH_PORT: 8081
+    ports:
+      - "8081:8081"  # Health check port
+    depends_on:
+      ctrl-alt-play:
+        condition: service_healthy
+    networks:
+      - ctrl-alt-play-test-network
+
+  # PostgreSQL Database (Test)
+  postgres:
+    image: postgres:16-alpine
+    container_name: ctrl-alt-play-test-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ctrlaltplay_test
+      POSTGRES_USER: ctrlaltplay
+      POSTGRES_PASSWORD: ctrlaltplay
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data:rw
+      - ../../database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts
+    networks:
+      - ctrl-alt-play-test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ctrlaltplay -d ctrlaltplay_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Redis Cache (Test)
+  redis:
+    image: redis:7-alpine
+    container_name: ctrl-alt-play-test-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data:rw
+    ports:
+      - "6380:6379"  # Different port to avoid conflicts
+    networks:
+      - ctrl-alt-play-test-network
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+# NOTE: Game servers are NOT managed by this docker-compose
+# They are managed by external agents running on game server hosts
+# Agents connect to this panel via WebSocket on port 8080
+
+networks:
+  ctrl-alt-play-test-network:
+    driver: bridge
+    name: ctrl-alt-play-test
+
+volumes:
+  test_uploads:
+    driver: local
+  test_logs:
+    driver: local
+  test_data:
+    driver: local
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

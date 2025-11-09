@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ctrl-Alt-Play Panel - Easy Setup</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            margin: 20px 0;
+        }
+        .hero {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .hero h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        .hero p {
+            font-size: 1.2em;
+            color: #7f8c8d;
+        }
+        .step {
+            margin: 30px 0;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+            border-radius: 0 8px 8px 0;
+        }
+        .step h3 {
+            color: #2980b9;
+            margin-bottom: 15px;
+        }
+        .form-group {
+            margin: 20px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .btn-success {
+            background: #27ae60;
+        }
+        .btn-success:hover {
+            background: #219a52;
+        }
+        .output {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            margin: 20px 0;
+            white-space: pre-wrap;
+            display: none;
+        }
+        .emoji {
+            font-size: 1.5em;
+            margin-right: 10px;
+        }
+        .help-text {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="hero">
+                <h1>🎮 Ctrl-Alt-Play Panel</h1>
+                <p>Easy Setup - No Command Line Required!</p>
+            </div>
+
+            <div class="step">
+                <h3><span class="emoji">🖥️</span>Step 1: Choose Your Server Type</h3>
+                <div class="form-group">
+                    <label for="serverType">What type of server setup do you want?</label>
+                    <select id="serverType">
+                        <option value="personal">Personal Gaming (1-10 friends)</option>
+                        <option value="community">Community Server (10-100 players)</option>
+                        <option value="large">Large Community (100+ players)</option>
+                    </select>
+                    <div class="help-text">This helps us recommend the right configuration</div>
+                </div>
+            </div>
+
+            <div class="step">
+                <h3><span class="emoji">🌐</span>Step 2: Server Access</h3>
+                <div class="form-group">
+                    <label for="domain">Your domain (optional)</label>
+                    <input type="text" id="domain" placeholder="gameserver.example.com or leave blank for IP">
+                    <div class="help-text">If you don't have a domain, that's fine! We'll use your server's IP address</div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="useSSL"> Enable HTTPS (Recommended)
+                    </label>
+                    <div class="help-text">Makes your server more secure - only works with a domain name</div>
+                </div>
+            </div>
+
+            <div class="step">
+                <h3><span class="emoji">👤</span>Step 3: Admin Account</h3>
+                <div class="form-group">
+                    <label for="adminEmail">Your email</label>
+                    <input type="email" id="adminEmail" placeholder="your@email.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="adminPassword">Admin password</label>
+                    <input type="password" id="adminPassword" placeholder="Choose a strong password">
+                    <div class="help-text">Use at least 8 characters with numbers and symbols</div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin: 40px 0;">
+                <button class="btn btn-success" onclick="generateSetup()">
+                    🚀 Generate My Setup Commands
+                </button>
+            </div>
+
+            <div id="output-section" style="display: none;">
+                <div class="step">
+                    <h3><span class="emoji">📋</span>Your Custom Setup Commands</h3>
+                    <p>Copy and paste these commands into your server terminal:</p>
+                    <div id="commands" class="output"></div>
+                    <button class="btn" onclick="copyCommands()">📋 Copy Commands</button>
+                </div>
+
+                <div class="step">
+                    <h3><span class="emoji">📖</span>What Happens Next?</h3>
+                    <ol>
+                        <li>The installer will check your system</li>
+                        <li>Install Docker and other needed tools</li>
+                        <li>Download and setup the game panel</li>
+                        <li>Start all services automatically</li>
+                        <li>Your panel will be ready in 5-10 minutes!</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function generateSetup() {
+            const serverType = document.getElementById('serverType').value;
+            const domain = document.getElementById('domain').value || 'localhost';
+            const useSSL = document.getElementById('useSSL').checked;
+            const adminEmail = document.getElementById('adminEmail').value;
+            const adminPassword = document.getElementById('adminPassword').value;
+
+            if (!adminEmail || !adminPassword) {
+                alert('Please fill in your email and password!');
+                return;
+            }
+
+            const commands = generateCommands(serverType, domain, useSSL, adminEmail, adminPassword);
+            document.getElementById('commands').textContent = commands;
+            document.getElementById('output-section').style.display = 'block';
+            document.getElementById('output-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function generateCommands(serverType, domain, useSSL, adminEmail, adminPassword) {
+            // Show loading state
+            document.getElementById('commands').textContent = 'Generating your custom setup commands...';
+
+            setTimeout(() => {
+                const setupUrl = 'https://raw.githubusercontent.com/scarecr0w12/ctrl-alt-play-panel/main/alex-setup.sh';
+
+                return `# 🎮 Your Custom Game Server Setup
+# Generated for: ${serverType} server on ${new Date().toLocaleString()}
+
+# Step 1: Download the Alex-friendly installer
+curl -o alex-setup.sh ${setupUrl}
+chmod +x alex-setup.sh
+
+# Step 2: Set your preferences (optional - installer will ask if not set)
+export CTRL_ALT_DOMAIN="${domain}"
+export CTRL_ALT_SSL="${useSSL}"
+export CTRL_ALT_ADMIN_EMAIL="${adminEmail}"
+export CTRL_ALT_PRESET="${serverType}"
+
+# Step 3: Run the installer
+./alex-setup.sh
+
+# That's it! 🎉
+# The installer will:
+# ✅ Check your system automatically
+# ✅ Install Docker and other tools
+# ✅ Download and configure the panel
+# ✅ Set up your admin account
+# ✅ Start all services
+#
+# Your panel will be available at: http${useSSL ? 's' : ''}://${domain}${domain === 'localhost' ? ':3000' : ''}
+#
+# 🎮 Happy Gaming!`;
+            }, 500);
+        }
+
+        function copyCommands() {
+            const commands = document.getElementById('commands').textContent;
+            navigator.clipboard.writeText(commands).then(() => {
+                alert('Commands copied! Paste them in your server terminal.');
+            });
+        }
+
+        // Enable SSL checkbox only when domain is provided
+        document.getElementById('domain').addEventListener('input', function() {
+            const sslCheckbox = document.getElementById('useSSL');
+            if (this.value && this.value !== 'localhost') {
+                sslCheckbox.disabled = false;
+            } else {
+                sslCheckbox.disabled = true;
+                sslCheckbox.checked = false;
+            }
+        });
+    </script>
+</body>
+</html>
