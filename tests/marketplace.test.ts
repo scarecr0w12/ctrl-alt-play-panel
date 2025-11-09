@@ -83,9 +83,16 @@ describe('Marketplace Integration', () => {
 
     it('should handle connection test failure', async () => {
       const mockAxiosInstance = {
-        get: jest.fn().mockRejectedValue(new Error('Network error') as never)
-      };
-      mockedAxios.create.mockReturnValue(mockAxiosInstance as any);
+        get: jest.fn().mockRejectedValue(new Error('Network error') as never),
+        post: jest.fn(),
+        put: jest.fn(),
+        delete: jest.fn(),
+        interceptors: {
+          request: { use: jest.fn() },
+          response: { use: jest.fn() }
+        }
+      } as unknown as AxiosInstance;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance);
 
       const integration = new MarketplaceIntegration({
         api_key: 'test-key',
@@ -111,12 +118,15 @@ describe('Marketplace Integration', () => {
 
       const mockAxiosInstance = {
         post: jest.fn().mockResolvedValue(mockResponse),
+        get: jest.fn(),
+        put: jest.fn(),
+        delete: jest.fn(),
         interceptors: {
           request: { use: jest.fn() },
           response: { use: jest.fn() }
         }
-      };
-      mockedAxios.create.mockReturnValue(mockAxiosInstance as any);
+      } as unknown as AxiosInstance;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance);
 
       const integration = new MarketplaceIntegration({
         api_key: 'test-key',
@@ -179,12 +189,15 @@ describe('Marketplace Integration', () => {
 
       const mockAxiosInstance = {
         post: jest.fn().mockResolvedValue(mockResponse),
+        get: jest.fn(),
+        put: jest.fn(),
+        delete: jest.fn(),
         interceptors: {
           request: { use: jest.fn() },
           response: { use: jest.fn() }
         }
-      };
-      mockedAxios.create.mockReturnValue(mockAxiosInstance as any);
+      } as unknown as AxiosInstance;
+      mockedAxios.create.mockReturnValue(mockAxiosInstance);
 
       const integration = new MarketplaceIntegration({
         api_key: 'test-key',
@@ -241,7 +254,7 @@ describe('Marketplace Integration', () => {
         status: 200,
         statusText: 'OK',
         headers: {},
-        config: {},
+        config: { headers: {} } as any,
         request: {}
       } as AxiosResponse<any>);
 
@@ -310,7 +323,7 @@ describe('Marketplace Integration', () => {
           status: 200,
           statusText: 'OK',
           headers: {},
-          config: {},
+          config: { headers: {} } as any,
           request: {}
         } as AxiosResponse<any>)
         .mockResolvedValueOnce({
@@ -318,7 +331,7 @@ describe('Marketplace Integration', () => {
           status: 200,
           statusText: 'OK',
           headers: {},
-          config: {},
+          config: { headers: {} } as any,
           request: {}
         } as AxiosResponse<any>)
         .mockRejectedValueOnce(new Error('Sync failed'));
