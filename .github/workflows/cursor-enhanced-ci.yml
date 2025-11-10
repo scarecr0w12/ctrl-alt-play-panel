@@ -25,7 +25,7 @@ jobs:
       
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       
     - name: Validate Cursor Configuration
       id: validate
@@ -65,7 +65,7 @@ jobs:
         
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       
     - name: Setup Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
@@ -179,7 +179,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -277,7 +277,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       
     - name: Setup Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -361,7 +361,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       
     - name: Deployment Readiness Check
       run: |
