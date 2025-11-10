@@ -27,8 +27,8 @@
     "date-fns": "^4.1.0",
     "framer-motion": "^12.23.9",
     "js-cookie": "^3.0.5",
-    "lucide-react": "^0.526.0",
-    "next": "^15.4.4",
+    "lucide-react": "^0.553.0",
+    "next": "^16.0.1",
     "postcss": "^8.5.6",
     "react": "^19.1.0",
     "react-chartjs-2": "^5.3.0",
@@ -36,7 +36,7 @@
     "react-hot-toast": "^2.4.1",
     "socket.io-client": "^4.8.1",
     "tailwind-merge": "^3.3.1",
-    "tailwindcss": "^3.4.17",
+    "tailwindcss": "^4.1.17",
     "typescript": "^5.3.3",
     "xterm": "^5.3.0",
     "xterm-addon-fit": "^0.8.0",
@@ -51,7 +51,7 @@
     "@types/react-dom": "^19.1.6",
     "@types/testing-library__react": "^10.2.0",
     "eslint": "^9.32.0",
-    "eslint-config-next": "^15.4.4",
+    "eslint-config-next": "^16.0.1",
     "jest": "^30.0.5",
     "jest-environment-jsdom": "^30.0.5"
   }
